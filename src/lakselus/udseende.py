@@ -2,6 +2,8 @@
 
 import re
 
+import pandas as pd
+
 FARVER = {
     "laks": "#D9643A",
     "rav": "#E9A23B",
@@ -14,10 +16,13 @@ FARVER = {
 CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&display=block');
+.ikon { font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; line-height: 1;
+        display: inline-block; vertical-align: -0.18em; font-size: 1.25em; -webkit-font-smoothing: antialiased; }
 html, body, [class*="css"], .stMarkdown, p, li, td, th, label { font-family: 'Inter', sans-serif; }
 h1, h2, h3, .hero-titel { font-family: 'Fraunces', serif !important; letter-spacing: -0.01em; }
 .block-container { padding-top: 1.2rem; max-width: 1150px; }
-header[data-testid="stHeader"] { background: transparent; }
+header[data-testid="stHeader"] { background: rgba(251, 244, 234, .94); backdrop-filter: blur(6px); }
 
 .hero { position: relative; border-radius: 22px; overflow: hidden;
         box-shadow: 0 18px 40px -18px rgba(90, 40, 20, .45); margin-bottom: 1.6rem; }
@@ -54,6 +59,23 @@ header[data-testid="stHeader"] { background: transparent; }
 .kort .etiket { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: #8C7F78; }
 .kort .tal { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 700; color: #2E2633; line-height: 1.15; }
 .kort .note { font-size: .82rem; color: #8C7F78; }
+.kort .hoved { display: flex; align-items: center; gap: .45rem; }
+.kort .hoved .ikon { font-size: 1.35rem; padding: .3rem; border-radius: 10px; background: #F6E4CF; color: #D9643A; }
+
+.omr-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .9rem; }
+.omr { background: #FFFBF5; border: 1px solid #EAD7BF; border-radius: 16px; padding: .85rem 1rem;
+       border-left: 6px solid var(--lys); box-shadow: 0 6px 18px -14px rgba(120, 60, 20, .4); }
+.omr .top { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
+.omr .nr { font-family: 'Fraunces', serif; font-weight: 700; color: #8C7F78; font-size: .95rem; }
+.omr .navn { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.05rem; color: #2E2633; line-height: 1.2; }
+.omr .lys { font-size: .72rem; font-weight: 600; padding: .12rem .5rem; border-radius: 999px;
+            background: var(--lys-bg); color: var(--lys-tekst); white-space: nowrap; }
+.omr .raekke { display: flex; gap: 1rem; margin-top: .55rem; flex-wrap: wrap; font-size: .9rem; color: #4A3F48; }
+.omr .raekke span { display: inline-flex; align-items: center; gap: .2rem; }
+.forklaring { display: flex; flex-wrap: wrap; gap: .4rem 1.3rem; font-size: .85rem; color: #6B5F66; margin: .4rem 0 1rem; }
+.forklaring span { display: inline-flex; align-items: center; gap: .25rem; }
+.prik { width: .8rem; height: .8rem; border-radius: 50%; display: inline-block; }
+
 .fodnote { font-size: .8rem; color: #8C7F78; border-top: 1px solid #EAD7BF; padding-top: .8rem; margin-top: 2rem; }
 </style>
 """
@@ -144,5 +166,35 @@ HERO = "\n".join(
 )
 
 
-def kort(etiket: str, tal: str, note: str = "") -> str:
-    return f'<div class="kort"><div class="etiket">{etiket}</div><div class="tal">{tal}</div><div class="note">{note}</div></div>'
+def ikon(navn: str, farve: str = "inherit", titel: str = "") -> str:
+    """Material Symbols-ikon, fx 'thermostat', 'trending_up', 'warning'."""
+    return f'<span class="ikon" style="color:{farve}" title="{titel}" aria-hidden="{str(not titel).lower()}">{navn}</span>'
+
+
+def kort(etiket: str, tal: str, note: str = "", ikon_navn: str = "") -> str:
+    hoved = f'<div class="hoved">{ikon(ikon_navn) if ikon_navn else ""}<div class="etiket">{etiket}</div></div>'
+    return f'<div class="kort">{hoved}<div class="tal">{tal}</div><div class="note">{note}</div></div>'
+
+
+LYS_FARVER = {  # trafiklys: kant, baggrund, tekst
+    "green": ("#5E9C6A", "#E2F0E1", "#2F5E39"),
+    "yellow": ("#E3A72F", "#FBEFCF", "#7A5510"),
+    "red": ("#C8473A", "#F8DCD6", "#7E2219"),
+}
+LUS_FARVER = {"lav": "#2F6E8E", "mellem": "#E9A23B", "hoej": "#C8473A"}  # < 0,2 · 0,2–0,5 · > 0,5
+
+
+def lus_niveau(v: float) -> str:
+    return "lav" if v < 0.2 else ("mellem" if v <= 0.5 else "hoej")
+
+
+def trend(nu: float, foer: float) -> tuple[str, str, str]:
+    """Ikon, farve og tekst for udviklingen siden de 4 foregående uger."""
+    if pd.isna(foer) or foer == 0:
+        return "trending_flat", "#8C7F78", "ingen sammenligning"
+    rel = nu / foer - 1
+    if rel > 0.15:
+        return "trending_up", "#C8473A", f"stigende ({rel:+.0%} mod 4 uger før)"
+    if rel < -0.15:
+        return "trending_down", "#2F6E8E", f"faldende ({rel:+.0%} mod 4 uger før)"
+    return "trending_flat", "#8C7F78", f"stabil ({rel:+.0%} mod 4 uger før)"
