@@ -15,7 +15,8 @@ FARVER = {
     "linje": "#E1E6EA",      # kanter og gitter
     "flade": "#FFFFFF",
     "baggrund": "#FFFFFF",
-    "laks": "#E8603C",       # eneste accent
+    "laks": "#E8603C",       # eneste accent – til grafik (linjer, prikker, bånd)
+    "laks_tekst": "#C4472A", # samme accent, mørkere til tekst: kontrast ≥ 4,5:1 mod hvid (WCAG AA)
     "rav": "#E2A23B",
     # Bagudkompatible navne brugt i graferne
     "fjord": "#1D4E6B",
@@ -51,7 +52,7 @@ hr { border-color: #E1E6EA; }
 
 /* Forside / sidehoved */
 .sidehoved { border-top: 6px solid #0B2230; padding: 1.3rem 0 1.2rem; margin-bottom: 1.6rem; border-bottom: 1px solid #E1E6EA; }
-.sidehoved .overlinje { font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #E8603C; }
+.sidehoved .overlinje { font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #C4472A; }
 .sidehoved h1 { font-size: clamp(1.7rem, 3.4vw, 2.5rem) !important; line-height: 1.15; margin: .5rem 0 .6rem; padding: 0; max-width: 24em; }
 .sidehoved .under { color: #4A5A66; font-size: 1rem; max-width: 52em; margin: 0; line-height: 1.55; }
 .sidehoved .chips { display: flex; gap: .5rem 1.4rem; flex-wrap: wrap; margin-top: 1rem; }
@@ -61,7 +62,7 @@ hr { border-color: #E1E6EA; }
 .resume { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px solid #0B2230; border-bottom: 1px solid #E1E6EA; margin: .4rem 0 2rem; }
 .resume > div { padding: 1rem 1.2rem 1.1rem 0; }
 .resume > div + div { padding-left: 1.2rem; border-left: 1px solid #E1E6EA; }
-.resume .nr { font-family: 'Source Serif 4', serif; font-size: .9rem; color: #E8603C; font-weight: 600; }
+.resume .nr { font-family: 'Source Serif 4', serif; font-size: .9rem; color: #C4472A; font-weight: 600; }
 .resume .stor { font-family: 'Source Serif 4', serif; font-size: 2.3rem; font-weight: 600; color: #0B2230; line-height: 1.05;
                 margin: .3rem 0 .35rem; font-variant-numeric: tabular-nums; }
 .resume .tekst { font-size: .9rem; color: #2A3A46; line-height: 1.45; }
@@ -69,7 +70,7 @@ hr { border-color: #E1E6EA; }
 
 /* Figurer */
 .figur { margin: 2.2rem 0 .5rem; }
-.figur .label { font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #E8603C; }
+.figur .label { font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #C4472A; }
 .figur .titel { font-family: 'Source Serif 4', serif; font-size: 1.35rem; font-weight: 600; color: #0B2230; line-height: 1.25; margin: .25rem 0 .2rem; }
 .figur .undertitel { font-size: .85rem; color: #5B6B78; }
 .kilde { font-size: .74rem; color: #6B7A86; border-top: 1px solid #E1E6EA; padding-top: .4rem; margin-top: .3rem; }

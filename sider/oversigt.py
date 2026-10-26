@@ -201,7 +201,7 @@ nu = basis.mark_line(color=FARVER["laks"], strokeWidth=2).encode(y="i_aar:Q")
 # Annotation: seneste uges værdi markeres og skrives direkte i hvert panel.
 sm["er_sidste"] = sm["uge"] == sm.dropna(subset=["i_aar"])["uge"].max()
 nu_pkt = basis.mark_circle(color=FARVER["laks"], size=26, opacity=1).encode(y="i_aar:Q").transform_filter("datum.er_sidste")
-nu_tal = basis.mark_text(align="left", dx=5, fontSize=10, fontWeight=600, color=FARVER["laks"]).encode(
+nu_tal = basis.mark_text(align="left", dx=5, fontSize=10, fontWeight=600, color=FARVER["laks_tekst"]).encode(
     y="i_aar:Q", text=alt.Text("i_aar:Q", format=".2f")).transform_filter("datum.er_sidste")
 smaa = alt.layer(baand, snit, nu, nu_pkt, nu_tal, data=sm).properties(width=225, height=90).facet(
     facet=alt.Facet("titel:N", sort=orden, header=alt.Header(labelFontSize=11, labelPadding=4)), columns=3,

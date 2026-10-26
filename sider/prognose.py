@@ -92,7 +92,7 @@ def note(uge_start, y, tekst, farve, dy):
 # Begge tekster står over kurven (prognosen øverst), så de ikke skærer historikken.
 top = max(sidst["hunlus"], lv["hi"].max())
 annotation = (note(sidst["uge_start"], top, f"Week {uge_nu}: {tal(sidst['hunlus'], 2)}", FARVER["blaek"], -12)
-              + note(slut["uge_start"], top, f"Forecast week {uge_slut}: {tal(slut['pred'], 2)}", FARVER["laks"], -28))
+              + note(slut["uge_start"], top, f"Forecast week {uge_slut}: {tal(slut['pred'], 2)}", FARVER["laks_tekst"], -28))
 graense_tekst = alt.Chart(pd.DataFrame({"uge_start": [omr["uge_start"].min()], "y": [0.5], "t": ["Lice limit 0.5"]})).mark_text(
     align="left", dx=2, dy=-6, fontSize=10, color="#D64545").encode(x=x, y="y:Q", text="t:N")
 st.altair_chart((baand + historik + naiv_linje + linje + graense + graense_tekst + annotation).properties(height=340),
