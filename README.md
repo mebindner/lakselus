@@ -32,28 +32,48 @@ mulighed for at dreje og vippe kortet.
 Hele afspilningen kører i browseren: ~1.000 lokaliteter × ~400 uger pakkes som én byte pr. værdi
 (≈ 0,6 MB) og tegnes med deck.gl. Kystlinjen er tegnet fra Natural Earth, så der kræves ingen kortnøgle.
 
-### 3. Prognose – med ærlig evaluering
-Vælg et produktionsområde og se de seneste tre år, prognosen 1–4 uger frem og en backtest af,
-hvor præcise prognoserne har været.
+### 3. Prognose – modelvalg og ærlig evaluering
+Samme konsulentformat: resumé af testresultatet, prognose 1–4 uger frem med 80 %-interval for det
+valgte område, sammenligning af seks modeller, gevinst pr. område og backtest-forløbet i testperioden.
 
-## Evaluering
+## Modeller og evaluering
 
-Rullende backtest (expanding window) fra januar 2023: hver uge forudsiges 1–4 uger frem **kun med
-data, der fandtes på det tidspunkt**. Fejlmål er gennemsnitlig absolut fejl (MAE) i voksne hunlus pr. fisk.
+Seks modeller er backtestet uge for uge (expanding window, gen-træning hvert kvartal). Hver prognose
+laves **kun med data, der fandtes på det tidspunkt** – det er testet automatisk ved at ødelægge alle
+fremtidige data og kontrollere, at prognoserne er uændrede.
 
-| Horisont | Naiv (sidste uge) | Sæson-naiv (samme uge sidste år) |
-|---|---|---|
-| 1 uge | **0,025** | 0,061 |
-| 2 uger | **0,034** | 0,061 |
-| 3 uger | **0,043** | 0,061 |
-| 4 uger | **0,047** | 0,061 |
+| Model | Idé |
+|---|---|
+| Naiv | Sidste uges niveau |
+| Sæson-naiv | Samme uge sidste år |
+| Naiv + sæsonændring | Sidste niveau + områdets typiske ændring for årstiden |
+| Ridge-regression | Direkte model pr. horisont på ændringen y(t+h) − y(t) |
+| **Gradient boosting** | Samme mål, ikke-lineær, MAE-tab, fælles for alle områder |
+| Ensemble | Gennemsnit af de tre foregående |
 
-Den naive baseline er klart stærkest: lusetallet ændrer sig langsomt fra uge til uge, mens sidste års
-niveau er en dårlig rettesnor. Det er den, en egentlig model skal slå.
+Features: niveau og ændringer over 1–8 uger, glidende gennemsnit og spredning, havtemperatur,
+ISO-uge (sinus/cosinus), områdets sæsonprofil, antal lokaliteter og hele kystens udvikling.
 
-**Status:** Baselines og backtest er færdige. Selve modellen er under udvikling i
-[`analyse/01_data_og_baselines.ipynb`](analyse/01_data_og_baselines.ipynb) og kommer på siden, når
-den slår den naive baseline.
+**Disciplin:** Modeller og indstillinger er valgt på **2023–24** (validering). Resultaterne nedenfor er
+fra **2025 og frem** (test), som ikke er brugt til noget valg.
+
+| Testperiode 2025→ | 1 uge | 2 uger | 3 uger | 4 uger |
+|---|---|---|---|---|
+| MAE naiv | 0,023 | 0,032 | 0,040 | 0,045 |
+| MAE gradient boosting | **0,022** | **0,028** | **0,032** | **0,035** |
+| Skill mod naiv | +5 % | +12 % | +20 % | +23 % |
+| Diebold–Mariano p | 0,021 | < 0,001 | < 0,001 | < 0,001 |
+| Dækning af 80 %-interval | 80 % | 80 % | 78 % | 78 % |
+
+Gradient boosting er den eneste model, der slår den naive prognose på alle fire horisonter, og
+forbedringen er statistisk signifikant overalt. Gevinsten vokser med horisonten: den naive prognose er
+svær at slå én uge frem, men modellen fanger sæson og momentum, som betyder mere længere ude.
+Prognoseintervallerne (empiriske kvantiler af modellens egne tidligere fejl pr. område) er velkalibrerede.
+
+Genskab tallene med `python -m lakselus.modelrapport` (et par minutter).
+
+**Forbehold:** Lusebehandlinger er ikke med som forklarende variabel og forklarer en del af de bratte
+fald. Data hentes, som de ser ud i dag; sene rettelser var ikke nødvendigvis kendt i forecast-ugen.
 
 ## Data
 
@@ -95,11 +115,13 @@ src/lakselus/
   barentswatch.py          API-klient (OAuth2 client credentials)
   hent.py                  henter rådata til lokal cache
   data.py                  dataklargøring: ugentligt panel pr. område
-  evaluering.py            baselines, rullende backtest, MAE og skill
+  evaluering.py            baselines, backtest, MAE/skill, Diebold–Mariano, intervaller
+  modeller.py              features og modelkandidater (ridge, gradient boosting, ensemble)
+  modelrapport.py          fuld backtest, modelvalg på validering, rapport på test
   appdata.py               cachede opslag og nøgletal til appen
   tidsmaskine.py/.html     datapakning og deck.gl-visning
   udseende.py              designsystem: farver, typografi, figurer, Altair-tema
-analyse/                   notebook med dataklargøring, baselines og egen model
+analyse/                   notebook med dataklargøring og baselines
 data/raw/                  lokal cache af rådata (ikke i git)
 tests/
 ```

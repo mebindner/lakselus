@@ -8,8 +8,6 @@ import streamlit as st
 from lakselus import data, evaluering as ev
 from lakselus.config import DATA_RAW
 
-MODELLER = {"naiv": ev.naiv, "saeson_naiv": ev.saeson_naiv}
-MODEL_NAVNE = {"naiv": "Naiv (sidste uge)", "saeson_naiv": "Sæson-naiv (samme uge sidste år)"}
 TRAFIKLYS = {"green": "Grøn", "yellow": "Gul", "red": "Rød"}
 
 
@@ -17,12 +15,6 @@ TRAFIKLYS = {"green": "Grøn", "yellow": "Gul", "red": "Rød"}
 def indlaes():
     raa = data.indlaes_raa()
     return raa, data.ugentligt_panel(raa), data.omraade_navne(raa)
-
-
-@st.cache_data(show_spinner="Kører backtest …")
-def kør_backtest(panel: pd.DataFrame) -> pd.DataFrame:
-    res = {navn: ev.backtest(panel, f) for navn, f in MODELLER.items()}
-    return ev.mae(res, efter=["omraade", "h"])
 
 
 @st.cache_data
@@ -60,3 +52,48 @@ def saesonprofil(panel: pd.DataFrame) -> pd.DataFrame:
     tidl = p[p["aar"] < i_aar].groupby(["omraade", "uge"])["hunlus"].agg(lav="min", hoej="max", snit="mean")
     nu = p[p["aar"] == i_aar].set_index(["omraade", "uge"])["hunlus"].rename("i_aar")
     return tidl.join(nu).reset_index().assign(aar=i_aar, foerste_aar=p["aar"].min())
+
+
+@st.cache_data(show_spinner="Kører fuld backtest af alle modeller (første gang tager det et par minutter) …")
+def backtest_resultater(panel: pd.DataFrame) -> pd.DataFrame:
+    """Backtest af alle modeller. Læses fra disk og genberegnes kun, når der er kommet nye uger."""
+    from lakselus import modelrapport
+
+    fil = modelrapport.BACKTEST_FIL
+    if fil.exists():
+        res = pd.read_parquet(fil)
+        if res["origin"].max() >= panel["uge_start"].max() - pd.Timedelta(weeks=1):
+            return res
+    res = modelrapport.koer(panel, log=lambda *_: None)
+    fil.parent.mkdir(parents=True, exist_ok=True)
+    res.to_parquet(fil, index=False)
+    return res
+
+
+@st.cache_data(show_spinner=False)
+def model_opsummering(res: pd.DataFrame) -> dict:
+    from lakselus import modelrapport
+
+    return modelrapport.opsummer(res)
+
+
+@st.cache_data(show_spinner="Træner den valgte model på alle data …")
+def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame, niveau: float = 0.8) -> pd.DataFrame:
+    """Prognose 1–4 uger frem fra seneste uge med den valgte model og et 80 %-interval pr. område.
+
+    Intervallet er de empiriske kvantiler af modellens egne backtest-fejl for området og horisonten.
+    """
+    from lakselus import modeller
+
+    f = (modeller.kandidater() | {"naiv": ev.naiv, "saeson_naiv": ev.saeson_naiv})[model]
+    resid = res[res["model"] == model].assign(r=lambda d: d["faktisk"] - d["pred"])
+    q = resid.groupby(["omraade", "h"])["r"].quantile([(1 - niveau) / 2, (1 + niveau) / 2]).unstack()
+    q.columns = ["lo_r", "hi_r"]
+    seneste = panel["uge_start"].max()
+    rows = []
+    for h in (1, 2, 3, 4):
+        for omr, v in f(panel, h).items():
+            lo, hi = q.loc[(omr, h)] if (omr, h) in q.index else (float("nan"), float("nan"))
+            rows.append({"omraade": omr, "h": h, "uge_start": seneste + pd.Timedelta(weeks=h),
+                         "pred": v, "lo": max(v + lo, 0), "hi": v + hi})
+    return pd.DataFrame(rows)
