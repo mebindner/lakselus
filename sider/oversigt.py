@@ -51,13 +51,24 @@ top_uge_pr_omr = profil.loc[profil.groupby("omraade")["snit"].idxmax()].set_inde
 syd_top, nord_top = int(top_uge_pr_omr.loc[[1, 2]].mean()), int(top_uge_pr_omr.loc[[12, 13]].mean())
 
 retning = "lower" if aendring < 0 else "higher"
+
+# Indberetningen halter: en uges tal indberettes i løbet af ugen efter. Vis hvilke uger der stadig mangler.
+i_dag = pd.Timestamp.now(tz="Europe/Oslo").tz_localize(None).normalize()
+mangler = [u.isocalendar().week for u in pd.date_range(seneste + pd.Timedelta(weeks=1),
+                                                         i_dag - pd.Timedelta(days=i_dag.weekday() + 7), freq="W-MON")]
+if not mangler:
+    indberetning = "latest complete week"
+elif len(mangler) == 1:
+    indberetning = f"week {mangler[0]} is still being reported"
+else:
+    indberetning = f"weeks {mangler[0]}–{mangler[-1]} are still being reported"
 st.markdown(sidehoved(
-    f"Weekly brief · Sea lice in Norwegian salmon farming · Week {iso.week}, {iso.year}",
+    f"Weekly brief · Sea lice in Norwegian salmon farming · Week {iso.week}, {iso.year} · latest complete week",
     f"Lice levels are {abs(aendring):.0%} {retning} than a year ago – pressure is highest in {status.loc[top, 'navn']}",
     "Weekly status on sea lice (lakselus) in all 13 production areas (produksjonsområder), based on the lice counts "
     "fish farms report to the Norwegian Food Safety Authority. Figures are set against the lice limit (lusegrense), "
     "the government traffic-light system (trafikklyssystemet) and the seasonal pattern of recent years.",
-    [("autorenew", "Updates automatically every Wednesday"), ("database", "BarentsWatch / Mattilsynet"),
+    [("autorenew", f"Updates every Wednesday · {indberetning}"), ("database", "BarentsWatch / Mattilsynet"),
      ("location_on", f"{len(talt)} sites in this week's figures"), ("verified", "Independent analysis of open data")],
 ), unsafe_allow_html=True)
 
@@ -224,7 +235,8 @@ st.markdown(kilde("○ = the area's peak week (highest mean)."), unsafe_allow_ht
 st.markdown(
     '<div class="metode"><b>Method and caveats.</b> Data are weekly lice counts per site from BarentsWatch '
     "(reported to the Norwegian Food Safety Authority). Area figures are unweighted means over sites that counted "
-    "lice that week; the number of fish per site is not included. The latest week is only included once at least "
+    "lice that week; the number of fish per site is not included. Farms report a week's counts during the following "
+    "week, so the brief usually trails the calendar by 1–2 weeks: the latest week is only included once at least "
     "80% of sites have reported. The lice limit is 0.5 adult female lice per fish (0.2 during the spring weeks). "
     "The traffic light is the government's most recent colour per production area. The analysis is independent "
     "and not prepared for or by any company.</div>",
