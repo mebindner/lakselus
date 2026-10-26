@@ -37,6 +37,20 @@
   .aar span { position: absolute; top: 0; padding-left: 3px; border-left: 1px solid rgba(255,255,255,.35); line-height: 1; }
   #kilde { right: 22px; bottom: 150px; font-size: 10px; opacity: .55; }
   .deck-tooltip { font-family: 'Inter', sans-serif !important; border-radius: 8px; }
+  .touch { display: none; }
+  @media (hover: none) { .mus { display: none; } .touch { display: inline; } }
+  /* Smal skærm (mobil): forklaringen flyttes ned over tidslinjen, så den ikke dækker ugenummeret */
+  @media (max-width: 600px) {
+    #titel { left: 16px; top: 14px; }
+    #uge { font-size: 30px; }
+    #snit { margin-top: 8px; font-size: 13px; }
+    #snit b { font-size: 18px; }
+    #forklaring { right: auto; left: 16px; top: auto; bottom: 148px; padding: 7px 10px; font-size: 11px; }
+    #forklaring .skala { width: 140px; }
+    #kilde { display: none; }
+    #panel { left: 10px; right: 10px; bottom: 10px; padding: 8px 10px 10px; }
+    .aar { font-size: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -52,7 +66,7 @@
   <b style="color:#fff">Adult female lice per fish</b>
   <div class="skala"></div>
   <div class="ticks"><span>0</span><span>0.2</span><span>0.5</span><span>1+</span></div>
-  <div style="margin-top:6px;opacity:.75">Drag to pan · right-click/ctrl+drag to rotate and tilt</div>
+  <div style="margin-top:6px;opacity:.75"><span class="mus">Drag to pan · right-click/ctrl+drag to rotate and tilt</span><span class="touch">Drag to pan · two fingers to rotate and tilt</span></div>
 </div>
 
 <div id="kilde" class="lag">Coastline: Natural Earth</div>
@@ -112,7 +126,10 @@ fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json")
 
 const kort = new deck.Deck({
   parent: document.getElementById("kort"),
-  initialViewState: { longitude: 14.0, latitude: 64.2, zoom: 3.95, pitch: 46, bearing: 12, maxPitch: 75 },
+  // På en smal (stående) skærm vises hele kysten lige op og ned; ellers skråt fra sydvest.
+  initialViewState: innerWidth < 600
+    ? { longitude: 14.6, latitude: 64.4, zoom: 3.05, pitch: 35, bearing: 0, maxPitch: 75 }
+    : { longitude: 14.0, latitude: 64.2, zoom: 3.95, pitch: 46, bearing: 12, maxPitch: 75 },
   controller: { scrollZoom: false, touchRotate: true },
 });
 

@@ -54,7 +54,7 @@ hr { border-color: #E1E6EA; }
 .sidehoved .overlinje { font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #E8603C; }
 .sidehoved h1 { font-size: clamp(1.7rem, 3.4vw, 2.5rem) !important; line-height: 1.15; margin: .5rem 0 .6rem; padding: 0; max-width: 24em; }
 .sidehoved .under { color: #4A5A66; font-size: 1rem; max-width: 52em; margin: 0; line-height: 1.55; }
-.sidehoved .chips { display: flex; gap: 1.4rem; flex-wrap: wrap; margin-top: 1rem; }
+.sidehoved .chips { display: flex; gap: .5rem 1.4rem; flex-wrap: wrap; margin-top: 1rem; }
 .chip { display: inline-flex; align-items: center; gap: .35rem; font-size: .78rem; color: #5B6B78; }
 
 /* Executive summary */
@@ -86,6 +86,16 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .tabel .minibar { display: inline-block; height: 6px; border-radius: 1px; vertical-align: middle; margin-left: .45rem; }
 /* Brede tabeller og små multipler scrolles vandret på mobil i stedet for at blive skåret af */
 [data-testid="stMarkdownContainer"]:has(table.tabel), [data-testid="stFullScreenFrame"]:has([data-testid="stVegaLiteChart"]) { overflow-x: auto; }
+@media (max-width: 640px) {
+  .tabel .ekstra { display: none; }             /* sekundære kolonner skjules på mobil */
+  .tabel th, .tabel th.tal { white-space: normal; letter-spacing: .04em; }
+  .tabel td, .tabel th { padding: .4rem .35rem; }
+  .tabel .minibar { display: none; }
+}
+
+/* Streamlits egne knapper (Fork, GitHub, menu) skjules, så appen fremstår som et færdigt produkt.
+   Udvid-knappen til navigationen på mobil bevares. */
+[data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"] { display: none !important; }
 .prik { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; vertical-align: .05em; margin-right: .35rem; }
 
 /* Nøgletal (bruges på andre sider) */

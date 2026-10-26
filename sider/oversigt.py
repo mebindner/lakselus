@@ -57,8 +57,8 @@ st.markdown(sidehoved(
     "Weekly status on sea lice (lakselus) in all 13 production areas (produksjonsområder), based on the lice counts "
     "fish farms report to the Norwegian Food Safety Authority. Figures are set against the lice limit (lusegrense), "
     "the government traffic-light system (trafikklyssystemet) and the seasonal pattern of recent years.",
-    [("verified", "Independent analysis of open data"), ("database", "BarentsWatch / Mattilsynet"),
-     ("location_on", f"{len(talt)} sites in this week's figures")],
+    [("autorenew", "Updates automatically every Wednesday"), ("database", "BarentsWatch / Mattilsynet"),
+     ("location_on", f"{len(talt)} sites in this week's figures"), ("verified", "Independent analysis of open data")],
 ), unsafe_allow_html=True)
 
 st.markdown(resume([
@@ -120,10 +120,15 @@ with hoejre:
     )
     tekster = alt.Chart(rang).mark_text(align="left", dx=4, fontSize=11, color="#1B2B36").encode(
         x="hunlus:Q", y=y, text="tekst:N")
+    # Grænseteksterne står på hver sin linje og vender ind mod midten, så de ikke overlapper på en smal skærm.
     graenser = pd.DataFrame({"x": [0.2, 0.5], "t": ["0.2 spring", "0.5 lice limit"]})
     linjer = alt.Chart(graenser).mark_rule(strokeDash=[3, 3], color="#D64545", opacity=.7).encode(x="x:Q")
-    linjetekst = alt.Chart(graenser).mark_text(align="left", dx=3, dy=-4, fontSize=10, color="#D64545").encode(
-        x="x:Q", y=alt.value(0), text="t:N")
+    linjetekst = (
+        alt.Chart(graenser.iloc[[0]]).mark_text(align="left", dx=3, fontSize=10, color="#D64545")
+        .encode(x="x:Q", y=alt.value(-16), text="t:N")
+        + alt.Chart(graenser.iloc[[1]]).mark_text(align="right", dx=-3, fontSize=10, color="#D64545")
+        .encode(x="x:Q", y=alt.value(-4), text="t:N")
+    )
     st.altair_chart((soejler + tekster + linjer + linjetekst).properties(height=440), width="stretch")
 
 st.markdown(
@@ -152,16 +157,16 @@ for o, s in status.iterrows():
     lys_kant, _, lys_tekst = LYS_FARVER[s.trafiklys]
     raekker.append(
         f'<tr><td class="po">{o}</td><td class="navn">{s.navn}{" <span style=\'color:#6B7A86\'>*</span>" if s.n_lok < MIN_LOK else ""}</td>'
-        f'<td><i class="prik" style="background:{lys_kant}"></i>{appdata.TRAFIKLYS[s.trafiklys]}</td>'
+        f'<td><i class="prik" style="background:{lys_kant}"></i><span class="ekstra">{appdata.TRAFIKLYS[s.trafiklys]}</span></td>'
         f'<td class="tal">{tal(s.hunlus)}<span class="minibar" style="width:{min(s.hunlus / 0.5, 1) * 60:.0f}px;background:{farve}"></span></td>'
         f'<td class="tal" style="color:{t_farve}">{ikon(t_ikon, t_farve, t_tekst)} {pct(aend, True) if pd.notna(aend) else "–"}</td>'
         f'<td class="tal" style="color:{"#D64545" if s.andel_over >= .1 else "inherit"}">{pct(s.andel_over)}</td>'
-        f'<td class="tal">{tal(s.temp, 1)} °C</td><td class="tal">{int(s.n_lok)}</td></tr>'
+        f'<td class="tal ekstra">{tal(s.temp, 1)} °C</td><td class="tal ekstra">{int(s.n_lok)}</td></tr>'
     )
 st.markdown(
-    '<table class="tabel"><thead><tr><th>PO</th><th>Production area</th><th>Traffic light</th>'
+    '<table class="tabel"><thead><tr><th>PO</th><th>Production area</th><th>Traffic<span class="ekstra"> light</span></th>'
     '<th class="tal">Female lice / fish</th><th class="tal">Δ 4 weeks</th><th class="tal">Above limit</th>'
-    '<th class="tal">Sea temp.</th><th class="tal">Sites</th></tr></thead><tbody>'
+    '<th class="tal ekstra">Sea temp.</th><th class="tal ekstra">Sites</th></tr></thead><tbody>'
     + "".join(raekker) + "</tbody></table>",
     unsafe_allow_html=True,
 )

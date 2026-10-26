@@ -55,19 +55,20 @@ valg = st.selectbox("Production area", options=sorted(navne), format_func=lambda
                     index=sorted(navne).index(3), key="omraade")
 live = appdata.live_prognose(panel, valgt, res)
 lv = live[live["omraade"] == valg]
-omr = panel[(panel["omraade"] == valg) & (panel["uge_start"] >= seneste - pd.Timedelta(weeks=104))]
+# Ét års historik, så prognosen (de sidste 4 uger) får plads – også på en smal mobilskærm.
+omr = panel[(panel["omraade"] == valg) & (panel["uge_start"] >= seneste - pd.Timedelta(weeks=52))]
 sidst = omr.dropna(subset=["hunlus"]).iloc[-1]
 
 st.markdown(figur(
     1, f"{navne[valg]}: {NAVNE[valgt].lower()} expects {tal(lv['pred'].iloc[-1], 2)} adult female lice per fish in four weeks "
        f"({'rising' if lv['pred'].iloc[-1] > sidst['hunlus'] * 1.05 else 'falling' if lv['pred'].iloc[-1] < sidst['hunlus'] * 0.95 else 'stable'})",
-    "Adult female lice per fish, last two years and forecast 1–4 weeks ahead with 80% interval. Dashed: naive forecast.",
+    "Adult female lice per fish, last 12 months and forecast 1–4 weeks ahead with 80% interval. Dashed: naive forecast.",
 ), unsafe_allow_html=True)
 
 forbind = pd.DataFrame([{"uge_start": sidst["uge_start"], "pred": sidst["hunlus"], "lo": sidst["hunlus"], "hi": sidst["hunlus"]}])
 lv_plot = pd.concat([forbind, lv[["uge_start", "pred", "lo", "hi"]]], ignore_index=True)
 naiv_plot = pd.DataFrame({"uge_start": lv_plot["uge_start"], "naiv": sidst["hunlus"]})
-x = alt.X("uge_start:T", title=None, axis=alt.Axis(format="%b %Y", grid=False))
+x = alt.X("uge_start:T", title=None, axis=alt.Axis(format="%b %Y", grid=False, tickCount=6, labelOverlap=True))
 historik = alt.Chart(omr).mark_line(color=FARVER["blaek"], strokeWidth=1.6).encode(
     x=x, y=alt.Y("hunlus:Q", title="Adult female lice per fish"),
     tooltip=[alt.Tooltip("uge_start:T", title="Week", format="%d.%m.%Y"), alt.Tooltip("hunlus:Q", format=".3f")])
@@ -96,18 +97,18 @@ sk_v = o["skill_validering"]
 raekker = []
 for m in mae_t.columns:
     stil = ' style="font-weight:600;background:#FFF4F0"' if m == valgt else (' style="color:#6B7A86"' if m in BASELINES else "")
-    celler = "".join(f'<td class="tal">{tal(mae_t.loc[h, m])}</td>' for h in (1, 2, 3, 4))
+    celler = "".join(f'<td class="tal{" ekstra" if h in (2, 3) else ""}">{tal(mae_t.loc[h, m])}</td>' for h in (1, 2, 3, 4))
     sk = lambda h: "–" if m == "naiv" else pct(sk_t.loc[h, m])  # noqa: E731
     p4 = "–" if m == "naiv" else p_tekst(dm.loc[4, m])
     raekker.append(
         f'<tr{stil}><td class="navn">{NAVNE[m]}{" ★" if m == valgt else ""}</td>{celler}'
         f'<td class="tal">{sk(1)}</td><td class="tal">{sk(4)}</td><td class="tal">{p4}</td>'
-        f'<td class="tal">{"–" if m == "naiv" else pct(sk_v.loc[:, m].mean())}</td></tr>'
+        f'<td class="tal ekstra">{"–" if m == "naiv" else pct(sk_v.loc[:, m].mean())}</td></tr>'
     )
 st.markdown(
-    '<table class="tabel"><thead><tr><th>Model</th><th class="tal">MAE 1 week</th><th class="tal">2 weeks</th>'
-    '<th class="tal">3 weeks</th><th class="tal">4 weeks</th><th class="tal">Skill 1 week</th><th class="tal">Skill 4 weeks</th>'
-    '<th class="tal">DM p (4 weeks)</th><th class="tal">Skill validation</th></tr></thead><tbody>'
+    '<table class="tabel"><thead><tr><th>Model</th><th class="tal">MAE 1 week</th><th class="tal ekstra">2 weeks</th>'
+    '<th class="tal ekstra">3 weeks</th><th class="tal">4 weeks</th><th class="tal">Skill 1 week</th><th class="tal">Skill 4 weeks</th>'
+    '<th class="tal">DM p (4 weeks)</th><th class="tal ekstra">Skill validation</th></tr></thead><tbody>'
     + "".join(raekker) + "</tbody></table>",
     unsafe_allow_html=True,
 )
