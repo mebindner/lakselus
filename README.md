@@ -105,6 +105,24 @@ streamlit run app.py
 
 Run the tests with `pytest`.
 
+## Hosting and weekly updates
+
+The app runs for free on **Streamlit Community Cloud** and needs no API key there: it reads compact,
+pre-processed data from `data/app/` (≈ 2 MB, committed to the repo), including the finished backtest.
+
+A **GitHub Action** (`.github/workflows/ugentlig-opdatering.yml`) runs every Wednesday: it fetches new
+lice counts, re-runs the models, publishes `data/app/`, runs all tests as a quality gate and pushes.
+Streamlit Cloud redeploys automatically on every push. The workflow needs the repository secrets
+`BW_CLIENT_ID` and `BW_CLIENT_SECRET`; without them it is skipped.
+
+To refresh the published data manually:
+
+```bash
+python -m lakselus.hent --fra 2019
+python -m lakselus.modelrapport
+python -m lakselus.publicer
+```
+
 ## Structure
 
 The code uses Danish identifiers and comments (the author is Danish); the app and this README are in English.
@@ -122,10 +140,13 @@ src/lakselus/
   evaluering.py            baselines, backtest, MAE/skill, Diebold–Mariano, intervals
   modeller.py              features and model candidates (ridge, gradient boosting, ensemble)
   modelrapport.py          full backtest, selection on validation, report on test
+  publicer.py              writes compact app data to data/app for hosting
   appdata.py               cached lookups and key figures for the app
   tidsmaskine.py/.html     data packing and deck.gl view
   udseende.py              design system: colours, typography, exhibits, Altair theme
 analyse/                   notebook with data preparation and baselines
+data/app/                  compact data and backtest used by the hosted app (in git)
 data/raw/                  local cache of raw data (not in git)
+.github/workflows/         weekly data and model update
 tests/
 ```

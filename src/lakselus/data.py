@@ -2,7 +2,10 @@
 
 import pandas as pd
 
-from lakselus.config import DATA_RAW
+from lakselus.config import DATA_APP, DATA_RAW
+
+APP_LUSETAL = DATA_APP / "lusetal.parquet"
+APP_PRODUKTIONSOMRAADER = DATA_APP / "produktionsomraader.csv"
 
 KOLONNER = {
     "År": "aar",
@@ -21,9 +24,17 @@ KOLONNER = {
 
 
 def indlaes_raa() -> pd.DataFrame:
-    """Alle cachede år samlet, med korte danske kolonnenavne."""
+    """Alle cachede år samlet, med korte danske kolonnenavne.
+
+    Lokalt læses rådata fra data/raw. Findes de ikke (fx på Streamlit Cloud), bruges den kompakte
+    udgave i data/app, som `python -m lakselus.publicer` skriver.
+    """
     filer = sorted(DATA_RAW.glob("lusetal_*.csv"))
     if not filer:
+        if APP_LUSETAL.exists():
+            app = pd.read_parquet(APP_LUSETAL)
+            tekst = app.select_dtypes("category").columns  # kategorier gemmes kompakt, men bruges som tekst
+            return app.astype({k: str for k in tekst} | {k: "float64" for k in ("hunlus", "temp", "lat", "lon")})
         raise FileNotFoundError("Ingen data i data/raw. Kør først: python -m lakselus.hent")
     raa = pd.concat((pd.read_csv(f, low_memory=False) for f in filer), ignore_index=True)
     raa = raa.rename(columns=KOLONNER)

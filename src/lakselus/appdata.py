@@ -7,6 +7,7 @@ import streamlit as st
 
 from lakselus import data, evaluering as ev
 from lakselus.config import DATA_RAW
+from lakselus.data import APP_PRODUKTIONSOMRAADER
 
 TRAFIKLYS = {"green": "Green", "yellow": "Yellow", "red": "Red"}
 
@@ -20,7 +21,8 @@ def indlaes():
 @st.cache_data
 def omraader() -> pd.DataFrame:
     """Produktionsområder med omrids (lon/lat-polygon) og gældende trafiklysfarve."""
-    po = pd.read_csv(DATA_RAW / "produktionsomraader.csv")
+    fil = DATA_RAW / "produktionsomraader.csv"
+    po = pd.read_csv(fil if fil.exists() else APP_PRODUKTIONSOMRAADER)
     po["polygon"] = po["geometry.coordinates"].map(lambda s: ast.literal_eval(s)[0])
     po["trafiklys"] = po["colors"].map(lambda s: ast.literal_eval(s)[-1]["color"])
     return po[["id", "name", "polygon", "trafiklys"]].rename(columns={"id": "omraade", "name": "navn"})

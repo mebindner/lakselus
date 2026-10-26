@@ -9,9 +9,10 @@ import time
 import pandas as pd
 
 from lakselus import data, evaluering as ev, modeller as m
-from lakselus.config import DATA_PROCESSED
+from lakselus.config import DATA_APP
 
-BACKTEST_FIL = DATA_PROCESSED / "backtest.parquet"
+# Committes sammen med app-data, så den hostede app ikke skal køre backtesten ved opstart.
+BACKTEST_FIL = DATA_APP / "backtest.parquet"
 BASELINES = {"naiv": ev.naiv, "saeson_naiv": ev.saeson_naiv}
 NAVNE = {
     "naiv": "Naive (last week)",
@@ -66,7 +67,7 @@ def main() -> None:
     panel = data.ugentligt_panel(data.indlaes_raa())
     print("Backtest (dette tager et par minutter) …")
     res = koer(panel)
-    DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
+    DATA_APP.mkdir(parents=True, exist_ok=True)
     res.to_parquet(BACKTEST_FIL, index=False)
 
     o = opsummer(res)

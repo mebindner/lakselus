@@ -1,0 +1,2 @@
+# Streamlit Community Cloud installerer herfra. Editable (-e), så pakken finder data/app i repoet.
+-e .

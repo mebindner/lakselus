@@ -1,0 +1,74 @@
+# Henter nye lusetal hver uge, genberegner modellerne og publicerer app-data.
+# Et push til main får Streamlit Community Cloud til at opdatere den offentlige side.
+# Kræver repository-secrets BW_CLIENT_ID og BW_CLIENT_SECRET (Settings → Secrets and variables → Actions).
+name: Ugentlig opdatering
+
+on:
+  schedule:
+    - cron: "0 5 * * 3"   # onsdag kl. 05 UTC – lusetal for sidste uge er indberettet
+  workflow_dispatch:       # kan også startes manuelt fra fanen Actions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ugentlig-opdatering
+  cancel-in-progress: false
+
+jobs:
+  opdater:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+      BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+    steps:
+      - name: Tjek at API-nøglen er sat op
+        id: noegle
+        run: |
+          if [ -z "$BW_CLIENT_ID" ] || [ -z "$BW_CLIENT_SECRET" ]; then
+            echo "::notice::BW_CLIENT_ID/BW_CLIENT_SECRET mangler som repository-secrets – springer opdateringen over."
+            echo "klar=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "klar=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.noegle.outputs.klar == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.noegle.outputs.klar == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installér
+        if: steps.noegle.outputs.klar == 'true'
+        run: pip install -e . pytest
+
+      - name: Hent nye lusetal fra BarentsWatch
+        if: steps.noegle.outputs.klar == 'true'
+        run: python -m lakselus.hent --fra 2019
+
+      - name: Genberegn modeller og publicér app-data
+        if: steps.noegle.outputs.klar == 'true'
+        run: |
+          python -m lakselus.modelrapport
+          python -m lakselus.publicer
+
+      - name: Kvalitetsport – alle tests skal bestå, før noget pushes
+        if: steps.noegle.outputs.klar == 'true'
+        run: pytest -q
+
+      - name: Commit og push, hvis data er ændret
+        if: steps.noegle.outputs.klar == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/app
+          if git diff --cached --quiet; then
+            echo "Ingen nye data."
+          else
+            git commit -m "Ugentlig opdatering af lusetal og modeller ($(date -u +%Y-%m-%d))"
+            git push
+          fi
