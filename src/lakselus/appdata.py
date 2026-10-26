@@ -10,7 +10,7 @@ from lakselus.config import DATA_RAW
 
 MODELLER = {"naiv": ev.naiv, "saeson_naiv": ev.saeson_naiv}
 MODEL_NAVNE = {"naiv": "Naiv (sidste uge)", "saeson_naiv": "Sæson-naiv (samme uge sidste år)"}
-TRAFIKLYS = {"green": "Grønn", "yellow": "Gul", "red": "Rød"}
+TRAFIKLYS = {"green": "Grøn", "yellow": "Gul", "red": "Rød"}
 
 
 @st.cache_data(show_spinner="Læser lusetal …")

@@ -4,34 +4,35 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/deck.gl@9.1.14/dist.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <style>
-  :root { --creme: #FFF4E4; --rav: #E9A23B; --laks: #D9643A; --nat: #1B1824; }
+  :root { --creme: #FFFFFF; --rav: #F26B4F; --laks: #F26B4F; --nat: #0B2230; --daempet: #9FB2C0; }
   html, body { margin: 0; height: 100%; background: var(--nat); font-family: 'Inter', sans-serif; color: var(--creme); overflow: hidden; }
-  #kort { position: absolute; inset: 0; border-radius: 20px; overflow: hidden;
-          background: radial-gradient(ellipse at 60% 30%, #2A2A48 0%, #16152A 55%, #0E0D1A 100%); }
+  #kort { position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
+          background: radial-gradient(ellipse at 55% 25%, #16384C 0%, #0D2635 55%, #081A25 100%); }
   .lag { position: absolute; pointer-events: none; }
   #titel { left: 24px; top: 20px; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
-  #uge { font-family: 'Fraunces', serif; font-weight: 700; font-size: 54px; line-height: 1; letter-spacing: -.01em; }
-  #maaned { font-size: 15px; opacity: .8; margin-top: 6px; text-transform: uppercase; letter-spacing: .14em; }
+  #uge { font-weight: 700; font-size: 40px; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  #maaned { font-size: 12px; font-weight: 600; color: var(--laks); margin-top: 8px; text-transform: uppercase; letter-spacing: .16em; }
   #snit { margin-top: 14px; font-size: 14px; opacity: .92; }
-  #snit b { font-family: 'Fraunces', serif; font-size: 26px; color: var(--rav); }
-  #forklaring { right: 22px; top: 22px; background: rgba(27,24,36,.72); backdrop-filter: blur(6px);
-                padding: 10px 14px; border-radius: 12px; font-size: 12px; line-height: 1.5; }
+  #snit { color: var(--daempet); }
+  #snit b { font-size: 22px; color: #FFFFFF; font-variant-numeric: tabular-nums; }
+  #forklaring { right: 22px; top: 22px; background: rgba(8,26,37,.78); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.08);
+                padding: 10px 14px; border-radius: 8px; color: var(--daempet); font-size: 12px; line-height: 1.5; }
   #forklaring .skala { width: 170px; height: 9px; border-radius: 5px; margin: 6px 0 3px;
-                       background: linear-gradient(90deg, #3E8AA8, #7FB7A4 20%, #E9A23B 40%, #D9643A 70%, #C2334A); }
+                       background: linear-gradient(90deg, #1F7A8C, #5FA8A0 20%, #E2A23B 40%, #F26B4F 70%, #D64545); }
   #forklaring .ticks { display: flex; justify-content: space-between; opacity: .75; }
-  #panel { left: 18px; right: 18px; bottom: 18px; pointer-events: auto; background: rgba(27,24,36,.78);
-           backdrop-filter: blur(8px); border-radius: 16px; padding: 10px 16px 12px; }
+  #panel { left: 18px; right: 18px; bottom: 18px; pointer-events: auto; background: rgba(8,26,37,.85);
+           backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px 16px 12px; }
   #graf { width: 100%; height: 54px; display: block; cursor: pointer; }
   .styring { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
-  button { background: var(--laks); color: white; border: 0; width: 42px; height: 42px; border-radius: 50%;
-           font-size: 18px; cursor: pointer; box-shadow: 0 6px 18px -6px rgba(217,100,58,.8); flex: none; }
+  button { background: var(--laks); color: white; border: 0; width: 38px; height: 38px; border-radius: 6px;
+           font-size: 15px; cursor: pointer; flex: none; }
   button:hover { filter: brightness(1.1); }
-  input[type=range] { flex: 1; accent-color: var(--rav); }
-  select { background: transparent; color: var(--creme); border: 1px solid rgba(255,244,228,.3); border-radius: 8px; padding: 4px 6px; }
+  input[type=range] { flex: 1; accent-color: var(--laks); }
+  select { background: transparent; color: var(--creme); border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 4px 6px; }
   .aar { display: flex; justify-content: space-between; font-size: 11px; opacity: .6; padding: 0 2px; }
   #kilde { right: 22px; bottom: 150px; font-size: 10px; opacity: .55; }
   .deck-tooltip { font-family: 'Inter', sans-serif !important; border-radius: 8px; }
@@ -43,11 +44,11 @@
 <div id="titel" class="lag">
   <div id="uge">Uge –</div>
   <div id="maaned"></div>
-  <div id="snit">Gns. for kysten <b id="snittal">–</b> voksne hunlus pr. fisk</div>
+  <div id="snit">Gennemsnit for kysten <b id="snittal">–</b></div>
 </div>
 
 <div id="forklaring" class="lag">
-  <b>Søjlehøjde og farve</b> = voksne hunlus pr. fisk
+  <b style="color:#fff">Voksne hunlus pr. fisk</b>
   <div class="skala"></div>
   <div class="ticks"><span>0</span><span>0,2</span><span>0,5</span><span>1+</span></div>
   <div style="margin-top:6px;opacity:.75">Træk for at flytte · højreklik/ctrl+træk for at dreje og vippe</div>
@@ -74,11 +75,13 @@ const N = D.lok.length, U = D.uger.length;
 const V = Uint8Array.from(atob(D.vaerdier), c => c.charCodeAt(0));
 const MANGLER = 255;
 const lok = D.lok.map((l, i) => ({ i, pos: [l[0], l[1]], navn: l[2] }));
+// Pause/afspil-ikoner
+const PAUSE = "❚❚", AFSPIL = "▶";
 const MAANED = { Jan: "januar", Feb: "februar", Mar: "marts", Apr: "april", May: "maj", Jun: "juni",
                  Jul: "juli", Aug: "august", Sep: "september", Oct: "oktober", Nov: "november", Dec: "december" };
 
 // Farveskala: blågrøn (lavt) → rav → laks → dyb rød (over grænsen)
-const STOP = [[0, [62,138,168]], [0.1, [127,183,164]], [0.2, [233,162,59]], [0.5, [217,100,58]], [1.0, [194,51,74]]];
+const STOP = [[0, [31,122,140]], [0.1, [95,168,160]], [0.2, [226,162,59]], [0.5, [242,107,79]], [1.0, [214,69,69]]];
 function farve(v) {
   if (v >= STOP[STOP.length - 1][0]) return STOP[STOP.length - 1][1];
   for (let k = 1; k < STOP.length; k++) {
@@ -100,7 +103,7 @@ fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json")
       // Kun nabolande – Ruslands polygon krydser datolinjen og giver en streg over himlen.
       data: topojson.feature(topo, topo.objects.countries).features
         .filter(f => ["Norway", "Sweden", "Finland", "Denmark", "Estonia", "Latvia", "Iceland", "United Kingdom", "Germany"].includes(f.properties.name)),
-      filled: true, stroked: true, getFillColor: [52, 44, 64], getLineColor: [233, 162, 59, 70],
+      filled: true, stroked: true, getFillColor: [22, 52, 70], getLineColor: [120, 160, 185, 90],
       lineWidthMinPixels: 0.6,
     });
     kort.setProps({ layers: lag() });
@@ -119,7 +122,7 @@ function lag() {
     getPosition: d => d.pos,
     getElevation: d => { const v = V[base + d.i]; return v === MANGLER ? 0 : Math.min(v, 200) * 1300; },
     getFillColor: d => { const v = V[base + d.i]; return v === MANGLER ? [0,0,0,0] : [...farve(v / 100), 235]; },
-    material: { ambient: 0.55, diffuse: 0.6, shininess: 40, specularColor: [255, 230, 200] },
+    material: { ambient: 0.6, diffuse: 0.55, shininess: 24, specularColor: [220, 230, 240] },
     transitions: { getElevation: { duration: Math.min(fart * 0.9, 400) }, getFillColor: { duration: Math.min(fart * 0.9, 400) } },
     updateTriggers: { getElevation: uge, getFillColor: uge },
   })];
@@ -130,7 +133,7 @@ kort.setProps({
     if (!object) return null;
     const v = V[uge * N + object.i];
     return { html: `<b>${object.navn}</b><br>${v === MANGLER ? "ingen tælling" : tal(v / 100) + " voksne hunlus pr. fisk"}`,
-             style: { background: "#2E2633", color: "#FFF4E4", fontSize: "13px", padding: "8px 10px" } };
+             style: { background: "#0B2230", color: "#FFFFFF", fontSize: "12px", padding: "8px 10px", border: "1px solid rgba(255,255,255,.12)" } };
   },
 });
 
@@ -143,16 +146,16 @@ function tegnGraf() {
   g.clearRect(0, 0, w, h);
   const x = i => (i / (U - 1)) * w, y = v => h - 4 - (v / maks) * (h - 10);
   const grad = g.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, "rgba(233,162,59,.55)"); grad.addColorStop(1, "rgba(233,162,59,0)");
+  grad.addColorStop(0, "rgba(159,178,192,.35)"); grad.addColorStop(1, "rgba(159,178,192,0)");
   g.beginPath(); g.moveTo(0, h);
   D.national.forEach((v, i) => g.lineTo(x(i), v == null ? h : y(v)));
   g.lineTo(w, h); g.closePath(); g.fillStyle = grad; g.fill();
   g.beginPath(); D.national.forEach((v, i) => v != null && (i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v))));
-  g.strokeStyle = "#E9A23B"; g.lineWidth = 1.5; g.stroke();
-  g.fillStyle = "rgba(255,244,228,.12)"; g.fillRect(0, 0, x(uge), h);
-  g.beginPath(); g.moveTo(x(uge), 0); g.lineTo(x(uge), h); g.strokeStyle = "#FFF4E4"; g.lineWidth = 2; g.stroke();
+  g.strokeStyle = "#9FB2C0"; g.lineWidth = 1.2; g.stroke();
+  g.fillStyle = "rgba(255,255,255,.05)"; g.fillRect(0, 0, x(uge), h);
+  g.beginPath(); g.moveTo(x(uge), 0); g.lineTo(x(uge), h); g.strokeStyle = "#F26B4F"; g.lineWidth = 1.5; g.stroke();
   const v = D.national[uge];
-  if (v != null) { g.beginPath(); g.arc(x(uge), y(v), 4.5, 0, 7); g.fillStyle = "#D9643A"; g.fill(); }
+  if (v != null) { g.beginPath(); g.arc(x(uge), y(v), 4.5, 0, 7); g.fillStyle = "#F26B4F"; g.fill(); }
 }
 graf.addEventListener("click", e => { saetUge(Math.round(e.offsetX / graf.clientWidth * (U - 1))); });
 

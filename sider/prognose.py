@@ -2,18 +2,24 @@
 
 import altair as alt
 import pandas as pd
+import pydeck as pdk
 import streamlit as st
 
 from lakselus import appdata
 from lakselus.appdata import MODEL_NAVNE, MODELLER
-from lakselus.udseende import FARVER
-
-st.markdown("# Prognose pr. produktionsområde")
-st.markdown("Hvordan ser lusetallet ud de næste 1–4 uger – og hvor meget kan man stole på det?")
+from lakselus.udseende import FARVER, sidehoved
 
 raa, panel, navne = appdata.indlaes()
 seneste = panel["uge_start"].max()
 iso = seneste.isocalendar()
+
+st.markdown(sidehoved(
+    "Prognose · 1–4 uger",
+    "Prognose pr. produktionsområde",
+    "Hvordan ser lusetallet ud de næste 1–4 uger – og hvor meget kan man stole på det? "
+    "Alle prognoser er backtestet mod en naiv baseline.",
+    [("calendar_month", f"Data til og med uge {iso.week}, {iso.year}"), ("history", "Backtest fra januar 2023")],
+), unsafe_allow_html=True)
 
 # --- Produktionsområde --------------------------------------------------------
 valg = st.selectbox(
@@ -34,9 +40,9 @@ with venstre:
 
     basis = alt.Chart(historik).encode(x=alt.X("uge_start:T", title=None, axis=alt.Axis(format="%b %Y")))
     flade = basis.mark_area(
-        line={"color": FARVER["laks"], "strokeWidth": 2},
+        line={"color": FARVER["hav"], "strokeWidth": 1.8},
         color=alt.Gradient(gradient="linear", x1=1, x2=1, y1=1, y2=0, stops=[
-            alt.GradientStop(color="#FBF4EA", offset=0), alt.GradientStop(color="#F2B08A", offset=1)]),
+            alt.GradientStop(color="#FFFFFF", offset=0), alt.GradientStop(color="#BFD3DF", offset=1)]),
         interpolate="monotone",
     ).encode(
         y=alt.Y("hunlus:Q", title="Voksne hunlus pr. fisk"),
@@ -45,31 +51,41 @@ with venstre:
                  alt.Tooltip("n_lok:Q", title="Lokaliteter")],
     )
     graense = alt.Chart(pd.DataFrame({"y": [0.5]})).mark_rule(
-        color=FARVER["lyng"], strokeDash=[5, 4]).encode(y="y:Q")
+        color="#D64545", strokeDash=[4, 4], strokeWidth=1.2).encode(y="y:Q")
     graense_tekst = alt.Chart(pd.DataFrame({"y": [0.5], "t": ["lusegrænse 0,5"]})).mark_text(
-        align="left", dx=4, dy=-7, color=FARVER["lyng"], fontSize=11).encode(
+        align="left", dx=4, dy=-7, color="#D64545", fontSize=11, font="Inter").encode(
         y="y:Q", text="t:N", x=alt.value(0))
     punkter = alt.Chart(prognose).mark_line(point=alt.OverlayMarkDef(size=60, filled=True), strokeWidth=2).encode(
         x="uge_start:T", y="hunlus:Q",
         color=alt.Color("model:N", title="Prognose",
-                        scale=alt.Scale(range=[FARVER["fjord"], FARVER["rav"]]),
+                        scale=alt.Scale(range=[FARVER["laks"], FARVER["skifer"]]),
                         legend=alt.Legend(orient="bottom", titleOrient="left", labelLimit=0)),
         tooltip=["model:N", alt.Tooltip("h:Q", title="Uger frem"), alt.Tooltip("hunlus:Q", format=".3f")],
     )
     graf = (flade + graense + graense_tekst + punkter).properties(height=360).configure_view(stroke=None).configure_axis(
-        grid=True, gridColor="#EBDCC8", domain=False, labelColor="#6B5F66", titleColor="#6B5F66")
+        grid=True, gridColor="#E6ECF0", domain=False, labelColor="#55687A", titleColor="#55687A", labelFont="Inter", titleFont="Inter").configure_legend(labelFont="Inter", titleFont="Inter", labelColor="#1B2B36")
     st.altair_chart(graf, width="stretch")
     st.caption("Sidste tre år og prognose 1–4 uger frem. Område-tallet er et uvægtet gennemsnit over lokaliteter, der har talt.")
 
 with hoejre:
     seneste_omr = raa[(raa["omraade"] == valg) & (raa["uge_start"] == seneste)].dropna(subset=["lat", "lon"])
+    farver = {"Ja": [214, 69, 69, 230], "Nei": [31, 122, 140, 230]}
     seneste_omr = seneste_omr.assign(
-        farve=seneste_omr["over_graense"].map({"Ja": "#D9643A", "Nei": "#2F4B6E"}).fillna("#B8ABA0"))
-    st.map(seneste_omr, latitude="lat", longitude="lon", color="farve", size=900, height=330)
-    st.caption("Lokaliteter i området i seneste uge. Orange = over lusegrænsen, blå = under, grå = ingen tælling.")
+        farve=seneste_omr["over_graense"].map(lambda v: farver.get(v, [184, 195, 204, 200])),
+        navn=seneste_omr["lokalitet_navn"])
+    st.pydeck_chart(pdk.Deck(
+        layers=[pdk.Layer("ScatterplotLayer", seneste_omr, get_position=["lon", "lat"], get_fill_color="farve",
+                          get_radius=1500, radius_min_pixels=3, radius_max_pixels=8, stroked=True,
+                          get_line_color=[255, 255, 255], line_width_min_pixels=0.5, pickable=True)],
+        initial_view_state=pdk.ViewState(latitude=seneste_omr["lat"].mean(), longitude=seneste_omr["lon"].mean(), zoom=6.2),
+        views=[pdk.View(type="MapView", controller={"scrollZoom": False, "dragPan": True})],
+        map_style=pdk.map_styles.CARTO_LIGHT,
+        tooltip={"text": "{navn}"},
+    ), height=360)
+    st.caption("Lokaliteter i området i seneste uge. Rød = over lusegrænsen, blå = under, grå = ingen tælling.")
 
 # --- Ærlig evaluering ---------------------------------------------------------
-st.markdown(f"### Hvor gode er prognoserne? <small style='font-size:.6em;color:#8C7F78'>data til og med uge {iso.week}, {iso.year}</small>", unsafe_allow_html=True)
+st.markdown("### Hvor gode er prognoserne?")
 st.markdown(
     "Backtest fra januar 2023: hver uge forudsiges 1–4 uger frem **kun med data, der fandtes på det tidspunkt**. "
     "Tallet er gennemsnitlig absolut fejl (MAE) i hunlus pr. fisk – lavere er bedre."
@@ -79,7 +95,7 @@ mae_omr = mae.xs(valg, level="omraade").rename(columns=MODEL_NAVNE)
 mae_alle = mae.groupby(level="h").mean().rename(columns=MODEL_NAVNE)
 tabel = pd.concat({f"Område {valg}": mae_omr, "Alle områder": mae_alle}, axis=1)
 tabel.index = [f"{h} uge{'r' if h > 1 else ''} frem" for h in tabel.index]
-st.dataframe(tabel.style.format("{:.3f}").highlight_min(axis=1, color="#F6D9B8"), width="stretch")
+st.dataframe(tabel.style.format("{:.3f}").highlight_min(axis=1, color="#FDE3DC"), width="stretch")
 st.caption(
     "Den naive prognose er svær at slå: lusetallet ændrer sig langsomt fra uge til uge. "
     "En egentlig model tilføjes her, når den slår baselinen i backtesten."
