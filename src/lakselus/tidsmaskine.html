@@ -37,6 +37,11 @@
   .aar span { position: absolute; top: 0; padding-left: 3px; border-left: 1px solid rgba(255,255,255,.35); line-height: 1; }
   #kilde { right: 22px; bottom: 150px; font-size: 10px; opacity: .55; }
   .deck-tooltip { font-family: 'Inter', sans-serif !important; border-radius: 8px; }
+  #kontrol { right: 22px; top: 132px; pointer-events: auto; display: flex; flex-direction: column; gap: 6px; }
+  #kontrol button { width: 34px; height: 34px; font-size: 16px; font-weight: 600; color: #FFFFFF;
+                    background: rgba(8,26,37,.82); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); }
+  #kontrol button:hover { background: rgba(242,107,79,.9); filter: none; }
+  #kontrol #knap3d { font-size: 11px; letter-spacing: .02em; }
   .touch { display: none; }
   @media (hover: none) { .mus { display: none; } .touch { display: inline; } }
   /* Smal skærm (mobil): forklaringen flyttes ned over tidslinjen, så den ikke dækker ugenummeret */
@@ -48,6 +53,7 @@
     #forklaring { right: auto; left: 16px; top: auto; bottom: 148px; padding: 7px 10px; font-size: 11px; }
     #forklaring .skala { width: 140px; }
     #kilde { display: none; }
+    #kontrol { right: 12px; top: 14px; }
     #panel { left: 10px; right: 10px; bottom: 10px; padding: 8px 10px 10px; }
     .aar { font-size: 10px; }
   }
@@ -66,10 +72,17 @@
   <b style="color:#fff">Adult female lice per fish</b>
   <div class="skala"></div>
   <div class="ticks"><span>0</span><span>0.2</span><span>0.5</span><span>1+</span></div>
-  <div style="margin-top:6px;opacity:.75"><span class="mus">Drag to pan · right-click/ctrl+drag to rotate and tilt</span><span class="touch">Drag to pan · two fingers to rotate and tilt</span></div>
+  <div style="margin-top:6px;opacity:.75"><span class="mus">Drag to pan · buttons or right-click + drag to rotate</span><span class="touch">Drag to pan · buttons or two fingers to rotate</span></div>
 </div>
 
 <div id="kilde" class="lag">Coastline: Natural Earth</div>
+
+<div id="kontrol" class="lag">
+  <button id="drejV" title="Rotate left" aria-label="Rotate left">↺</button>
+  <button id="drejH" title="Rotate right" aria-label="Rotate right">↻</button>
+  <button id="knap3d" title="Switch between flat and 3D view" aria-label="Toggle 2D/3D">2D</button>
+  <button id="nulstil" title="Reset view" aria-label="Reset view">⌂</button>
+</div>
 
 <div id="panel" class="lag">
   <canvas id="graf"></canvas>
@@ -124,14 +137,32 @@ fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json")
     kort.setProps({ layers: lag() });
   });
 
+// På en smal (stående) skærm vises hele kysten lige op og ned; ellers skråt fra sydvest.
+const START = innerWidth < 600
+  ? { longitude: 14.6, latitude: 64.4, zoom: 3.05, pitch: 35, bearing: 0, maxPitch: 75 }
+  : { longitude: 14.0, latitude: 64.2, zoom: 3.95, pitch: 46, bearing: 12, maxPitch: 75 };
+let visning = START;
+
 const kort = new deck.Deck({
   parent: document.getElementById("kort"),
-  // På en smal (stående) skærm vises hele kysten lige op og ned; ellers skråt fra sydvest.
-  initialViewState: innerWidth < 600
-    ? { longitude: 14.6, latitude: 64.4, zoom: 3.05, pitch: 35, bearing: 0, maxPitch: 75 }
-    : { longitude: 14.0, latitude: 64.2, zoom: 3.95, pitch: 46, bearing: 12, maxPitch: 75 },
+  initialViewState: START,
   controller: { scrollZoom: false, touchRotate: true },
+  onViewStateChange: ({ viewState }) => { visning = viewState; opdaterKnap(); },
 });
+
+// --- Kortknapper: drej, 2D/3D og nulstil – så det er tydeligt, at kortet er 3D ----------
+const glid = new deck.LinearInterpolator(["longitude", "latitude", "zoom", "pitch", "bearing"]);
+function flyt(aendring) {
+  visning = { ...visning, ...aendring };
+  kort.setProps({ initialViewState: { ...visning, transitionDuration: 700, transitionInterpolator: glid } });
+  opdaterKnap();
+}
+const knap3d = document.getElementById("knap3d");
+function opdaterKnap() { knap3d.textContent = visning.pitch > 5 ? "2D" : "3D"; }
+document.getElementById("drejV").addEventListener("click", () => flyt({ bearing: visning.bearing - 30 }));
+document.getElementById("drejH").addEventListener("click", () => flyt({ bearing: visning.bearing + 30 }));
+knap3d.addEventListener("click", () => flyt({ pitch: visning.pitch > 5 ? 0 : START.pitch }));
+document.getElementById("nulstil").addEventListener("click", () => flyt(START));
 
 function lag() {
   const base = uge * N, fart = +document.getElementById("fart").value;

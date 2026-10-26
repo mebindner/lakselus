@@ -10,7 +10,7 @@ st.markdown(sidehoved(
     "Sea lice week by week along the coast",
     "Each column is a fish farm site; height and colour show adult female lice per fish. Play the period and see "
     "how levels build up in late summer and fall again when the water cools.",
-    [("view_in_ar", "3D – drag to rotate"), ("play_circle", "Play, pause and scrub")],
+    [("view_in_ar", "3D – rotate and tilt with the map buttons"), ("play_circle", "Play, pause and scrub")],
 ), unsafe_allow_html=True)
 
 
