@@ -29,7 +29,10 @@ side = st.navigation(
 side.run()
 
 st.markdown(
-    f'<div class="fodnote">{KILDE_TEKST} Licence: NLOD. '
+    '<div class="fodnote"><div class="afsender">Built by '
+    '<a href="https://www.linkedin.com/in/martin-eckberg-bindner-872207422" target="_blank">Martin Eckberg Bindner</a>'
+    ' · Data analyst · <a href="https://github.com/mebindner/lakselus" target="_blank">Code on GitHub</a></div>'
+    f'{KILDE_TEKST} Licence: NLOD. '
     '<a href="https://www.barentswatch.no" target="_blank">barentswatch.no</a> · Independent portfolio project.</div>',
     unsafe_allow_html=True,
 )

@@ -59,15 +59,16 @@ Features: level and changes over 1–8 weeks, rolling mean and spread, sea tempe
 (sine/cosine), the area's seasonal profile, number of sites, and the coast-wide trend.
 
 **Discipline:** Models and settings were selected on **2023–24** (validation). The results below are
-from **2025 onwards** (test), which was not used for any choice.
+from **2025 onwards** (test), which was not used for any choice. Figures as of week 42, 2026 – they move
+slightly each week as new weeks and late corrections arrive; the app always shows the current values.
 
 | Test period 2025→ | 1 week | 2 weeks | 3 weeks | 4 weeks |
 |---|---|---|---|---|
 | MAE naive | 0.023 | 0.032 | 0.040 | 0.045 |
 | MAE gradient boosting | **0.022** | **0.028** | **0.032** | **0.035** |
-| Skill vs. naive | +5% | +12% | +20% | +23% |
-| Diebold–Mariano p | 0.021 | < 0.001 | < 0.001 | < 0.001 |
-| 80% interval coverage | 80% | 80% | 78% | 78% |
+| Skill vs. naive | +5% | +12% | +19% | +23% |
+| Diebold–Mariano p | 0.029 | 0.001 | < 0.001 | < 0.001 |
+| 80% interval coverage | 81% | 80% | 78% | 78% |
 
 Gradient boosting is the only model that beats the naive forecast at all four horizons, and the
 improvement is statistically significant throughout. The gain grows with the horizon: the naive
@@ -154,3 +155,9 @@ data/raw/                  local cache of raw data (not in git)
 .github/workflows/         weekly data and model update
 tests/
 ```
+
+## Author and licence
+
+Built by [Martin Eckberg Bindner](https://www.linkedin.com/in/martin-eckberg-bindner-872207422), data analyst,
+with an AI coding assistant. The code is released under the [MIT licence](LICENSE). The data belong to
+BarentsWatch / the Norwegian Food Safety Authority and are used under NLOD.

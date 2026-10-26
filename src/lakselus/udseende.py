@@ -112,6 +112,8 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .metode { font-size: .8rem; color: #4A5A66; line-height: 1.55; background: #F6F8FA; padding: 1rem 1.2rem; border-left: 3px solid #0B2230; margin-top: 2.4rem; }
 .fodnote { font-size: .74rem; color: #6B7A86; border-top: 1px solid #E1E6EA; padding-top: .8rem; margin-top: 2rem; }
 .fodnote a { color: #1D4E6B; }
+.fodnote .afsender { font-size: .82rem; color: #1B2B36; margin-bottom: .45rem; }
+.fodnote .afsender a { font-weight: 600; }
 </style>
 """
 

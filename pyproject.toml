@@ -3,6 +3,9 @@ name = "lakselus"
 version = "0.1.0"
 description = "Forecast af lakselus i norske havbrug på åbne data fra BarentsWatch"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Martin Eckberg Bindner" }]
 requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.2",
@@ -20,7 +23,7 @@ dev = ["pytest>=8", "jupyter>=1.0", "matplotlib>=3.8", "watchdog>=4"]
 lakselus-hent = "lakselus.hent:main"
 
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
