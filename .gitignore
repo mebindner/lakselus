@@ -26,3 +26,7 @@ venv/
 # Lokal Claude Code-opsætning
 .claude/
 .agents/
+
+# Byggeartefakter
+build/
+dist/
