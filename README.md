@@ -1,5 +1,9 @@
 # Sea lice in Norwegian salmon farming – weekly brief and forecast on open data
 
+**Live app: [lakselus.streamlit.app](https://lakselus.streamlit.app)** – updated automatically every week.
+
+[![Time machine: adult female lice per fish at every Norwegian fish farm, week 42 2024](docs/social-preview.png)](https://lakselus.streamlit.app)
+
 How many adult female sea lice (*lakselus*) are on the salmon in Norway's fish farms, how does that
 change through the year, and can the level be forecast 1–4 weeks ahead better than a simple rule of thumb?
 
