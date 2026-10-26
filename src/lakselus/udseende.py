@@ -84,6 +84,8 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .tabel .navn { font-weight: 500; }
 .tabel .po { color: #6B7A86; width: 2.2rem; }
 .tabel .minibar { display: inline-block; height: 6px; border-radius: 1px; vertical-align: middle; margin-left: .45rem; }
+/* Brede tabeller og små multipler scrolles vandret på mobil i stedet for at blive skåret af */
+[data-testid="stMarkdownContainer"]:has(table.tabel), [data-testid="stFullScreenFrame"]:has([data-testid="stVegaLiteChart"]) { overflow-x: auto; }
 .prik { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; vertical-align: .05em; margin-right: .35rem; }
 
 /* Nøgletal (bruges på andre sider) */

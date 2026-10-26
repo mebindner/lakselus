@@ -29,7 +29,8 @@ def pak(raa: pd.DataFrame, fra: str = "2019-01-01") -> dict:
     iso = uger.isocalendar()
     return {
         "lok": [[round(r.lon, 4), round(r.lat, 4), r.navn] for r in lok.itertuples()],
-        "uger": [[int(a), int(u), d.strftime("%b")] for a, u, d in zip(iso["year"], iso["week"], uger)],
+        # Måned efter ugens torsdag (ISO-ugens "egen" dag), så uge 1 ikke står som december.
+        "uger": [[int(a), int(u), (d + pd.Timedelta(days=3)).strftime("%b")] for a, u, d in zip(iso["year"], iso["week"], uger)],
         "national": [None if pd.isna(v) else round(float(v), 3) for v in national],
         "vaerdier": base64.b64encode(matrix.tobytes()).decode("ascii"),
     }
