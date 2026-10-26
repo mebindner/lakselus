@@ -7,7 +7,7 @@ import streamlit as st
 
 from lakselus import appdata
 from lakselus.appdata import MODEL_NAVNE, MODELLER
-from lakselus.udseende import FARVER, sidehoved
+from lakselus.udseende import FARVER, figur, kilde, sidehoved
 
 raa, panel, navne = appdata.indlaes()
 seneste = panel["uge_start"].max()
@@ -28,6 +28,13 @@ valg = st.selectbox(
 )
 omr = panel[panel["omraade"] == valg].sort_values("uge_start")
 
+# Handlingstitlen bygger på det højeste niveau, nogen af prognoserne når de næste fire uger.
+maks = max(v for f in MODELLER.values() for h in (1, 2, 3, 4) if pd.notna(v := f(omr, h).get(valg)))
+st.markdown(figur(
+    1, f"{navne[valg]}: prognoserne for de næste fire uger ligger "
+       f"{'under' if maks < 0.5 else 'over'} lusegrænsen (højst {maks:.2f})".replace(".", ","),
+    "Voksne hunlus pr. fisk, sidste tre år og prognose 1–4 uger frem. Kort: lokaliteter i området i seneste uge.",
+), unsafe_allow_html=True)
 venstre, hoejre = st.columns([2.2, 1])
 
 with venstre:
@@ -65,7 +72,6 @@ with venstre:
     graf = (flade + graense + graense_tekst + punkter).properties(height=360).configure_view(stroke=None).configure_axis(
         grid=True, gridColor="#E6ECF0", domain=False, labelColor="#55687A", titleColor="#55687A", labelFont="Inter", titleFont="Inter").configure_legend(labelFont="Inter", titleFont="Inter", labelColor="#1B2B36")
     st.altair_chart(graf, width="stretch")
-    st.caption("Sidste tre år og prognose 1–4 uger frem. Område-tallet er et uvægtet gennemsnit over lokaliteter, der har talt.")
 
 with hoejre:
     seneste_omr = raa[(raa["omraade"] == valg) & (raa["uge_start"] == seneste)].dropna(subset=["lat", "lon"])
@@ -85,18 +91,18 @@ with hoejre:
     st.caption("Lokaliteter i området i seneste uge. Rød = over lusegrænsen, blå = under, grå = ingen tælling.")
 
 # --- Ærlig evaluering ---------------------------------------------------------
-st.markdown("### Hvor gode er prognoserne?")
-st.markdown(
-    "Backtest fra januar 2023: hver uge forudsiges 1–4 uger frem **kun med data, der fandtes på det tidspunkt**. "
-    "Tallet er gennemsnitlig absolut fejl (MAE) i hunlus pr. fisk – lavere er bedre."
-)
+st.markdown(kilde("Områdetal er uvægtede gennemsnit over lokaliteter, der har talt lus i ugen."), unsafe_allow_html=True)
+
+st.markdown(figur(
+    2, "Den naive prognose er svær at slå – en model skal bevise sin værdi i backtesten",
+    "Gennemsnitlig absolut fejl (MAE) i hunlus pr. fisk, backtest fra januar 2023. Hver uge forudsiges 1–4 uger frem "
+    "kun med data, der fandtes på det tidspunkt. Laveste fejl pr. række er fremhævet.",
+), unsafe_allow_html=True)
 mae = appdata.kør_backtest(panel)
 mae_omr = mae.xs(valg, level="omraade").rename(columns=MODEL_NAVNE)
 mae_alle = mae.groupby(level="h").mean().rename(columns=MODEL_NAVNE)
 tabel = pd.concat({f"Område {valg}": mae_omr, "Alle områder": mae_alle}, axis=1)
 tabel.index = [f"{h} uge{'r' if h > 1 else ''} frem" for h in tabel.index]
 st.dataframe(tabel.style.format("{:.3f}").highlight_min(axis=1, color="#FDE3DC"), width="stretch")
-st.caption(
-    "Den naive prognose er svær at slå: lusetallet ændrer sig langsomt fra uge til uge. "
-    "En egentlig model tilføjes her, når den slår baselinen i backtesten."
-)
+st.markdown(kilde("Lusetallet ændrer sig langsomt fra uge til uge, så sidste uges niveau er en stærk baseline. "
+                  "En egentlig model tilføjes, når den slår baselinen."), unsafe_allow_html=True)

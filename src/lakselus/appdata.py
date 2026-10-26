@@ -48,3 +48,15 @@ def status_pr_omraade(raa: pd.DataFrame, panel: pd.DataFrame) -> pd.DataFrame:
     nu["hunlus_4u_foer"] = foer.groupby("omraade")["hunlus"].mean()
     nu.index = nu.index.astype(int)
     return nu
+
+
+def saesonprofil(panel: pd.DataFrame) -> pd.DataFrame:
+    """Lusetal pr. område og ISO-uge for indeværende år, holdt op mod spændet og snittet for tidligere år."""
+    p = panel.dropna(subset=["hunlus"]).copy()
+    iso = p["uge_start"].dt.isocalendar()
+    p["aar"], p["uge"] = iso["year"].astype(int), iso["week"].astype(int)
+    p = p[p["uge"] <= 52]
+    i_aar = p["aar"].max()
+    tidl = p[p["aar"] < i_aar].groupby(["omraade", "uge"])["hunlus"].agg(lav="min", hoej="max", snit="mean")
+    nu = p[p["aar"] == i_aar].set_index(["omraade", "uge"])["hunlus"].rename("i_aar")
+    return tidl.join(nu).reset_index().assign(aar=i_aar, foerste_aar=p["aar"].min())
