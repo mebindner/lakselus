@@ -1,0 +1,28 @@
+[project]
+name = "lakselus"
+version = "0.1.0"
+description = "Forecast af lakselus i norske havbrug på åbne data fra BarentsWatch"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.2",
+    "requests>=2.32",
+    "python-dotenv>=1.0",
+    "streamlit>=1.40",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "jupyter>=1.0"]
+
+[project.scripts]
+lakselus-hent = "lakselus.hent:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
