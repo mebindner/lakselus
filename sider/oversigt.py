@@ -187,7 +187,12 @@ baand = basis.mark_area(color=FARVER["taage"], opacity=.35).encode(
     y=alt.Y("lav:Q", title=None, axis=alt.Axis(values=[0, 0.5, 1], format=".1f", labelFontSize=9)), y2="hoej:Q")
 snit = basis.mark_line(color=FARVER["skifer"], strokeDash=[3, 2], strokeWidth=1).encode(y="snit:Q")
 nu = basis.mark_line(color=FARVER["laks"], strokeWidth=2).encode(y="i_aar:Q")
-smaa = alt.layer(baand, snit, nu, data=sm).properties(width=225, height=90).facet(
+# Annotation: seneste uges værdi markeres og skrives direkte i hvert panel.
+sm["er_sidste"] = sm["uge"] == sm.dropna(subset=["i_aar"])["uge"].max()
+nu_pkt = basis.mark_circle(color=FARVER["laks"], size=26, opacity=1).encode(y="i_aar:Q").transform_filter("datum.er_sidste")
+nu_tal = basis.mark_text(align="left", dx=5, fontSize=10, fontWeight=600, color=FARVER["laks"]).encode(
+    y="i_aar:Q", text=alt.Text("i_aar:Q", format=".2f")).transform_filter("datum.er_sidste")
+smaa = alt.layer(baand, snit, nu, nu_pkt, nu_tal, data=sm).properties(width=225, height=90).facet(
     facet=alt.Facet("titel:N", sort=orden, header=alt.Header(labelFontSize=11, labelPadding=4)), columns=3,
 ).resolve_scale(y="shared")
 st.altair_chart(smaa, width="content")
@@ -198,16 +203,22 @@ st.markdown(figur(
     4, f"The peak comes later the further north: around week {syd_top} in the south vs. week {nord_top} in Finnmark",
     f"Mean adult female lice per fish by ISO week, {foerste}–{i_aar - 1}.",
 ), unsafe_allow_html=True)
+vx = alt.X("uge:O", title="ISO week", axis=alt.Axis(values=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50], labelAngle=0))
+vy = alt.Y("titel:N", sort=orden, title=None, axis=alt.Axis(labelLimit=240, labelColor="#1B2B36", labelOverlap=False))
 varme = alt.Chart(sm).mark_rect().encode(
-    x=alt.X("uge:O", title="ISO week", axis=alt.Axis(values=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50], labelAngle=0)),
-    y=alt.Y("titel:N", sort=orden, title=None, axis=alt.Axis(labelLimit=240, labelColor="#1B2B36", labelOverlap=False)),
+    x=vx, y=vy,
     color=alt.Color("snit:Q", title="Female lice / fish", scale=alt.Scale(range=SEKVENS),
                     legend=alt.Legend(orient="right", gradientLength=180, format=".1f")),
     tooltip=[alt.Tooltip("titel:N", title="Area"), alt.Tooltip("uge:O", title="Week"),
              alt.Tooltip("snit:Q", title="Mean", format=".3f")],
-).properties(height=13 * 28)
-st.altair_chart(varme, width="stretch")
-st.markdown(kilde(), unsafe_allow_html=True)
+)
+# Annotation: hvert områdes topuge markeres, så forskydningen mod nord kan ses direkte.
+topper = sm.loc[sm.groupby("titel")["snit"].idxmax(), ["titel", "uge", "snit"]]
+top_pkt = alt.Chart(topper).mark_point(shape="circle", filled=True, size=34, color="#FFFFFF", stroke=FARVER["blaek"],
+                                       strokeWidth=1.2, opacity=1).encode(
+    x=vx, y=vy, tooltip=[alt.Tooltip("titel:N", title="Area"), alt.Tooltip("uge:O", title="Peak week")])
+st.altair_chart((varme + top_pkt).properties(height=13 * 28), width="stretch")
+st.markdown(kilde("○ = the area's peak week (highest mean)."), unsafe_allow_html=True)
 
 # --- Metode ---------------------------------------------------------------------------
 st.markdown(

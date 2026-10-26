@@ -78,7 +78,25 @@ linje = alt.Chart(lv_plot).mark_line(color=FARVER["laks"], strokeWidth=2.2, poin
                               alt.Tooltip("lo:Q", title="80% low", format=".3f"), alt.Tooltip("hi:Q", title="80% high", format=".3f")])
 naiv_linje = alt.Chart(naiv_plot).mark_line(color=FARVER["skifer"], strokeDash=[4, 3], strokeWidth=1.2).encode(x=x, y="naiv:Q")
 graense = alt.Chart(pd.DataFrame({"y": [0.5]})).mark_rule(color="#D64545", strokeDash=[3, 3], opacity=.7).encode(y="y:Q")
-st.altair_chart((baand + historik + naiv_linje + linje + graense).properties(height=340), width="stretch")
+
+# Annotationer direkte i grafen: seneste måling, prognosen om 4 uger og lusegrænsen.
+slut = lv.iloc[-1]
+uge_nu, uge_slut = sidst["uge_start"].isocalendar().week, slut["uge_start"].isocalendar().week
+
+
+def note(uge_start, y, tekst, farve, dy):
+    return alt.Chart(pd.DataFrame({"uge_start": [uge_start], "y": [y], "t": [tekst]})).mark_text(
+        align="right", dx=-6, dy=dy, fontSize=11, fontWeight=600, color=farve).encode(x=x, y="y:Q", text="t:N")
+
+
+# Begge tekster står over kurven (prognosen øverst), så de ikke skærer historikken.
+top = max(sidst["hunlus"], lv["hi"].max())
+annotation = (note(sidst["uge_start"], top, f"Week {uge_nu}: {tal(sidst['hunlus'], 2)}", FARVER["blaek"], -12)
+              + note(slut["uge_start"], top, f"Forecast week {uge_slut}: {tal(slut['pred'], 2)}", FARVER["laks"], -28))
+graense_tekst = alt.Chart(pd.DataFrame({"uge_start": [omr["uge_start"].min()], "y": [0.5], "t": ["Lice limit 0.5"]})).mark_text(
+    align="left", dx=2, dy=-6, fontSize=10, color="#D64545").encode(x=x, y="y:Q", text="t:N")
+st.altair_chart((baand + historik + naiv_linje + linje + graense + graense_tekst + annotation).properties(height=340),
+                width="stretch")
 st.markdown(kilde("The interval is the empirical 10th–90th percentile of the model's own backtest errors for the area and horizon. "
                   "Red dashed line: the lice limit of 0.5."), unsafe_allow_html=True)
 
