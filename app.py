@@ -21,6 +21,7 @@ except FileNotFoundError:
 side = st.navigation(
     [
         st.Page("sider/oversigt.py", title="Oversigt", icon=":material/map:", default=True),
+        st.Page("sider/tidsmaskine.py", title="Tidsmaskine", icon=":material/view_in_ar:"),
         st.Page("sider/prognose.py", title="Prognose", icon=":material/insights:"),
     ],
     position="top",
