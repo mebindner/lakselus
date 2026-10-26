@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="da">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -42,28 +42,28 @@
 <div id="kort"></div>
 
 <div id="titel" class="lag">
-  <div id="uge">Uge –</div>
+  <div id="uge">Week –</div>
   <div id="maaned"></div>
-  <div id="snit">Gennemsnit for kysten <b id="snittal">–</b></div>
+  <div id="snit">Coast-wide average <b id="snittal">–</b></div>
 </div>
 
 <div id="forklaring" class="lag">
-  <b style="color:#fff">Voksne hunlus pr. fisk</b>
+  <b style="color:#fff">Adult female lice per fish</b>
   <div class="skala"></div>
-  <div class="ticks"><span>0</span><span>0,2</span><span>0,5</span><span>1+</span></div>
-  <div style="margin-top:6px;opacity:.75">Træk for at flytte · højreklik/ctrl+træk for at dreje og vippe</div>
+  <div class="ticks"><span>0</span><span>0.2</span><span>0.5</span><span>1+</span></div>
+  <div style="margin-top:6px;opacity:.75">Drag to pan · right-click/ctrl+drag to rotate and tilt</div>
 </div>
 
-<div id="kilde" class="lag">Kystlinje: Natural Earth</div>
+<div id="kilde" class="lag">Coastline: Natural Earth</div>
 
 <div id="panel" class="lag">
   <canvas id="graf"></canvas>
   <div class="aar" id="aarstal"></div>
   <div class="styring">
-    <button id="spil" title="Afspil / pause">❚❚</button>
+    <button id="spil" title="Play / pause">❚❚</button>
     <input id="skyder" type="range" min="0" value="0" step="1">
-    <select id="fart" title="Hastighed">
-      <option value="420">0,5×</option><option value="220" selected>1×</option>
+    <select id="fart" title="Speed">
+      <option value="420">0.5×</option><option value="220" selected>1×</option>
       <option value="110">2×</option><option value="55">4×</option>
     </select>
   </div>
@@ -77,8 +77,8 @@ const MANGLER = 255;
 const lok = D.lok.map((l, i) => ({ i, pos: [l[0], l[1]], navn: l[2] }));
 // Pause/afspil-ikoner
 const PAUSE = "❚❚", AFSPIL = "▶";
-const MAANED = { Jan: "januar", Feb: "februar", Mar: "marts", Apr: "april", May: "maj", Jun: "juni",
-                 Jul: "juli", Aug: "august", Sep: "september", Oct: "oktober", Nov: "november", Dec: "december" };
+const MAANED = { Jan: "January", Feb: "February", Mar: "March", Apr: "April", May: "May", Jun: "June",
+                 Jul: "July", Aug: "August", Sep: "September", Oct: "October", Nov: "November", Dec: "December" };
 
 // Farveskala: blågrøn (lavt) → rav → laks → dyb rød (over grænsen)
 const STOP = [[0, [31,122,140]], [0.1, [95,168,160]], [0.2, [226,162,59]], [0.5, [242,107,79]], [1.0, [214,69,69]]];
@@ -89,7 +89,7 @@ function farve(v) {
     if (v <= x1) { const t = (v - x0) / (x1 - x0); return c0.map((c, j) => Math.round(c + t * (c1[j] - c))); }
   }
 }
-const tal = (v, d = 2) => v.toFixed(d).replace(".", ",");
+const tal = (v, d = 2) => v.toFixed(d);
 
 let uge = 0, spiller = true, timer = null;
 
@@ -132,7 +132,7 @@ kort.setProps({
   getTooltip: ({ object }) => {
     if (!object) return null;
     const v = V[uge * N + object.i];
-    return { html: `<b>${object.navn}</b><br>${v === MANGLER ? "ingen tælling" : tal(v / 100) + " voksne hunlus pr. fisk"}`,
+    return { html: `<b>${object.navn}</b><br>${v === MANGLER ? "no count" : tal(v / 100) + " adult female lice per fish"}`,
              style: { background: "#0B2230", color: "#FFFFFF", fontSize: "12px", padding: "8px 10px", border: "1px solid rgba(255,255,255,.12)" } };
   },
 });
@@ -170,7 +170,7 @@ function saetUge(i) {
   uge = Math.max(0, Math.min(U - 1, i));
   skyder.value = uge;
   const [a, u, m] = D.uger[uge];
-  document.getElementById("uge").textContent = `Uge ${u} · ${a}`;
+  document.getElementById("uge").textContent = `Week ${u} · ${a}`;
   document.getElementById("maaned").textContent = MAANED[m] || m;
   const v = D.national[uge];
   document.getElementById("snittal").textContent = v == null ? "–" : tal(v);

@@ -14,10 +14,10 @@ from lakselus.config import DATA_PROCESSED
 BACKTEST_FIL = DATA_PROCESSED / "backtest.parquet"
 BASELINES = {"naiv": ev.naiv, "saeson_naiv": ev.saeson_naiv}
 NAVNE = {
-    "naiv": "Naiv (sidste uge)",
-    "saeson_naiv": "Sæson-naiv (samme uge sidste år)",
-    "saeson_justeret": "Naiv + sæsonændring",
-    "ridge": "Ridge-regression",
+    "naiv": "Naive (last week)",
+    "saeson_naiv": "Seasonal naive (same week last year)",
+    "saeson_justeret": "Naive + seasonal change",
+    "ridge": "Ridge regression",
     "gbm": "Gradient boosting",
     "ensemble": "Ensemble",
 }

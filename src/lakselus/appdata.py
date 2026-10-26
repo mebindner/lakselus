@@ -8,10 +8,10 @@ import streamlit as st
 from lakselus import data, evaluering as ev
 from lakselus.config import DATA_RAW
 
-TRAFIKLYS = {"green": "Grøn", "yellow": "Gul", "red": "Rød"}
+TRAFIKLYS = {"green": "Green", "yellow": "Yellow", "red": "Red"}
 
 
-@st.cache_data(show_spinner="Læser lusetal …")
+@st.cache_data(show_spinner="Loading lice counts …")
 def indlaes():
     raa = data.indlaes_raa()
     return raa, data.ugentligt_panel(raa), data.omraade_navne(raa)
@@ -54,7 +54,7 @@ def saesonprofil(panel: pd.DataFrame) -> pd.DataFrame:
     return tidl.join(nu).reset_index().assign(aar=i_aar, foerste_aar=p["aar"].min())
 
 
-@st.cache_data(show_spinner="Kører fuld backtest af alle modeller (første gang tager det et par minutter) …")
+@st.cache_data(show_spinner="Running full backtest of all models (takes a few minutes the first time) …")
 def backtest_resultater(panel: pd.DataFrame) -> pd.DataFrame:
     """Backtest af alle modeller. Læses fra disk og genberegnes kun, når der er kommet nye uger."""
     from lakselus import modelrapport
@@ -77,7 +77,7 @@ def model_opsummering(res: pd.DataFrame) -> dict:
     return modelrapport.opsummer(res)
 
 
-@st.cache_data(show_spinner="Træner den valgte model på alle data …")
+@st.cache_data(show_spinner="Training the selected model on all data …")
 def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame, niveau: float = 0.8) -> pd.DataFrame:
     """Prognose 1–4 uger frem fra seneste uge med den valgte model og et 80 %-interval pr. område.
 

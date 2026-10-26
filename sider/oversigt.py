@@ -1,4 +1,4 @@
-"""Oversigt: ugebrief i konsulentstil – executive summary, figurer med handlingstitler og metode."""
+"""Overview: ugebrief i konsulentstil – executive summary, figurer med handlingstitler og metode (engelsk UI)."""
 
 import altair as alt
 import pandas as pd
@@ -17,7 +17,7 @@ def rgba(hex_farve: str, alpha: int) -> list[int]:
 
 
 def tal(v: float, d: int = 2) -> str:
-    return f"{v:.{d}f}".replace(".", ",")
+    return f"{v:.{d}f}"
 
 
 def pct(v: float, fortegn: bool = False) -> str:
@@ -50,40 +50,41 @@ over_snit = int((uge_nu["i_aar"] > uge_nu["snit"]).sum())
 top_uge_pr_omr = profil.loc[profil.groupby("omraade")["snit"].idxmax()].set_index("omraade")["uge"]
 syd_top, nord_top = int(top_uge_pr_omr.loc[[1, 2]].mean()), int(top_uge_pr_omr.loc[[12, 13]].mean())
 
-retning = "lavere" if aendring < 0 else "højere"
+retning = "lower" if aendring < 0 else "higher"
 st.markdown(sidehoved(
-    f"Ugebrief · Lakselus i norsk havbrug · Uge {iso.week}, {iso.year}",
-    f"Lusenivået er {abs(aendring):.0%} {retning} end for et år siden – presset er størst i {status.loc[top, 'navn']}",
-    "Ugentlig status på lakselus i alle 13 produktionsområder, baseret på de lusetællinger, havbrugene indberetter "
-    "til Mattilsynet. Tallene holdes op mod lusegrænsen, myndighedernes trafiklys og sæsonmønstret de seneste år.",
-    [("verified", "Uafhængig analyse på åbne data"), ("database", "BarentsWatch / Mattilsynet"),
-     ("location_on", f"{len(talt)} lokaliteter i ugens tal")],
+    f"Weekly brief · Sea lice in Norwegian salmon farming · Week {iso.week}, {iso.year}",
+    f"Lice levels are {abs(aendring):.0%} {retning} than a year ago – pressure is highest in {status.loc[top, 'navn']}",
+    "Weekly status on sea lice (lakselus) in all 13 production areas (produksjonsområder), based on the lice counts "
+    "fish farms report to the Norwegian Food Safety Authority. Figures are set against the lice limit (lusegrense), "
+    "the government traffic-light system (trafikklyssystemet) and the seasonal pattern of recent years.",
+    [("verified", "Independent analysis of open data"), ("database", "BarentsWatch / Mattilsynet"),
+     ("location_on", f"{len(talt)} sites in this week's figures")],
 ), unsafe_allow_html=True)
 
 st.markdown(resume([
-    (tal(gns), f"voksne hunlus pr. fisk i snit langs kysten i uge {iso.week}. Det er {abs(aendring):.0%} "
-               f"{retning} end i samme uge sidste år ({tal(gns_sidst)})."),
-    (f"{len(over)} af {len(talt)}", f"lokaliteter ({pct(len(over) / len(talt))}) lå over lusegrænsen; flest i "
-                                    + " og ".join(f"PO {o}" for o in over_pr_omr.index[:2]) + "."),
-    (f"{len(roede)} af 13", "produktionsområder har rødt trafiklys og skal reducere produktionen: "
+    (tal(gns), f"adult female lice per fish on average along the coast in week {iso.week} – {abs(aendring):.0%} "
+               f"{retning} than the same week last year ({tal(gns_sidst)})."),
+    (f"{len(over)} of {len(talt)}", f"sites ({pct(len(over) / len(talt))}) were above the lice limit; most in "
+                                    + " and ".join(f"PO {o}" for o in over_pr_omr.index[:2]) + "."),
+    (f"{len(roede)} of 13", "production areas have a red traffic light and must reduce production: "
                             + ", ".join(roede["navn"]) + "."),
 ]), unsafe_allow_html=True)
 
 # --- Figur 1: kort og rangering ------------------------------------------------------
 st.markdown(figur(
-    1, f"{status.loc[top, 'navn']} har det højeste lusetal blandt de store områder; {len(roede)} har rødt trafiklys",
-    f"Voksne hunlus pr. fisk, uge {iso.week} {iso.year}. Kort: lokaliteter og produktionsområder farvet efter trafiklys.",
+    1, f"{status.loc[top, 'navn']} has the highest lice level among the larger areas; {len(roede)} have a red light",
+    f"Adult female lice per fish, week {iso.week} {iso.year}. Map: sites and production areas coloured by traffic light.",
 ), unsafe_allow_html=True)
 
 venstre, hoejre = st.columns([1, 1.15], gap="large")
 with venstre:
     lok = talt.dropna(subset=["lat", "lon", "hunlus"]).copy()
     lok["farve"] = lok["hunlus"].map(lambda v: rgba(LUS_FARVER[lus_niveau(v)], 230))
-    lok["tip"] = "<b>" + lok["lokalitet_navn"] + "</b><br>" + lok["hunlus"].map(tal) + " hunlus pr. fisk"
+    lok["tip"] = "<b>" + lok["lokalitet_navn"] + "</b><br>" + lok["hunlus"].map(tal) + " adult female lice per fish"
     po_kort = po.reset_index().assign(
         fyld=lambda d: d["trafiklys"].map(lambda c: rgba(LYS_FARVER[c][0], 30)),
         kant=lambda d: d["trafiklys"].map(lambda c: rgba(LYS_FARVER[c][0], 170)),
-        tip=lambda d: "<b>PO " + d["omraade"].astype(str) + " · " + d["navn"] + "</b><br>Trafiklys: "
+        tip=lambda d: "<b>PO " + d["omraade"].astype(str) + " · " + d["navn"] + "</b><br>Traffic light: "
                       + d["trafiklys"].map(appdata.TRAFIKLYS),
     )
     st.pydeck_chart(pdk.Deck(
@@ -110,16 +111,16 @@ with hoejre:
     rang = rang.sort_values("hunlus", ascending=False)
     y = alt.Y("etiket:N", sort=list(rang["etiket"]), title=None, axis=alt.Axis(labelLimit=220, labelFontSize=11.5, labelColor="#1B2B36"))
     soejler = alt.Chart(rang).mark_bar(height=15).encode(
-        x=alt.X("hunlus:Q", title="Voksne hunlus pr. fisk", scale=alt.Scale(domain=[0, 0.55]),
+        x=alt.X("hunlus:Q", title="Adult female lice per fish", scale=alt.Scale(domain=[0, 0.55]),
                 axis=alt.Axis(format=".1f", tickCount=6, grid=True)),
         y=y,
         color=alt.Color("niveau:N", legend=None, scale=alt.Scale(
             domain=["lav", "mellem", "hoej"], range=[LUS_FARVER["lav"], LUS_FARVER["mellem"], LUS_FARVER["hoej"]])),
-        tooltip=[alt.Tooltip("etiket:N", title="Område"), alt.Tooltip("hunlus:Q", title="Hunlus", format=".3f")],
+        tooltip=[alt.Tooltip("etiket:N", title="Area"), alt.Tooltip("hunlus:Q", title="Female lice", format=".3f")],
     )
     tekster = alt.Chart(rang).mark_text(align="left", dx=4, fontSize=11, color="#1B2B36").encode(
         x="hunlus:Q", y=y, text="tekst:N")
-    graenser = pd.DataFrame({"x": [0.2, 0.5], "t": ["0,2 forår", "0,5 lusegrænse"]})
+    graenser = pd.DataFrame({"x": [0.2, 0.5], "t": ["0.2 spring", "0.5 lice limit"]})
     linjer = alt.Chart(graenser).mark_rule(strokeDash=[3, 3], color="#D64545", opacity=.7).encode(x="x:Q")
     linjetekst = alt.Chart(graenser).mark_text(align="left", dx=3, dy=-4, fontSize=10, color="#D64545").encode(
         x="x:Q", y=alt.value(0), text="t:N")
@@ -127,20 +128,20 @@ with hoejre:
 
 st.markdown(
     '<div class="forklaring">'
-    f'<span><i class="prik" style="background:{LUS_FARVER["lav"]}"></i>Under 0,2</span>'
-    f'<span><i class="prik" style="background:{LUS_FARVER["mellem"]}"></i>0,2–0,5</span>'
-    f'<span><i class="prik" style="background:{LUS_FARVER["hoej"]}"></i>Over 0,5</span>'
+    f'<span><i class="prik" style="background:{LUS_FARVER["lav"]}"></i>Below 0.2</span>'
+    f'<span><i class="prik" style="background:{LUS_FARVER["mellem"]}"></i>0.2–0.5</span>'
+    f'<span><i class="prik" style="background:{LUS_FARVER["hoej"]}"></i>Above 0.5</span>'
     f'<span><i class="prik" style="background:{LYS_FARVER["green"][0]}"></i><i class="prik" style="background:{LYS_FARVER["yellow"][0]}"></i>'
-    f'<i class="prik" style="background:{LYS_FARVER["red"][0]}"></i>Trafiklys (områdefarve på kortet)</span></div>',
+    f'<i class="prik" style="background:{LYS_FARVER["red"][0]}"></i>Traffic light (area colour on the map)</span></div>',
     unsafe_allow_html=True,
 )
-st.markdown(kilde(f"Områdetal er uvægtede gennemsnit over lokaliteter, der har talt lus i ugen. "
-                  f"* Under {MIN_LOK} lokaliteter – tallet er usikkert og indgår ikke i konklusionerne."), unsafe_allow_html=True)
+st.markdown(kilde(f"Area figures are unweighted means over sites that counted lice that week. "
+                  f"* Fewer than {MIN_LOK} sites – the figure is uncertain and excluded from the conclusions."), unsafe_allow_html=True)
 
 # --- Figur 2: statustabel -------------------------------------------------------------
 st.markdown(figur(
-    2, "Statusoversigt pr. produktionsområde",
-    "Lusetal, udvikling mod de 4 foregående uger, andel lokaliteter over grænsen og havtemperatur.",
+    2, "Status by production area",
+    "Lice level, change vs. the previous 4 weeks, share of sites above the limit and sea temperature.",
 ), unsafe_allow_html=True)
 
 raekker = []
@@ -158,19 +159,19 @@ for o, s in status.iterrows():
         f'<td class="tal">{tal(s.temp, 1)} °C</td><td class="tal">{int(s.n_lok)}</td></tr>'
     )
 st.markdown(
-    '<table class="tabel"><thead><tr><th>PO</th><th>Produktionsområde</th><th>Trafiklys</th>'
-    '<th class="tal">Hunlus pr. fisk</th><th class="tal">Δ 4 uger</th><th class="tal">Over grænsen</th>'
-    '<th class="tal">Havtemp.</th><th class="tal">Lokaliteter</th></tr></thead><tbody>'
+    '<table class="tabel"><thead><tr><th>PO</th><th>Production area</th><th>Traffic light</th>'
+    '<th class="tal">Female lice / fish</th><th class="tal">Δ 4 weeks</th><th class="tal">Above limit</th>'
+    '<th class="tal">Sea temp.</th><th class="tal">Sites</th></tr></thead><tbody>'
     + "".join(raekker) + "</tbody></table>",
     unsafe_allow_html=True,
 )
-st.markdown(kilde(f"Δ 4 uger: ændring mod snittet af de fire foregående uger. * Under {MIN_LOK} lokaliteter."), unsafe_allow_html=True)
+st.markdown(kilde(f"Δ 4 weeks: change vs. the mean of the four preceding weeks. * Fewer than {MIN_LOK} sites."), unsafe_allow_html=True)
 
 # --- Figur 3: små multipler ----------------------------------------------------------
 foerste, i_aar = int(profil["foerste_aar"].iloc[0]), int(profil["aar"].iloc[0])
 st.markdown(figur(
-    3, f"{over_snit} af {len(uge_nu)} områder ligger over det normale niveau for årstiden",
-    f"Voksne hunlus pr. fisk pr. uge. Linje: {i_aar}. Stiplet: snit {foerste}–{i_aar - 1}. Bånd: laveste–højeste niveau i samme periode.",
+    3, f"{over_snit} of {len(uge_nu)} areas are above the normal level for the time of year",
+    f"Adult female lice per fish per week. Line: {i_aar}. Dashed: mean {foerste}–{i_aar - 1}. Band: lowest–highest level in the same period.",
 ), unsafe_allow_html=True)
 
 sm = profil.assign(titel=lambda d: "PO " + d["omraade"].astype(str) + " · " + d["omraade"].map(navne))
@@ -185,31 +186,31 @@ smaa = alt.layer(baand, snit, nu, data=sm).properties(width=225, height=90).face
     facet=alt.Facet("titel:N", sort=orden, header=alt.Header(labelFontSize=11, labelPadding=4)), columns=3,
 ).resolve_scale(y="shared")
 st.altair_chart(smaa, width="content")
-st.markdown(kilde(f"Uge 53 er udeladt. Snit og bånd bygger på {foerste}–{i_aar - 1}."), unsafe_allow_html=True)
+st.markdown(kilde(f"Week 53 is omitted. Mean and band are based on {foerste}–{i_aar - 1}."), unsafe_allow_html=True)
 
 # --- Figur 4: sæsonmønster -----------------------------------------------------------
 st.markdown(figur(
-    4, f"Toppen kommer senere, jo længere nordpå: omkring uge {syd_top} i syd mod uge {nord_top} i Finnmark",
-    f"Gennemsnitligt antal voksne hunlus pr. fisk pr. ISO-uge, {foerste}–{i_aar - 1}.",
+    4, f"The peak comes later the further north: around week {syd_top} in the south vs. week {nord_top} in Finnmark",
+    f"Mean adult female lice per fish by ISO week, {foerste}–{i_aar - 1}.",
 ), unsafe_allow_html=True)
 varme = alt.Chart(sm).mark_rect().encode(
-    x=alt.X("uge:O", title="ISO-uge", axis=alt.Axis(values=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50], labelAngle=0)),
+    x=alt.X("uge:O", title="ISO week", axis=alt.Axis(values=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50], labelAngle=0)),
     y=alt.Y("titel:N", sort=orden, title=None, axis=alt.Axis(labelLimit=240, labelColor="#1B2B36", labelOverlap=False)),
-    color=alt.Color("snit:Q", title="Hunlus pr. fisk", scale=alt.Scale(range=SEKVENS),
+    color=alt.Color("snit:Q", title="Female lice / fish", scale=alt.Scale(range=SEKVENS),
                     legend=alt.Legend(orient="right", gradientLength=180, format=".1f")),
-    tooltip=[alt.Tooltip("titel:N", title="Område"), alt.Tooltip("uge:O", title="Uge"),
-             alt.Tooltip("snit:Q", title="Snit", format=".3f")],
+    tooltip=[alt.Tooltip("titel:N", title="Area"), alt.Tooltip("uge:O", title="Week"),
+             alt.Tooltip("snit:Q", title="Mean", format=".3f")],
 ).properties(height=13 * 28)
 st.altair_chart(varme, width="stretch")
 st.markdown(kilde(), unsafe_allow_html=True)
 
 # --- Metode ---------------------------------------------------------------------------
 st.markdown(
-    '<div class="metode"><b>Metode og forbehold.</b> Data er ugentlige lusetællinger pr. lokalitet fra BarentsWatch '
-    "(indberettet til Mattilsynet). Områdetal er uvægtede gennemsnit over lokaliteter, der har talt lus i ugen; "
-    "antal fisk pr. lokalitet indgår ikke. Den seneste uge medtages først, når mindst 80 % af lokaliteterne har "
-    "indberettet. Lusegrænsen er 0,5 voksne hunlus pr. fisk (0,2 i forårsugerne). Trafiklyset er myndighedernes "
-    "senest gældende farve pr. produktionsområde. Analysen er uafhængig og ikke udarbejdet for eller af nogen "
-    "virksomhed.</div>",
+    '<div class="metode"><b>Method and caveats.</b> Data are weekly lice counts per site from BarentsWatch '
+    "(reported to the Norwegian Food Safety Authority). Area figures are unweighted means over sites that counted "
+    "lice that week; the number of fish per site is not included. The latest week is only included once at least "
+    "80% of sites have reported. The lice limit is 0.5 adult female lice per fish (0.2 during the spring weeks). "
+    "The traffic light is the government's most recent colour per production area. The analysis is independent "
+    "and not prepared for or by any company.</div>",
     unsafe_allow_html=True,
 )

@@ -6,15 +6,15 @@ from lakselus import appdata, tidsmaskine
 from lakselus.udseende import sidehoved
 
 st.markdown(sidehoved(
-    "Udvikling · 2019 til i dag",
-    "Lusetal uge for uge langs kysten",
-    "Hver søjle er en lokalitet; højde og farve viser voksne hunlus pr. fisk. Afspil perioden og se, hvordan "
-    "niveauet bygger sig op i sensommeren og falder igen, når vandet bliver koldt.",
-    [("view_in_ar", "3D – træk for at dreje"), ("play_circle", "Afspil, pause og spol")],
+    "Development · 2019 to today",
+    "Sea lice week by week along the coast",
+    "Each column is a fish farm site; height and colour show adult female lice per fish. Play the period and see "
+    "how levels build up in late summer and fall again when the water cools.",
+    [("view_in_ar", "3D – drag to rotate"), ("play_circle", "Play, pause and scrub")],
 ), unsafe_allow_html=True)
 
 
-@st.cache_data(show_spinner="Pakker syv års lusetal …")
+@st.cache_data(show_spinner="Packing seven years of lice counts …")
 def side_html(skabelon_aendret: float) -> str:
     # Argumentet gør, at cachen fornyes, når HTML-skabelonen ændres.
     raa, _, _ = appdata.indlaes()
@@ -23,6 +23,6 @@ def side_html(skabelon_aendret: float) -> str:
 
 st.iframe(side_html(tidsmaskine.SKABELON.stat().st_mtime), height=760)
 st.caption(
-    "Søjler vises kun i uger, hvor lokaliteten har talt lus (brakkede lokaliteter forsvinder). "
-    "Kortet afspilles helt i din browser. Kystlinje fra Natural Earth (public domain)."
+    "Columns are shown only in weeks when the site counted lice (fallow sites disappear). "
+    "The map plays entirely in your browser. Coastline from Natural Earth (public domain)."
 )

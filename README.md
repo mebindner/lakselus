@@ -1,98 +1,100 @@
-# Lakselus i norsk havbrug – ugebrief og prognose på åbne data
+# Sea lice in Norwegian salmon farming – weekly brief and forecast on open data
 
-Hvor mange voksne hunlus sidder der på laksen i Norges havbrug, hvordan udvikler det sig gennem året,
-og kan man forudsige niveauet 1–4 uger frem bedre end en simpel tommelfingerregel?
+How many adult female sea lice (*lakselus*) are on the salmon in Norway's fish farms, how does that
+change through the year, and can the level be forecast 1–4 weeks ahead better than a simple rule of thumb?
 
-Projektet henter ugentlige lusetællinger fra over 1.200 lokaliteter (2019 → i dag), samler dem pr.
-produktionsområde og præsenterer dem i en Streamlit-app bygget som en ugentlig konsulentrapport.
-Prognoserne bliver ærligt evalueret mod naive baselines.
+The project pulls weekly lice counts from more than 1,200 sites (2019 → today), aggregates them by
+production area (*produksjonsområde*) and presents them in a Streamlit app built like a weekly
+consulting report. The forecasts are evaluated honestly against naive baselines.
 
-Bygget i **Python** (pandas, Altair, pydeck/deck.gl, Streamlit). Privat porteføljeprojekt – uafhængig
-analyse på åbne data, ikke udarbejdet for eller af nogen virksomhed.
+Built in **Python** (pandas, scikit-learn, Altair, pydeck/deck.gl, Streamlit). Independent portfolio
+project – analysis of open data, not prepared for or by any company.
 
-## Appen – tre sider
+## The app – three pages
 
-### 1. Oversigt – ugebrief i konsulentformat
-Opbygget som en rapportleverance:
+### 1. Overview – weekly brief in consulting format
+Structured like a report deliverable:
 
-- **Handlingstitel**, der siger konklusionen (fx *"Lusenivået er 24 % lavere end for et år siden – presset er størst i Karmøy til Sotra"*). Titler og tal beregnes fra data og følger med hver ny uge.
-- **Executive summary** med tre nøglefund: kystens gennemsnit, lokaliteter over lusegrænsen og områder med rødt trafiklys.
-- **Nummererede figurer** med enhed og kildeangivelse:
-  1. Kort over lokaliteter og produktionsområder (farvet efter myndighedernes trafiklys) og rangering af de 13 områder mod lusegrænsen.
-  2. Statustabel pr. område: lusetal, udvikling over 4 uger, andel over grænsen, havtemperatur.
-  3. Små multipler: indeværende år mod snit og spænd for tidligere år, pr. område.
-  4. Sæsonheatmap: toppen kommer senere, jo længere nordpå man kommer.
-- **Metode og forbehold** nederst. Konklusioner bygger kun på områder med mindst 10 lokaliteter; små områder vises, men markeres.
+- **Action titles** that state the conclusion (e.g. *"Lice levels are 24% lower than a year ago – pressure is highest in Karmøy til Sotra"*). Titles and figures are computed from the data and update every week.
+- **Executive summary** with three key findings: the coast-wide average, sites above the lice limit (*lusegrense*), and areas with a red traffic light (*trafikklyssystemet*).
+- **Numbered exhibits** with units and sources:
+  1. Map of sites and production areas (coloured by the government traffic light) and a ranking of the 13 areas against the lice limit.
+  2. Status table by area: lice level, 4-week change, share of sites above the limit, sea temperature.
+  3. Small multiples: the current year against the mean and range of previous years, by area.
+  4. Seasonal heatmap: the peak comes later the further north you go.
+- **Method and caveats** at the bottom. Conclusions only use areas with at least 10 sites; smaller areas are shown but flagged.
 
-### 2. Tidsmaskine – 3D-kort uge for uge
-Et 3D-kort, hvor hver lokalitet er en søjle, der vokser med antal hunlus. Afspil perioden fra 2019 til
-i dag og se lusene bygge sig op i sensommeren og falde igen om vinteren. Med tidslinje, hastighed og
-mulighed for at dreje og vippe kortet.
+### 2. Time machine – 3D map week by week
+A 3D map where every site is a column that grows with the lice count. Play the period from 2019 to
+today and watch lice build up in late summer and fall again in winter. Includes a timeline, speed
+control and the ability to rotate and tilt the map.
 
-Hele afspilningen kører i browseren: ~1.000 lokaliteter × ~400 uger pakkes som én byte pr. værdi
-(≈ 0,6 MB) og tegnes med deck.gl. Kystlinjen er tegnet fra Natural Earth, så der kræves ingen kortnøgle.
+Playback runs entirely in the browser: ~1,000 sites × ~400 weeks are packed as one byte per value
+(≈ 0.6 MB) and rendered with deck.gl. The coastline is drawn from Natural Earth, so no map API key is needed.
 
-### 3. Prognose – modelvalg og ærlig evaluering
-Samme konsulentformat: resumé af testresultatet, prognose 1–4 uger frem med 80 %-interval for det
-valgte område, sammenligning af seks modeller, gevinst pr. område og backtest-forløbet i testperioden.
+### 3. Forecast – model selection and honest evaluation
+Same consulting format: a summary of the test result, a 1–4 week forecast with an 80% interval for
+the selected area, a comparison of six models, the gain by area and the backtest track in the test period.
 
-## Modeller og evaluering
+## Models and evaluation
 
-Seks modeller er backtestet uge for uge (expanding window, gen-træning hvert kvartal). Hver prognose
-laves **kun med data, der fandtes på det tidspunkt** – det er testet automatisk ved at ødelægge alle
-fremtidige data og kontrollere, at prognoserne er uændrede.
+Six models are backtested week by week (expanding window, retrained every quarter). Every forecast is
+made **only with the data available at the time** – tested automatically by corrupting all future data
+and checking that the forecasts are unchanged.
 
-| Model | Idé |
+| Model | Idea |
 |---|---|
-| Naiv | Sidste uges niveau |
-| Sæson-naiv | Samme uge sidste år |
-| Naiv + sæsonændring | Sidste niveau + områdets typiske ændring for årstiden |
-| Ridge-regression | Direkte model pr. horisont på ændringen y(t+h) − y(t) |
-| **Gradient boosting** | Samme mål, ikke-lineær, MAE-tab, fælles for alle områder |
-| Ensemble | Gennemsnit af de tre foregående |
+| Naive | Last week's level |
+| Seasonal naive | Same week last year |
+| Naive + seasonal change | Last level + the area's typical change for the time of year |
+| Ridge regression | Direct model per horizon on the change y(t+h) − y(t) |
+| **Gradient boosting** | Same target, non-linear, MAE loss, pooled across areas |
+| Ensemble | Mean of the three above |
 
-Features: niveau og ændringer over 1–8 uger, glidende gennemsnit og spredning, havtemperatur,
-ISO-uge (sinus/cosinus), områdets sæsonprofil, antal lokaliteter og hele kystens udvikling.
+Features: level and changes over 1–8 weeks, rolling mean and spread, sea temperature, ISO week
+(sine/cosine), the area's seasonal profile, number of sites, and the coast-wide trend.
 
-**Disciplin:** Modeller og indstillinger er valgt på **2023–24** (validering). Resultaterne nedenfor er
-fra **2025 og frem** (test), som ikke er brugt til noget valg.
+**Discipline:** Models and settings were selected on **2023–24** (validation). The results below are
+from **2025 onwards** (test), which was not used for any choice.
 
-| Testperiode 2025→ | 1 uge | 2 uger | 3 uger | 4 uger |
+| Test period 2025→ | 1 week | 2 weeks | 3 weeks | 4 weeks |
 |---|---|---|---|---|
-| MAE naiv | 0,023 | 0,032 | 0,040 | 0,045 |
-| MAE gradient boosting | **0,022** | **0,028** | **0,032** | **0,035** |
-| Skill mod naiv | +5 % | +12 % | +20 % | +23 % |
-| Diebold–Mariano p | 0,021 | < 0,001 | < 0,001 | < 0,001 |
-| Dækning af 80 %-interval | 80 % | 80 % | 78 % | 78 % |
+| MAE naive | 0.023 | 0.032 | 0.040 | 0.045 |
+| MAE gradient boosting | **0.022** | **0.028** | **0.032** | **0.035** |
+| Skill vs. naive | +5% | +12% | +20% | +23% |
+| Diebold–Mariano p | 0.021 | < 0.001 | < 0.001 | < 0.001 |
+| 80% interval coverage | 80% | 80% | 78% | 78% |
 
-Gradient boosting er den eneste model, der slår den naive prognose på alle fire horisonter, og
-forbedringen er statistisk signifikant overalt. Gevinsten vokser med horisonten: den naive prognose er
-svær at slå én uge frem, men modellen fanger sæson og momentum, som betyder mere længere ude.
-Prognoseintervallerne (empiriske kvantiler af modellens egne tidligere fejl pr. område) er velkalibrerede.
+Gradient boosting is the only model that beats the naive forecast at all four horizons, and the
+improvement is statistically significant throughout. The gain grows with the horizon: the naive
+forecast is hard to beat one week ahead, but the model captures seasonality and momentum, which matter
+more further out. The prediction intervals (empirical quantiles of the model's own past errors by area)
+are well calibrated.
 
-Genskab tallene med `python -m lakselus.modelrapport` (et par minutter).
+Reproduce the figures with `python -m lakselus.modelrapport` (a few minutes).
 
-**Forbehold:** Lusebehandlinger er ikke med som forklarende variabel og forklarer en del af de bratte
-fald. Data hentes, som de ser ud i dag; sene rettelser var ikke nødvendigvis kendt i forecast-ugen.
+**Caveats:** Lice treatments are not included as an explanatory variable and account for some of the
+abrupt drops. Data are retrieved as they look today; late corrections were not necessarily known in the
+forecast week.
 
 ## Data
 
-- **Kilde:** [BarentsWatch Fishhealth API](https://www.barentswatch.no/bwapi/openapi/) – bulk-eksporten
-  af ugentlige lusetællinger pr. lokalitet med havtemperatur og produktionsområde, samt
-  produktionsområdernes omrids og trafiklys.
-- **Licens:** NLOD (Norsk lisens for offentlige data). Data levert av BarentsWatch; informasjon om lus
-  er levert av Mattilsynet.
-- **Behandling:** Områdetal er uvægtede gennemsnit over lokaliteter, der har talt lus i ugen (antal fisk
-  pr. lokalitet er ikke med i datasættet). Den nyeste uge medtages først, når mindst 80 % af
-  lokaliteterne har indberettet.
+- **Source:** [BarentsWatch Fishhealth API](https://www.barentswatch.no/bwapi/openapi/) – the bulk export
+  of weekly lice counts per site with sea temperature and production area, plus production-area
+  boundaries and traffic lights.
+- **Licence:** NLOD (Norwegian Licence for Open Government Data). Data delivered by BarentsWatch;
+  information about lice is provided by the Norwegian Food Safety Authority (Mattilsynet).
+- **Processing:** Area figures are unweighted means over sites that counted lice that week (the number of
+  fish per site is not in the dataset). The latest week is only included once at least 80% of sites have
+  reported.
 
-## Kom i gang
+## Getting started
 
-1. Opret bruger og API-klient på <https://www.barentswatch.no/minside/> (vælg **API-klient**).
-   Klient-id har formen `din@email.dk:klientnavn`.
-2. Kopiér `.env.example` til `.env` og udfyld `BW_CLIENT_ID` og `BW_CLIENT_SECRET`.
-   `.env` er i `.gitignore` og må aldrig committes.
-3. Installér, hent data og start appen:
+1. Create a user and an API client at <https://www.barentswatch.no/minside/> (choose **API client**).
+   The client id has the form `you@example.com:clientname`.
+2. Copy `.env.example` to `.env` and fill in `BW_CLIENT_ID` and `BW_CLIENT_SECRET`.
+   `.env` is in `.gitignore` and must never be committed.
+3. Install, fetch data and start the app:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
@@ -101,27 +103,29 @@ python -m lakselus.hent --fra 2019
 streamlit run app.py
 ```
 
-Kør tests med `pytest`.
+Run the tests with `pytest`.
 
-## Struktur
+## Structure
+
+The code uses Danish identifiers and comments (the author is Danish); the app and this README are in English.
 
 ```
-app.py                     navigation og fælles layout
+app.py                     navigation and shared layout
 sider/
-  oversigt.py              ugebrief: resumé, figur 1–4, metode
-  tidsmaskine.py           3D-kort afspillet uge for uge
-  prognose.py              prognose og backtest pr. område
+  oversigt.py              Overview: summary, exhibits 1–4, method
+  tidsmaskine.py           Time machine: 3D map played week by week
+  prognose.py              Forecast: model comparison and backtest by area
 src/lakselus/
-  barentswatch.py          API-klient (OAuth2 client credentials)
-  hent.py                  henter rådata til lokal cache
-  data.py                  dataklargøring: ugentligt panel pr. område
-  evaluering.py            baselines, backtest, MAE/skill, Diebold–Mariano, intervaller
-  modeller.py              features og modelkandidater (ridge, gradient boosting, ensemble)
-  modelrapport.py          fuld backtest, modelvalg på validering, rapport på test
-  appdata.py               cachede opslag og nøgletal til appen
-  tidsmaskine.py/.html     datapakning og deck.gl-visning
-  udseende.py              designsystem: farver, typografi, figurer, Altair-tema
-analyse/                   notebook med dataklargøring og baselines
-data/raw/                  lokal cache af rådata (ikke i git)
+  barentswatch.py          API client (OAuth2 client credentials)
+  hent.py                  fetches raw data into a local cache
+  data.py                  data preparation: weekly panel by area
+  evaluering.py            baselines, backtest, MAE/skill, Diebold–Mariano, intervals
+  modeller.py              features and model candidates (ridge, gradient boosting, ensemble)
+  modelrapport.py          full backtest, selection on validation, report on test
+  appdata.py               cached lookups and key figures for the app
+  tidsmaskine.py/.html     data packing and deck.gl view
+  udseende.py              design system: colours, typography, exhibits, Altair theme
+analyse/                   notebook with data preparation and baselines
+data/raw/                  local cache of raw data (not in git)
 tests/
 ```

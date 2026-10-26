@@ -127,12 +127,12 @@ def resume(punkter: list[tuple[str, str]]) -> str:
 
 
 def figur(nr: int, titel: str, undertitel: str) -> str:
-    return (f'<div class="figur"><div class="label">Figur {nr}</div>'
+    return (f'<div class="figur"><div class="label">Exhibit {nr}</div>'
             f'<div class="titel">{titel}</div><div class="undertitel">{undertitel}</div></div>')
 
 
 def kilde(tekst: str = "") -> str:
-    return f'<div class="kilde">Kilde: BarentsWatch / Mattilsynet (NLOD); egen analyse.{" " + tekst if tekst else ""}</div>'
+    return f'<div class="kilde">Source: BarentsWatch / Mattilsynet (NLOD); own analysis.{" " + tekst if tekst else ""}</div>'
 
 
 def kort(etiket: str, tal: str, note: str = "", ikon_navn: str = "", bar: tuple[float, str] | None = None) -> str:
@@ -148,13 +148,13 @@ def lus_niveau(v: float) -> str:
 def trend(nu: float, foer: float) -> tuple[str, str, str]:
     """Ikon, farve og tekst for udviklingen siden de 4 foregående uger."""
     if pd.isna(foer) or foer == 0:
-        return "trending_flat", "#6B7A86", "ingen sammenligning"
+        return "trending_flat", "#6B7A86", "no comparison"
     rel = nu / foer - 1
     if rel > 0.15:
-        return "trending_up", "#D64545", f"stigende ({rel:+.0%} mod 4 uger før)"
+        return "trending_up", "#D64545", f"rising ({rel:+.0%} vs. previous 4 weeks)"
     if rel < -0.15:
-        return "trending_down", "#1F7A8C", f"faldende ({rel:+.0%} mod 4 uger før)"
-    return "trending_flat", "#6B7A86", f"stabil ({rel:+.0%} mod 4 uger før)"
+        return "trending_down", "#1F7A8C", f"falling ({rel:+.0%} vs. previous 4 weeks)"
+    return "trending_flat", "#6B7A86", f"stable ({rel:+.0%} vs. previous 4 weeks)"
 
 
 @alt.theme.register("konsulent", enable=True)
