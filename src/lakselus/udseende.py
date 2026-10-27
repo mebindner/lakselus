@@ -43,7 +43,19 @@ html, body, [class*="css"], .stMarkdown, p, li, td, th, label, button, input { f
 .stMarkdown p, .stMarkdown li { color: #2A3A46; }
 h1, h2, h3 { font-family: 'Source Serif 4', Georgia, serif !important; font-weight: 600 !important; color: #0B2230; letter-spacing: -0.01em; }
 .block-container { padding-top: 3.4rem; max-width: 1160px; }
-header[data-testid="stHeader"] { background: rgba(255,255,255,.94); backdrop-filter: blur(8px); border-bottom: 1px solid #E1E6EA; }
+/* Topbjælke: mørk blå navigation, så det er tydeligt at siderne vælges her */
+header[data-testid="stHeader"] { background: #0B2230; border-bottom: 3px solid #E8603C; }
+header[data-testid="stHeader"] button, header[data-testid="stHeader"] [data-testid="stIconMaterial"] { color: #FFFFFF; }
+[data-testid="stTopNavLink"] { color: #C9D4DC !important; background: transparent !important; border-radius: 0;
+  font-weight: 500; letter-spacing: .01em; box-shadow: inset 0 -3px 0 transparent; transition: color .15s, box-shadow .15s; }
+[data-testid="stTopNavLink"] span, [data-testid="stTopNavLink"] div, [data-testid="stTopNavLink"] p { color: inherit !important; }
+[data-testid="stTopNavLink"] p { font-size: .92rem; }
+[data-testid="stTopNavLink"]:hover { color: #FFFFFF !important; box-shadow: inset 0 -3px 0 rgba(232,96,60,.5); }
+[data-testid="stTopNavLink"][aria-current="page"] { color: #FFFFFF !important; font-weight: 600; box-shadow: inset 0 -3px 0 #E8603C; }
+/* På mobil foldes siderne sammen bag en knap – giv den en tydelig "Pages"-etiket */
+[data-testid="stExpandSidebarButton"] { width: auto !important; gap: .35rem; padding: 0 .7rem !important;
+  border: 1px solid rgba(255,255,255,.35) !important; border-radius: 6px; color: #FFFFFF !important; }
+[data-testid="stExpandSidebarButton"]::after { content: "Pages"; font: 600 .85rem Inter, sans-serif; color: #FFFFFF; }
 [data-testid="stCaptionContainer"] { color: #6B7A86; }
 hr { border-color: #E1E6EA; }
 
@@ -51,7 +63,7 @@ hr { border-color: #E1E6EA; }
         display: inline-block; vertical-align: -0.2em; font-size: 1.15em; -webkit-font-smoothing: antialiased; }
 
 /* Forside / sidehoved */
-.sidehoved { border-top: 6px solid #0B2230; padding: 1.3rem 0 1.2rem; margin-bottom: 1.6rem; border-bottom: 1px solid #E1E6EA; }
+.sidehoved { padding: .6rem 0 1.2rem; margin-bottom: 1.6rem; border-bottom: 1px solid #E1E6EA; }
 .sidehoved .overlinje { font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #C4472A; }
 .sidehoved h1 { font-size: clamp(1.7rem, 3.4vw, 2.5rem) !important; line-height: 1.15; margin: .5rem 0 .6rem; padding: 0; max-width: 24em; }
 .sidehoved .under { color: #4A5A66; font-size: 1rem; max-width: 52em; margin: 0; line-height: 1.55; }
