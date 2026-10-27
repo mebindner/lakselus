@@ -1,0 +1,30 @@
+# Besøger den offentlige app hver 6. time, så Streamlit Community Cloud ikke lægger den i dvale
+# (det sker efter 12 timer uden trafik). Besøgene tæller med i Streamlits egen besøgsstatistik.
+name: Hold appen vågen
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"   # hver 6. time, skævt i forhold til hele timer
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  besoeg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installér Playwright
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Besøg appen
+        run: python .github/hold_vaagen.py
