@@ -42,6 +42,36 @@
                     background: rgba(8,26,37,.82); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); }
   #kontrol button:hover { background: rgba(242,107,79,.9); filter: none; }
   #kontrol #knap3d { font-size: 11px; letter-spacing: .02em; }
+  #kontrol #zoomInd, #kontrol #zoomUd { font-size: 20px; font-weight: 500; line-height: 1; }
+  #kontrol .skille { height: 6px; }
+  /* Etiket ved siden af knappen med det samme ved hover – ikonerne alene er svære at gætte */
+  #kontrol button { position: relative; }
+  @media (hover: hover) {
+    #kontrol button[data-label]:hover::after { content: attr(data-label); position: absolute; right: 42px; top: 50%;
+      transform: translateY(-50%); white-space: nowrap; background: rgba(8,26,37,.94); color: #FFFFFF;
+      border: 1px solid rgba(255,255,255,.12); font: 500 12px 'Inter', sans-serif; padding: 5px 9px; border-radius: 6px;
+      pointer-events: none; }
+  }
+  /* Kort besked, når man scroller over kortet uden Ctrl/⌘ – siden ruller, kortet zoomer ikke */
+  #scrollhint { left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(8,26,37,.88);
+                backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+                padding: 10px 16px; font-size: 14px; font-weight: 500; opacity: 0; transition: opacity .25s; }
+  #scrollhint.vis { opacity: 1; }
+  kbd { font: 600 12px 'Inter', sans-serif; background: rgba(255,255,255,.14); border-radius: 4px; padding: 1px 6px; }
+  /* Hjælpeboble efter kamerasvinget: peger på kortknapperne og forklarer, hvordan man selv navigerer */
+  #hjaelp { right: 70px; top: 128px; width: 236px; pointer-events: auto; background: #F26B4F; color: #FFFFFF;
+            border-radius: 8px; padding: 10px 30px 11px 13px; font-size: 12.5px; line-height: 1.5;
+            box-shadow: 0 10px 28px rgba(0,0,0,.4); opacity: 0; visibility: hidden; transform: translateX(8px);
+            transition: opacity .5s, transform .5s, visibility .5s; }
+  #hjaelp.vis { opacity: 1; visibility: visible; transform: none; }
+  #hjaelp::after { content: ""; position: absolute; right: -6px; top: 18px; border: 6px solid transparent;
+                   border-right: 0; border-left-color: #F26B4F; }
+  #hjaelp b { display: block; font-size: 13.5px; margin-bottom: 3px; }
+  #hjaelp .luk { position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; background: transparent;
+                 font-size: 16px; line-height: 1; padding: 0; }
+  #kontrol.puls button { animation: puls 1.4s ease-in-out 3; }
+  @keyframes puls { 0%, 100% { box-shadow: 0 0 0 0 rgba(242,107,79,0); }
+                    50% { box-shadow: 0 0 0 4px rgba(242,107,79,.6); border-color: #F26B4F; } }
   .touch { display: none; }
   @media (hover: none) { .mus { display: none; } .touch { display: inline; } }
   /* Smal skærm (mobil): forklaringen flyttes ned over tidslinjen, så den ikke dækker ugenummeret */
@@ -54,6 +84,7 @@
     #forklaring .skala { width: 140px; }
     #kilde { display: none; }
     #kontrol { right: 12px; top: 14px; }
+    #hjaelp { left: 16px; right: 58px; width: auto; top: 100px; font-size: 12px; }
     #panel { left: 10px; right: 10px; bottom: 10px; padding: 8px 10px 10px; }
     .aar { font-size: 10px; }
   }
@@ -72,16 +103,28 @@
   <b style="color:#fff">Adult female lice per fish</b>
   <div class="skala"></div>
   <div class="ticks"><span>0</span><span>0.2</span><span>0.5</span><span>1+</span></div>
-  <div style="margin-top:6px;opacity:.75"><span class="mus">Drag to pan · buttons or right-click + drag to rotate</span><span class="touch">Drag to pan · buttons or two fingers to rotate</span></div>
+  <div style="margin-top:6px;opacity:.75"><span class="mus">Drag to move · right-click + drag to tilt · <kbd class="zoomtast">Ctrl</kbd> + scroll to zoom</span><span class="touch">Drag to move · pinch to zoom · two fingers to tilt</span></div>
 </div>
 
 <div id="kilde" class="lag">Coastline: Natural Earth</div>
 
 <div id="kontrol" class="lag">
-  <button id="drejV" title="Rotate left" aria-label="Rotate left">↺</button>
-  <button id="drejH" title="Rotate right" aria-label="Rotate right">↻</button>
-  <button id="knap3d" title="Switch between flat and 3D view" aria-label="Toggle 2D/3D">2D</button>
-  <button id="nulstil" title="Reset view" aria-label="Reset view">⌂</button>
+  <button id="zoomInd" data-label="Zoom in" aria-label="Zoom in">+</button>
+  <button id="zoomUd" data-label="Zoom out" aria-label="Zoom out">−</button>
+  <span class="skille"></span>
+  <button id="drejV" data-label="Rotate left" aria-label="Rotate left">↺</button>
+  <button id="drejH" data-label="Rotate right" aria-label="Rotate right">↻</button>
+  <button id="knap3d" data-label="Switch to flat view" aria-label="Toggle 2D/3D">2D</button>
+  <button id="nulstil" data-label="Reset view" aria-label="Reset view">⌂</button>
+</div>
+
+<div id="scrollhint" class="lag"><span class="mus">Use <kbd class="zoomtast">Ctrl</kbd> + scroll to zoom the map</span><span class="touch">Pinch with two fingers to zoom</span></div>
+
+<div id="hjaelp" class="lag" role="status">
+  <button class="luk" aria-label="Close">×</button>
+  <b>Your turn – explore the map</b>
+  <span class="mus">Drag to move · right-click + drag to tilt and rotate · <kbd class="zoomtast">Ctrl</kbd> + scroll to zoom.<br>Or use the buttons: zoom, rotate, 2D/3D and reset.</span>
+  <span class="touch">Drag to move · pinch to zoom · two fingers to tilt and rotate.<br>Or use the buttons: zoom, rotate, 2D/3D and reset.</span>
 </div>
 
 <div id="panel" class="lag">
@@ -137,17 +180,25 @@ fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json")
     kort.setProps({ layers: lag() });
   });
 
+// Zoomgrænser: fra hele kysten til enkelte fjorde – så man ikke farer vild.
+const ZOOM = [2.6, 8.5];
 // På en smal (stående) skærm vises hele kysten lige op og ned; ellers skråt fra sydvest.
 const START = innerWidth < 600
-  ? { longitude: 14.6, latitude: 64.4, zoom: 3.05, pitch: 35, bearing: 0, maxPitch: 75 }
-  : { longitude: 14.0, latitude: 64.2, zoom: 3.95, pitch: 46, bearing: 12, maxPitch: 75 };
-let visning = START;
+  ? { longitude: 14.6, latitude: 64.4, zoom: 3.05, pitch: 35, bearing: 0, maxPitch: 75, minZoom: ZOOM[0], maxZoom: ZOOM[1] }
+  : { longitude: 14.0, latitude: 64.2, zoom: 3.95, pitch: 46, bearing: 12, maxPitch: 75, minZoom: ZOOM[0], maxZoom: ZOOM[1] };
+let visning = START, venterPaaHjaelp = false;
 
 const kort = new deck.Deck({
   parent: document.getElementById("kort"),
   initialViewState: START,
   controller: { scrollZoom: false, touchRotate: true },
-  onViewStateChange: ({ viewState }) => { visning = viewState; opdaterKnap(); },
+  onViewStateChange: ({ viewState }) => {
+    visning = viewState; opdaterKnap();
+    // Boblen vises, når kameraet faktisk er tilbage efter svinget – også hvis browseren har været langsom.
+    if (venterPaaHjaelp && Math.abs(viewState.pitch - START.pitch) < 0.3 && Math.abs(viewState.zoom - START.zoom) < 0.01) {
+      venterPaaHjaelp = false; visHjaelp();
+    }
+  },
   // Rører brugeren selv kortet, stopper kamerasvinget, så det ikke tager kameraet tilbage.
   onInteractionStateChange: s => { if (s.isDragging || s.isPanning || s.isRotating || s.isZooming) stopSving(); },
 });
@@ -166,16 +217,51 @@ const SVING = innerWidth < 600
   ? { longitude: 8.0, latitude: 61.6, zoom: 4.0, pitch: 60, bearing: -8 }
   : { longitude: 7.0, latitude: 61.8, zoom: 4.7, pitch: 62, bearing: -10 };
 const blid = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-let svingTimere = [];
-function stopSving() { svingTimere.forEach(clearTimeout); svingTimere = []; }
-if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-  svingTimere = [
-    setTimeout(() => flyt(SVING, 6000, blid), 3000),
-    setTimeout(() => { svingTimere = []; flyt(START, 6000, blid); }, 3000 + 6000 + 3000),
-  ];
+// Når kameraet er tilbage, peger en boble på knapperne og forklarer, hvordan man selv navigerer.
+const hjaelp = document.getElementById("hjaelp"), kontrol = document.getElementById("kontrol");
+let hjaelpTimer = null;
+function visHjaelp() {
+  hjaelp.classList.add("vis"); kontrol.classList.add("puls");
+  hjaelpTimer = setTimeout(skjulHjaelp, 12000);
 }
+function skjulHjaelp() { clearTimeout(hjaelpTimer); hjaelp.classList.remove("vis"); kontrol.classList.remove("puls"); }
+hjaelp.querySelector(".luk").addEventListener("click", skjulHjaelp);
+
+// Rører brugeren kortet undervejs, stopper både svinget og boblen – så har de selv fundet ud af det.
+let svingTimere = [];
+function stopSving() { svingTimere.forEach(clearTimeout); svingTimere = []; venterPaaHjaelp = false; skjulHjaelp(); }
+svingTimere = matchMedia("(prefers-reduced-motion: reduce)").matches
+  ? [setTimeout(visHjaelp, 2500)]
+  : [
+      setTimeout(() => flyt(SVING, 6000, blid), 3000),
+      setTimeout(() => { venterPaaHjaelp = true; flyt(START, 6000, blid); }, 3000 + 6000 + 3000),
+    ];
 const knap3d = document.getElementById("knap3d");
-function opdaterKnap() { knap3d.textContent = visning.pitch > 5 ? "2D" : "3D"; }
+function opdaterKnap() {
+  knap3d.textContent = visning.pitch > 5 ? "2D" : "3D";
+  knap3d.dataset.label = visning.pitch > 5 ? "Switch to flat view" : "Switch to 3D view";
+}
+const zoom = (z, ms = 350) => flyt({ zoom: Math.max(ZOOM[0], Math.min(ZOOM[1], z)) }, ms);
+document.getElementById("zoomInd").addEventListener("click", () => { stopSving(); zoom(visning.zoom + 0.7); });
+document.getElementById("zoomUd").addEventListener("click", () => { stopSving(); zoom(visning.zoom - 0.7); });
+
+// Almindelig scroll ruller siden (kortet ligger midt på en side). Ctrl/⌘ + scroll – og knib på en
+// touchpad, som browseren sender som Ctrl + scroll – zoomer kortet; ellers vises en kort besked.
+const MAC = /Mac|iPhone|iPad/.test(navigator.platform);
+document.querySelectorAll(".zoomtast").forEach(k => { k.textContent = MAC ? "⌘" : "Ctrl"; });
+const scrollhint = document.getElementById("scrollhint");
+let scrollTimer = null;
+// deck.gl blokerer ellers al scroll over kortet, så siden sidder fast – hændelsen fanges derfor før deck.gl.
+document.getElementById("kort").addEventListener("wheel", e => {
+  e.stopPropagation();
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault(); stopSving();
+    zoom(visning.zoom - e.deltaY * (e.deltaMode ? 0.06 : 0.006), 0);
+  } else {
+    scrollhint.classList.add("vis"); clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => scrollhint.classList.remove("vis"), 1500);
+  }
+}, { passive: false, capture: true });
 document.getElementById("drejV").addEventListener("click", () => { stopSving(); flyt({ bearing: visning.bearing - 30 }); });
 document.getElementById("drejH").addEventListener("click", () => { stopSving(); flyt({ bearing: visning.bearing + 30 }); });
 knap3d.addEventListener("click", () => { stopSving(); flyt({ pitch: visning.pitch > 5 ? 0 : START.pitch }); });
