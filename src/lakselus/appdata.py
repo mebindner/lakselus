@@ -5,26 +5,45 @@ import ast
 import pandas as pd
 import streamlit as st
 
-from lakselus import data, evaluering as ev
+from lakselus import data
 from lakselus.config import DATA_RAW
 from lakselus.data import APP_PRODUKTIONSOMRAADER
 
 TRAFIKLYS = {"green": "Green", "yellow": "Yellow", "red": "Red"}
 
 
-@st.cache_data(show_spinner="Loading lice counts …")
+def data_version() -> float:
+    """Seneste ændringstid for datafilerne.
+
+    Bruges som cache-nøgle: appen holdes vågen og genstarter sjældent, så uden den ville en ugentlig
+    opdatering (nye filer via git push) aldrig blive indlæst – cachen ville vise de gamle tal.
+    """
+    filer = [*DATA_RAW.glob("*.csv"), data.APP_LUSETAL, APP_PRODUKTIONSOMRAADER]
+    return max((f.stat().st_mtime for f in filer if f.exists()), default=0.0)
+
+
 def indlaes():
+    return _indlaes(data_version())
+
+
+@st.cache_data(show_spinner="Loading lice counts …", max_entries=2)
+def _indlaes(version: float):
     raa = data.indlaes_raa()
     return raa, data.ugentligt_panel(raa), data.omraade_navne(raa)
 
 
-@st.cache_data
 def omraader() -> pd.DataFrame:
+    return _omraader(data_version())
+
+
+@st.cache_data(max_entries=2)
+def _omraader(version: float) -> pd.DataFrame:
     """Produktionsområder med omrids (lon/lat-polygon) og gældende trafiklysfarve."""
     fil = DATA_RAW / "produktionsomraader.csv"
     po = pd.read_csv(fil if fil.exists() else APP_PRODUKTIONSOMRAADER)
     po["polygon"] = po["geometry.coordinates"].map(lambda s: ast.literal_eval(s)[0])
     po["trafiklys"] = po["colors"].map(lambda s: ast.literal_eval(s)[-1]["color"])
+    po["name"] = [data.RETTEDE_NAVNE.get(i, n) for i, n in zip(po["id"], po["name"])]
     return po[["id", "name", "polygon", "trafiklys"]].rename(columns={"id": "omraade", "name": "navn"})
 
 
@@ -56,7 +75,7 @@ def saesonprofil(panel: pd.DataFrame) -> pd.DataFrame:
     return tidl.join(nu).reset_index().assign(aar=i_aar, foerste_aar=p["aar"].min())
 
 
-@st.cache_data(show_spinner="Running full backtest of all models (takes a few minutes the first time) …")
+@st.cache_data(show_spinner="Running full backtest of all models (takes a few minutes the first time) …", max_entries=2)
 def backtest_resultater(panel: pd.DataFrame) -> pd.DataFrame:
     """Backtest af alle modeller. Læses fra disk og genberegnes kun, når der er kommet nye uger."""
     from lakselus import modelrapport
@@ -72,14 +91,14 @@ def backtest_resultater(panel: pd.DataFrame) -> pd.DataFrame:
     return res
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=2)
 def model_opsummering(res: pd.DataFrame) -> dict:
     from lakselus import modelrapport
 
     return modelrapport.opsummer(res)
 
 
-@st.cache_data(show_spinner="Training the selected model on all data …")
+@st.cache_data(show_spinner="Training the selected model on all data …", max_entries=2)
 def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame) -> pd.DataFrame:
     """Prognose 1–4 uger frem med 80 %-interval. Læses fra den ugentlige kørsel, hvis den passer til data."""
     from lakselus import modelrapport

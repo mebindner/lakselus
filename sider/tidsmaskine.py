@@ -14,14 +14,14 @@ st.markdown(sidehoved(
 ), unsafe_allow_html=True)
 
 
-@st.cache_data(show_spinner="Packing seven years of lice counts …")
-def side_html(skabelon_aendret: float) -> str:
-    # Argumentet gør, at cachen fornyes, når HTML-skabelonen ændres.
+@st.cache_data(show_spinner="Packing seven years of lice counts …", max_entries=2)
+def side_html(skabelon_aendret: float, data_version: float) -> str:
+    # Argumenterne gør, at cachen fornyes, når HTML-skabelonen eller data ændres.
     raa, _, _ = appdata.indlaes()
     return tidsmaskine.html(tidsmaskine.pak(raa))
 
 
-st.iframe(side_html(tidsmaskine.SKABELON.stat().st_mtime), height=760)
+st.iframe(side_html(tidsmaskine.SKABELON.stat().st_mtime, appdata.data_version()), height=760)
 st.caption(
     "Columns are shown only in weeks when the site counted lice (fallow sites disappear). "
     "The map plays entirely in your browser. Coastline from Natural Earth (public domain)."

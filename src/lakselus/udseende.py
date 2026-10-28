@@ -99,7 +99,10 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .tabel .minibar { display: inline-block; height: 6px; border-radius: 1px; vertical-align: middle; margin-left: .45rem; }
 /* Brede tabeller og små multipler scrolles vandret på mobil i stedet for at blive skåret af */
 [data-testid="stMarkdownContainer"]:has(table.tabel), [data-testid="stFullScreenFrame"]:has([data-testid="stVegaLiteChart"]) { overflow-x: auto; }
+.st-key-smaa_mobil { display: none; }
 @media (max-width: 640px) {
+  .st-key-smaa_bred { display: none; }
+  .st-key-smaa_mobil { display: block; }
   .tabel .ekstra { display: none; }             /* sekundære kolonner skjules på mobil */
   .tabel th, .tabel th.tal { white-space: normal; letter-spacing: .04em; }
   .tabel td, .tabel th { padding: .4rem .35rem; }

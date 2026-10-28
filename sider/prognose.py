@@ -18,7 +18,7 @@ def pct(v: float) -> str:
 
 
 def p_tekst(p: float) -> str:
-    return "< 0,001" if p < 0.001 else tal(p, 3)
+    return "< 0.001" if p < 0.001 else tal(p, 3)
 
 
 raa, panel, navne = appdata.indlaes()
@@ -125,12 +125,12 @@ for m in mae_t.columns:
     p4 = "–" if m == "naiv" else "worse" if sk_t.loc[4, m] < 0 else p_tekst(dm.loc[4, m])
     raekker.append(
         f'<tr{stil}><td class="navn">{NAVNE[m]}{" ★" if m == valgt else ""}</td>{celler}'
-        f'<td class="tal">{sk(1)}</td><td class="tal">{sk(4)}</td><td class="tal">{p4}</td>'
+        f'<td class="tal ekstra">{sk(1)}</td><td class="tal">{sk(4)}</td><td class="tal">{p4}</td>'
         f'<td class="tal ekstra">{"–" if m == "naiv" else pct(sk_v.loc[:, m].mean())}</td></tr>'
     )
 st.markdown(
     '<table class="tabel"><thead><tr><th>Model</th><th class="tal">MAE 1 week</th><th class="tal ekstra">2 weeks</th>'
-    '<th class="tal ekstra">3 weeks</th><th class="tal">4 weeks</th><th class="tal">Skill 1 week</th><th class="tal">Skill 4 weeks</th>'
+    '<th class="tal ekstra">3 weeks</th><th class="tal">4 weeks</th><th class="tal ekstra">Skill 1 week</th><th class="tal">Skill 4 weeks</th>'
     '<th class="tal">DM p (4 weeks)</th><th class="tal ekstra">Skill validation</th></tr></thead><tbody>'
     + "".join(raekker) + "</tbody></table>",
     unsafe_allow_html=True,

@@ -76,6 +76,11 @@ def ugentligt_panel(raa: pd.DataFrame) -> pd.DataFrame:
     return panel
 
 
+# Officielle navne (Fiskeridirektoratet), hvor BarentsWatchs to kilder staver forskelligt:
+# lusetallene skriver "Nordhordaland", områdelisten "Ryfylket".
+RETTEDE_NAVNE = {2: "Ryfylke", 4: "Nordhordland til Stadt"}
+
+
 def omraade_navne(raa: pd.DataFrame) -> dict[int, str]:
     navne = raa.dropna(subset=["omraade"]).drop_duplicates("omraade")
-    return dict(zip(navne["omraade"].astype(int), navne["omraade_navn"]))
+    return dict(zip(navne["omraade"].astype(int), navne["omraade_navn"])) | RETTEDE_NAVNE

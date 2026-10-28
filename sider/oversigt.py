@@ -176,15 +176,15 @@ for o, s in status.iterrows():
     farve = LUS_FARVER[lus_niveau(s.hunlus)]
     lys_kant, _, lys_tekst = LYS_FARVER[s.trafiklys]
     raekker.append(
-        f'<tr><td class="po">{o}</td><td class="navn">{s.navn}{" <span style=\'color:#6B7A86\'>*</span>" if s.n_lok < MIN_LOK else ""}</td>'
+        f'<tr><td class="po ekstra">{o}</td><td class="navn">{s.navn}{" <span style=\'color:#6B7A86\'>*</span>" if s.n_lok < MIN_LOK else ""}</td>'
         f'<td><i class="prik" style="background:{lys_kant}"></i><span class="ekstra">{appdata.TRAFIKLYS[s.trafiklys]}</span></td>'
         f'<td class="tal">{tal(s.hunlus)}<span class="minibar" style="width:{min(s.hunlus / 0.5, 1) * 60:.0f}px;background:{farve}"></span></td>'
-        f'<td class="tal" style="color:{t_farve}">{ikon(t_ikon, t_farve, t_tekst)} {aend_tekst}</td>'
+        f'<td class="tal" style="color:{t_farve}"><span class="ekstra">{ikon(t_ikon, t_farve, t_tekst)}</span> {aend_tekst}</td>'
         f'<td class="tal" style="color:{"#D64545" if s.andel_over >= .1 else "inherit"}">{pct(s.andel_over)}</td>'
         f'<td class="tal ekstra">{tal(s.temp, 1)} °C</td><td class="tal ekstra">{int(s.n_lok)}</td></tr>'
     )
 st.markdown(
-    '<table class="tabel"><thead><tr><th>PO</th><th>Production area</th><th>Traffic<span class="ekstra"> light</span></th>'
+    '<table class="tabel"><thead><tr><th class="ekstra">PO</th><th>Production area</th><th>Traffic<span class="ekstra"> light</span></th>'
     '<th class="tal">Female lice / fish</th><th class="tal">Δ 4 weeks</th><th class="tal">Above limit</th>'
     '<th class="tal ekstra">Sea temp.</th><th class="tal ekstra">Sites</th></tr></thead><tbody>'
     + "".join(raekker) + "</tbody></table>",
@@ -213,10 +213,17 @@ sm["er_sidste"] = sm["uge"] == sm.dropna(subset=["i_aar"])["uge"].max()
 nu_pkt = basis.mark_circle(color=FARVER["laks"], size=26, opacity=1).encode(y="i_aar:Q").transform_filter("datum.er_sidste")
 nu_tal = basis.mark_text(align="left", dx=5, fontSize=10, fontWeight=600, color=FARVER["laks_tekst"]).encode(
     y="i_aar:Q", text=alt.Text("i_aar:Q", format=".2f")).transform_filter("datum.er_sidste")
-smaa = alt.layer(baand, snit, nu, nu_pkt, nu_tal, data=sm).properties(width=225, height=90).facet(
-    facet=alt.Facet("titel:N", sort=orden, header=alt.Header(labelFontSize=11, labelPadding=4)), columns=3,
-).resolve_scale(y="shared")
-st.altair_chart(smaa, width="content")
+def smaa_multipler(kolonner: int, bredde: int, hoejde: int) -> alt.FacetChart:
+    return alt.layer(baand, snit, nu, nu_pkt, nu_tal, data=sm).properties(width=bredde, height=hoejde).facet(
+        facet=alt.Facet("titel:N", sort=orden, header=alt.Header(labelFontSize=11, labelPadding=4)), columns=kolonner,
+    ).resolve_scale(y="shared")
+
+
+# Tre kolonner på brede skærme, én på mobil – CSS i udseende.py viser den ene og skjuler den anden.
+with st.container(key="smaa_bred"):
+    st.altair_chart(smaa_multipler(3, 225, 90), width="content")
+with st.container(key="smaa_mobil"):
+    st.altair_chart(smaa_multipler(1, 285, 64), width="content")
 st.markdown(kilde(f"Week 53 is omitted. Mean and band are based on {foerste}–{i_aar - 1}."), unsafe_allow_html=True)
 
 # --- Figur 4: sæsonmønster -----------------------------------------------------------
