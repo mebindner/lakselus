@@ -148,21 +148,38 @@ const kort = new deck.Deck({
   initialViewState: START,
   controller: { scrollZoom: false, touchRotate: true },
   onViewStateChange: ({ viewState }) => { visning = viewState; opdaterKnap(); },
+  // Rører brugeren selv kortet, stopper kamerasvinget, så det ikke tager kameraet tilbage.
+  onInteractionStateChange: s => { if (s.isDragging || s.isPanning || s.isRotating || s.isZooming) stopSving(); },
 });
 
 // --- Kortknapper: drej, 2D/3D og nulstil – så det er tydeligt, at kortet er 3D ----------
 const glid = new deck.LinearInterpolator(["longitude", "latitude", "zoom", "pitch", "bearing"]);
-function flyt(aendring) {
+function flyt(aendring, ms = 700, easing = t => t) {
   visning = { ...visning, ...aendring };
-  kort.setProps({ initialViewState: { ...visning, transitionDuration: 700, transitionInterpolator: glid } });
+  kort.setProps({ initialViewState: { ...visning, transitionDuration: ms, transitionInterpolator: glid, transitionEasing: easing } });
   opdaterKnap();
+}
+
+// --- Kamerasving ved start: kameraet glider roligt ned i en lav vinkel over Vestlandet og tilbage ----
+// Viser, at kortet er 3D, og at søjlerne har højde. Én gang pr. visning; springes over ved "reduceret bevægelse".
+const SVING = innerWidth < 600
+  ? { longitude: 8.0, latitude: 61.6, zoom: 4.0, pitch: 60, bearing: -8 }
+  : { longitude: 7.0, latitude: 61.8, zoom: 4.7, pitch: 62, bearing: -10 };
+const blid = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+let svingTimere = [];
+function stopSving() { svingTimere.forEach(clearTimeout); svingTimere = []; }
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  svingTimere = [
+    setTimeout(() => flyt(SVING, 6000, blid), 3000),
+    setTimeout(() => { svingTimere = []; flyt(START, 6000, blid); }, 3000 + 6000 + 3000),
+  ];
 }
 const knap3d = document.getElementById("knap3d");
 function opdaterKnap() { knap3d.textContent = visning.pitch > 5 ? "2D" : "3D"; }
-document.getElementById("drejV").addEventListener("click", () => flyt({ bearing: visning.bearing - 30 }));
-document.getElementById("drejH").addEventListener("click", () => flyt({ bearing: visning.bearing + 30 }));
-knap3d.addEventListener("click", () => flyt({ pitch: visning.pitch > 5 ? 0 : START.pitch }));
-document.getElementById("nulstil").addEventListener("click", () => flyt(START));
+document.getElementById("drejV").addEventListener("click", () => { stopSving(); flyt({ bearing: visning.bearing - 30 }); });
+document.getElementById("drejH").addEventListener("click", () => { stopSving(); flyt({ bearing: visning.bearing + 30 }); });
+knap3d.addEventListener("click", () => { stopSving(); flyt({ pitch: visning.pitch > 5 ? 0 : START.pitch }); });
+document.getElementById("nulstil").addEventListener("click", () => { stopSving(); flyt(START); });
 
 function lag() {
   const base = uge * N, fart = +document.getElementById("fart").value;
