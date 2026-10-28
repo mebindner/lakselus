@@ -80,22 +80,13 @@ def model_opsummering(res: pd.DataFrame) -> dict:
 
 
 @st.cache_data(show_spinner="Training the selected model on all data …")
-def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame, niveau: float = 0.8) -> pd.DataFrame:
-    """Prognose 1–4 uger frem fra seneste uge med den valgte model og et 80 %-interval pr. område.
+def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame) -> pd.DataFrame:
+    """Prognose 1–4 uger frem med 80 %-interval. Læses fra den ugentlige kørsel, hvis den passer til data."""
+    from lakselus import modelrapport
 
-    Intervallet er de empiriske kvantiler af modellens egne backtest-fejl for området og horisonten.
-    """
-    from lakselus import modeller
-
-    f = (modeller.kandidater() | {"naiv": ev.naiv, "saeson_naiv": ev.saeson_naiv})[model]
-    resid = res[res["model"] == model].assign(r=lambda d: d["faktisk"] - d["pred"])
-    q = resid.groupby(["omraade", "h"])["r"].quantile([(1 - niveau) / 2, (1 + niveau) / 2]).unstack()
-    q.columns = ["lo_r", "hi_r"]
-    seneste = panel["uge_start"].max()
-    rows = []
-    for h in (1, 2, 3, 4):
-        for omr, v in f(panel, h).items():
-            lo, hi = q.loc[(omr, h)] if (omr, h) in q.index else (float("nan"), float("nan"))
-            rows.append({"omraade": omr, "h": h, "uge_start": seneste + pd.Timedelta(weeks=h),
-                         "pred": v, "lo": max(v + lo, 0), "hi": v + hi})
-    return pd.DataFrame(rows)
+    fil = modelrapport.PROGNOSE_FIL
+    if fil.exists():
+        gemt = pd.read_parquet(fil)
+        if (gemt["model"] == model).all() and gemt["uge_start"].min() == panel["uge_start"].max() + pd.Timedelta(weeks=1):
+            return gemt
+    return modelrapport.live_prognose(panel, model, res)

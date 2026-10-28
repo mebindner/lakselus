@@ -34,18 +34,24 @@ def _iso_uge(datoer: pd.Series) -> pd.Series:
     return datoer.dt.isocalendar().week.astype(int).clip(upper=52)
 
 
-def saeson_aendring(historik: pd.DataFrame, h: int) -> pd.Series:
-    """Gennemsnitlig ændring y(t+h) − y(t) pr. (omraade, ISO-uge for t), beregnet inden for historikken."""
-    p = historik.sort_values(["omraade", "uge_start"])
-    fremtid = p.groupby("omraade")["hunlus"].shift(-h)
-    aendring = (fremtid - p["hunlus"]).rename("saes_d")
-    return aendring.groupby([p["omraade"], _iso_uge(p["uge_start"]).rename("uge")]).mean()
+def saeson_aendring_uden_egen(p: pd.DataFrame, h: int) -> pd.Series:
+    """Gennemsnitlig ændring y(t+h) − y(t) for området i samme ISO-uge i *andre* år (leave-one-out).
+
+    `p` skal være sorteret efter (omraade, uge_start). Rækkens egen ændring holdes ude: ellers indeholder
+    featuren træningsrækkens eget mål, og modellen lærer at stole for meget på den – ved prognosen er
+    ændringen jo ukendt. Rækker uden kendt ændring (de seneste h uger) får gennemsnittet af alle år.
+    """
+    egen = p.groupby("omraade")["hunlus"].shift(-h) - p["hunlus"]
+    noegle = [p["omraade"], _iso_uge(p["uge_start"])]
+    andre = egen.groupby(noegle).transform("count") - egen.notna()
+    summ = egen.groupby(noegle).transform("sum") - egen.fillna(0)
+    return (summ / andre).where(andre > 0)
 
 
 def features(historik: pd.DataFrame, h: int) -> pd.DataFrame:
     """Kausale features pr. (omraade, uge): kun værdier fra samme uge og tidligere indgår.
 
-    Undtagelse: `saes_d` er sæsonprofilen beregnet på hele historikken – den kender intet efter forecast-ugen.
+    Undtagelse: `saes_d` er sæsonprofilen fra andre år i historikken – den kender intet efter forecast-ugen.
     """
     p = historik[["omraade", "uge_start", "hunlus", "temp", "n_lok"]].sort_values(["omraade", "uge_start"]).copy()
     g = p.groupby("omraade")
@@ -65,8 +71,7 @@ def features(historik: pd.DataFrame, h: int) -> pd.DataFrame:
     # Hele kystens udvikling samme uge – lus spredes, og fælles drivere (temperatur, sæson) rammer alle områder.
     nat = p.groupby("uge_start")[["y", "d1"]].transform("mean")
     p["nat_y"], p["nat_d1"] = nat["y"], nat["d1"]
-    saes = saeson_aendring(historik, h).reset_index()
-    p = p.assign(uge=uge.to_numpy()).merge(saes, on=["omraade", "uge"], how="left").drop(columns="uge")
+    p["saes_d"] = saeson_aendring_uden_egen(p, h)
     p["maal"] = p.groupby("omraade")["hunlus"].shift(-h) - p["y"]  # ændringen h uger frem (kun til træning)
     return p
 

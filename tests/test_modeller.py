@@ -39,6 +39,17 @@ def test_features_er_kausale():
     pd.testing.assert_frame_equal(fuld.loc[kun_fortid.index, kol], kun_fortid[kol])
 
 
+def test_saesonfeature_kender_ikke_eget_maal():
+    """En træningsrækkes saes_d må ikke ændre sig, når netop dens eget mål (y(t+h)) ændres."""
+    p = syntetisk_panel(n_uger=200)
+    h, raekke = 2, p.index[(p["omraade"] == 1)][60]
+    mod = p.copy()
+    mod.loc[raekke + h, "hunlus"] += 5.0  # målet for rækken; påvirker også andre rækkers d-features
+    a = m.features(p, h).loc[raekke, "saes_d"]
+    b = m.features(mod, h).loc[raekke, "saes_d"]
+    assert a == pytest.approx(b)
+
+
 @pytest.mark.parametrize("navn", ["saeson_justeret", "ridge", "gbm", "ensemble"])
 def test_backtest_laekker_ikke_fremtid(navn):
     """Ødelægges alle data efter uge T, skal prognoser lavet til og med T være uændrede."""

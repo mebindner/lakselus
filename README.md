@@ -2,7 +2,7 @@
 
 **Live app: [lakselus.streamlit.app](https://lakselus.streamlit.app)** – updated automatically every week.
 
-[![Time machine: adult female lice per fish at every Norwegian fish farm, week 42 2024](docs/social-preview.png)](https://lakselus.streamlit.app)
+[![Time machine: adult female lice per fish at every Norwegian fish farm, week 42 2026](docs/social-preview.png)](https://lakselus.streamlit.app)
 
 How many adult female sea lice (*lakselus*) are on the salmon in Norway's fish farms, how does that
 change through the year, and can the level be forecast 1–4 weeks ahead better than a simple rule of thumb?
@@ -56,22 +56,24 @@ and checking that the forecasts are unchanged.
 | Ensemble | Mean of the three above |
 
 Features: level and changes over 1–8 weeks, rolling mean and spread, sea temperature, ISO week
-(sine/cosine), the area's seasonal profile, number of sites, and the coast-wide trend.
+(sine/cosine), the area's seasonal profile, number of sites, and the coast-wide trend. The seasonal
+profile is computed leave-one-out: a training row only sees the same week's change in *other* years, so
+it never contains its own target.
 
 **Discipline:** Models and settings were selected on **2023–24** (validation). The results below are
-from **2025 onwards** (test), which was not used for any choice. Figures as of week 42, 2026 – they move
+from **2025 onwards** (test), which was not used for any choice. Figures as of week 43, 2026 – they move
 slightly each week as new weeks and late corrections arrive; the app always shows the current values.
 
 | Test period 2025→ | 1 week | 2 weeks | 3 weeks | 4 weeks |
 |---|---|---|---|---|
 | MAE naive | 0.023 | 0.032 | 0.040 | 0.045 |
-| MAE gradient boosting | **0.022** | **0.028** | **0.032** | **0.035** |
-| Skill vs. naive | +5% | +12% | +19% | +23% |
-| Diebold–Mariano p | 0.029 | 0.001 | < 0.001 | < 0.001 |
-| 80% interval coverage | 81% | 80% | 78% | 78% |
+| MAE gradient boosting | **0.021** | **0.027** | **0.031** | **0.033** |
+| Skill vs. naive | +8% | +17% | +23% | +27% |
+| Diebold–Mariano p | < 0.001 | < 0.001 | < 0.001 | < 0.001 |
+| 80% interval coverage | 80% | 79% | 78% | 78% |
 
-Gradient boosting is the only model that beats the naive forecast at all four horizons, and the
-improvement is statistically significant throughout. The gain grows with the horizon: the naive
+Gradient boosting has the lowest error at every horizon, and its improvement over the naive forecast is
+statistically significant throughout (ridge and the ensemble also beat the naive forecast, but by less). The gain grows with the horizon: the naive
 forecast is hard to beat one week ahead, but the model captures seasonality and momentum, which matter
 more further out. The prediction intervals (empirical quantiles of the model's own past errors by area)
 are well calibrated.

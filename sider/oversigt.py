@@ -7,7 +7,7 @@ import streamlit as st
 
 from lakselus import appdata
 from lakselus.udseende import (
-    FARVER, LUS_FARVER, LYS_FARVER, SEKVENS, figur, ikon, kilde, lus_niveau, resume, sidehoved, trend,
+    FARVER, LAVT_NIVEAU, LUS_FARVER, LYS_FARVER, SEKVENS, figur, ikon, kilde, lus_niveau, resume, sidehoved, trend,
 )
 
 
@@ -77,13 +77,13 @@ st.markdown(resume([
                f"{retning} than the same week last year ({tal(gns_sidst)})."),
     (f"{len(over)} of {len(talt)}", f"sites ({pct(len(over) / len(talt))}) were above the lice limit; most in "
                                     + " and ".join(f"PO {o}" for o in over_pr_omr.index[:2]) + "."),
-    (f"{len(roede)} of 13", "production areas have a red traffic light and must reduce production: "
+    (f"{len(roede)} of 13", f"production areas {'has' if len(roede) == 1 else 'have'} a red traffic light and must reduce production: "
                             + ", ".join(roede["navn"]) + "."),
 ]), unsafe_allow_html=True)
 
 # --- Figur 1: kort og rangering ------------------------------------------------------
 st.markdown(figur(
-    1, f"{status.loc[top, 'navn']} has the highest lice level among the larger areas; {len(roede)} have a red light",
+    1, f"{status.loc[top, 'navn']} has the highest lice level among the larger areas; {len(roede)} {'has' if len(roede) == 1 else 'have'} a red light",
     f"Adult female lice per fish, week {iso.week} {iso.year}. Map: sites and production areas coloured by traffic light.",
 ), unsafe_allow_html=True)
 
@@ -118,8 +118,10 @@ with hoejre:
         etiket=lambda d: "PO " + d["omraade"].astype(str) + "  " + d["navn"] + d["n_lok"].map(lambda n: " *" if n < MIN_LOK else ""),
         niveau=lambda d: d["hunlus"].map(lus_niveau),
         tekst=lambda d: d["hunlus"].map(tal),
+        lille=lambda d: d["n_lok"] < MIN_LOK,
     )
-    rang = rang.sort_values("hunlus", ascending=False)
+    # Små områder nederst og nedtonet, så rangeringen stemmer med konklusionen (som kun bygger på de solide).
+    rang = rang.sort_values(["lille", "hunlus"], ascending=[True, False])
     y = alt.Y("etiket:N", sort=list(rang["etiket"]), title=None, axis=alt.Axis(labelLimit=220, labelFontSize=11.5, labelColor="#1B2B36"))
     soejler = alt.Chart(rang).mark_bar(height=15).encode(
         x=alt.X("hunlus:Q", title="Adult female lice per fish", scale=alt.Scale(domain=[0, 0.55]),
@@ -127,12 +129,13 @@ with hoejre:
         y=y,
         color=alt.Color("niveau:N", legend=None, scale=alt.Scale(
             domain=["lav", "mellem", "hoej"], range=[LUS_FARVER["lav"], LUS_FARVER["mellem"], LUS_FARVER["hoej"]])),
+        opacity=alt.condition("datum.lille", alt.value(0.35), alt.value(1.0)),
         tooltip=[alt.Tooltip("etiket:N", title="Area"), alt.Tooltip("hunlus:Q", title="Female lice", format=".3f")],
     )
     tekster = alt.Chart(rang).mark_text(align="left", dx=4, fontSize=11, color="#1B2B36").encode(
         x="hunlus:Q", y=y, text="tekst:N")
     # Grænseteksterne står på hver sin linje og vender ind mod midten, så de ikke overlapper på en smal skærm.
-    graenser = pd.DataFrame({"x": [0.2, 0.5], "t": ["0.2 spring", "0.5 lice limit"]})
+    graenser = pd.DataFrame({"x": [0.2, 0.5], "t": ["0.2 spring weeks", "0.5 lice limit"]})
     linjer = alt.Chart(graenser).mark_rule(strokeDash=[3, 3], color="#D64545", opacity=.7).encode(x="x:Q")
     linjetekst = (
         alt.Chart(graenser.iloc[[0]]).mark_text(align="left", dx=3, fontSize=10, color="#D64545")
@@ -152,7 +155,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(kilde(f"Area figures are unweighted means over sites that counted lice that week. "
-                  f"* Fewer than {MIN_LOK} sites – the figure is uncertain and excluded from the conclusions."), unsafe_allow_html=True)
+                  f"* Fewer than {MIN_LOK} sites (faded, at the bottom) – the figure is uncertain and excluded from the conclusions."),
+            unsafe_allow_html=True)
 
 # --- Figur 2: statustabel -------------------------------------------------------------
 st.markdown(figur(
@@ -163,14 +167,19 @@ st.markdown(figur(
 raekker = []
 for o, s in status.iterrows():
     t_ikon, t_farve, t_tekst = trend(s.hunlus, s.hunlus_4u_foer)
-    aend = s.hunlus / s.hunlus_4u_foer - 1 if s.hunlus_4u_foer else float("nan")
+    if pd.isna(s.hunlus_4u_foer) or not s.hunlus_4u_foer:
+        aend_tekst = "–"
+    elif max(s.hunlus, s.hunlus_4u_foer) < LAVT_NIVEAU:
+        aend_tekst = f"{s.hunlus - s.hunlus_4u_foer:+.2f}".replace("-", "−")
+    else:
+        aend_tekst = pct(s.hunlus / s.hunlus_4u_foer - 1, True)
     farve = LUS_FARVER[lus_niveau(s.hunlus)]
     lys_kant, _, lys_tekst = LYS_FARVER[s.trafiklys]
     raekker.append(
         f'<tr><td class="po">{o}</td><td class="navn">{s.navn}{" <span style=\'color:#6B7A86\'>*</span>" if s.n_lok < MIN_LOK else ""}</td>'
         f'<td><i class="prik" style="background:{lys_kant}"></i><span class="ekstra">{appdata.TRAFIKLYS[s.trafiklys]}</span></td>'
         f'<td class="tal">{tal(s.hunlus)}<span class="minibar" style="width:{min(s.hunlus / 0.5, 1) * 60:.0f}px;background:{farve}"></span></td>'
-        f'<td class="tal" style="color:{t_farve}">{ikon(t_ikon, t_farve, t_tekst)} {pct(aend, True) if pd.notna(aend) else "–"}</td>'
+        f'<td class="tal" style="color:{t_farve}">{ikon(t_ikon, t_farve, t_tekst)} {aend_tekst}</td>'
         f'<td class="tal" style="color:{"#D64545" if s.andel_over >= .1 else "inherit"}">{pct(s.andel_over)}</td>'
         f'<td class="tal ekstra">{tal(s.temp, 1)} °C</td><td class="tal ekstra">{int(s.n_lok)}</td></tr>'
     )
@@ -181,7 +190,8 @@ st.markdown(
     + "".join(raekker) + "</tbody></table>",
     unsafe_allow_html=True,
 )
-st.markdown(kilde(f"Δ 4 weeks: change vs. the mean of the four preceding weeks. * Fewer than {MIN_LOK} sites."), unsafe_allow_html=True)
+st.markdown(kilde(f"Δ 4 weeks: change vs. the mean of the four preceding weeks; below {LAVT_NIVEAU} lice per fish "
+                  f"shown in lice per fish instead of percent. * Fewer than {MIN_LOK} sites."), unsafe_allow_html=True)
 
 # --- Figur 3: små multipler ----------------------------------------------------------
 foerste, i_aar = int(profil["foerste_aar"].iloc[0]), int(profil["aar"].iloc[0])

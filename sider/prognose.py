@@ -32,7 +32,8 @@ n_sig = int((p_dm < 0.05).sum())
 test_fra = ev.TEST[0][:4]
 
 st.markdown(sidehoved(
-    f"Forecast · 1–4 weeks · Data up to week {iso.week}, {iso.year}",
+    f"Forecast · weeks {(seneste + pd.Timedelta(weeks=1)).isocalendar().week}–"
+    f"{(seneste + pd.Timedelta(weeks=4)).isocalendar().week} · Data up to week {iso.week}, {iso.year}",
     f"{NAVNE[valgt]} cuts forecast error by {abs(skill_t.loc[1]):.0%}–{abs(skill_t.loc[4]):.0%} "
     f"versus the naive forecast in the test period" if skill_t.mean() > 0 else
     f"{NAVNE[valgt]} does not beat the naive forecast in the test period",
@@ -59,10 +60,13 @@ lv = live[live["omraade"] == valg]
 omr = panel[(panel["omraade"] == valg) & (panel["uge_start"] >= seneste - pd.Timedelta(weeks=52))]
 sidst = omr.dropna(subset=["hunlus"]).iloc[-1]
 
+# Prognosen angives i kalenderuger: data ligger 1–2 uger bagud, så "om fire uger" ville være misvisende.
+uge_fra, uge_til = (u.isocalendar().week for u in lv["uge_start"].iloc[[0, -1]])
 st.markdown(figur(
-    1, f"{navne[valg]}: {NAVNE[valgt].lower()} expects {tal(lv['pred'].iloc[-1], 2)} adult female lice per fish in four weeks "
+    1, f"{navne[valg]}: {NAVNE[valgt].lower()} expects {tal(lv['pred'].iloc[-1], 2)} adult female lice per fish in week {uge_til} "
        f"({'rising' if lv['pred'].iloc[-1] > sidst['hunlus'] * 1.05 else 'falling' if lv['pred'].iloc[-1] < sidst['hunlus'] * 0.95 else 'stable'})",
-    "Adult female lice per fish, last 12 months and forecast 1–4 weeks ahead with 80% interval. Dashed: naive forecast.",
+    f"Adult female lice per fish, last 12 months and forecast for weeks {uge_fra}–{uge_til} (1–4 weeks after the latest "
+    "complete week) with 80% interval. Dashed: naive forecast.",
 ), unsafe_allow_html=True)
 
 forbind = pd.DataFrame([{"uge_start": sidst["uge_start"], "pred": sidst["hunlus"], "lo": sidst["hunlus"], "hi": sidst["hunlus"]}])
@@ -117,7 +121,8 @@ for m in mae_t.columns:
     stil = ' style="font-weight:600;background:#FFF4F0"' if m == valgt else (' style="color:#6B7A86"' if m in BASELINES else "")
     celler = "".join(f'<td class="tal{" ekstra" if h in (2, 3) else ""}">{tal(mae_t.loc[h, m])}</td>' for h in (1, 2, 3, 4))
     sk = lambda h: "–" if m == "naiv" else pct(sk_t.loc[h, m])  # noqa: E731
-    p4 = "–" if m == "naiv" else p_tekst(dm.loc[4, m])
+    # En lav p-værdi for en model, der er dårligere end naiv, må ikke kunne læses som en gevinst.
+    p4 = "–" if m == "naiv" else "worse" if sk_t.loc[4, m] < 0 else p_tekst(dm.loc[4, m])
     raekker.append(
         f'<tr{stil}><td class="navn">{NAVNE[m]}{" ★" if m == valgt else ""}</td>{celler}'
         f'<td class="tal">{sk(1)}</td><td class="tal">{sk(4)}</td><td class="tal">{p4}</td>'
@@ -131,7 +136,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(kilde("Skill = 1 − MAE_model / MAE_naive. ★ = selected on validation (highest mean skill 2023–24). "
-                  "The DM test uses Newey–West variance and the Harvey correction."), unsafe_allow_html=True)
+                  "The DM test uses Newey–West variance and the Harvey correction; "
+                  "\"worse\" = higher error than the naive forecast."), unsafe_allow_html=True)
 
 # --- Figur 3: hvor hjælper modellen ----------------------------------------------------
 pr_omr = o["mae_omraade_test"]
@@ -179,7 +185,7 @@ st.markdown(
     '<div class="metode"><b>Method.</b> The models predict the <i>change</i> in an area\'s lice level 1–4 weeks ahead '
     "(direct multi-horizon, one model per horizon), so the naive forecast is the starting point. Features: level and "
     "changes over 1–8 weeks, rolling mean and spread, sea temperature and its change, ISO week (sine/cosine), "
-    "the area's typical seasonal change, number of sites, and the coast-wide level and change. Gradient boosting is "
+    "the area's typical seasonal change in other years, number of sites, and the coast-wide level and change. Gradient boosting is "
     "trained with an MAE loss, pooled across areas. Models are retrained every quarter in the backtest and only see "
     "data up to the forecast week – this is tested automatically by corrupting all future data and checking that "
     "the forecasts are unchanged.<br><br><b>Evaluation.</b> Model choice and settings were decided on 2023–24; the "

@@ -172,10 +172,15 @@ def lus_niveau(v: float) -> str:
     return "lav" if v < 0.2 else ("mellem" if v <= 0.5 else "hoej")
 
 
+LAVT_NIVEAU = 0.05  # under dette niveau vises ændringer i lus pr. fisk, ikke i procent
+
+
 def trend(nu: float, foer: float) -> tuple[str, str, str]:
     """Ikon, farve og tekst for udviklingen siden de 4 foregående uger."""
     if pd.isna(foer) or foer == 0:
         return "trending_flat", "#6B7A86", "no comparison"
+    if max(nu, foer) < LAVT_NIVEAU:  # procenter af næsten ingenting ser dramatiske ud – vis ikke en alarm
+        return "trending_flat", "#6B7A86", f"low level ({nu - foer:+.2f} lice per fish vs. previous 4 weeks)"
     rel = nu / foer - 1
     if rel > 0.15:
         return "trending_up", "#D64545", f"rising ({rel:+.0%} vs. previous 4 weeks)"
