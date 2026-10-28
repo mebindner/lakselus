@@ -9,7 +9,7 @@ import sys
 from playwright.sync_api import sync_playwright
 
 URL = "https://lakselus.streamlit.app/"
-KENDETEGN = "Updates every Wednesday"  # tekst i selve appen, ikke i sidetitlen
+KENDETEGN = "Independent portfolio project"  # tekst i appens fodnote (på alle sider), ikke i sidetitlen
 VENT_MS = 180_000
 
 

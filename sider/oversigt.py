@@ -68,7 +68,7 @@ st.markdown(sidehoved(
     "Weekly status on sea lice (lakselus) in all 13 production areas (produksjonsområder), based on the lice counts "
     "fish farms report to the Norwegian Food Safety Authority. Figures are set against the lice limit (lusegrense), "
     "the government traffic-light system (trafikklyssystemet) and the seasonal pattern of recent years.",
-    [("autorenew", f"Updates every Wednesday · {indberetning}"), ("database", "BarentsWatch / Mattilsynet"),
+    [("live", appdata.opdatering_tekst(panel) + ("" if not mangler else f" · {indberetning}")), ("database", "BarentsWatch / Mattilsynet"),
      ("location_on", f"{len(talt)} sites in this week's figures"), ("verified", "Independent analysis of open data")],
 ), unsafe_allow_html=True)
 

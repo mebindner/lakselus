@@ -39,7 +39,7 @@ st.markdown(sidehoved(
     f"{NAVNE[valgt]} does not beat the naive forecast in the test period",
     "Six models were backtested week by week using only the data available at the time. The model was selected on "
     f"2023–24 and then measured once on {test_fra} onwards – data it was never tuned on.",
-    [("model_training", f"Selected model: {NAVNE[valgt]}"), ("science", "Diebold–Mariano test"),
+    [("live", appdata.opdatering_tekst(panel)), ("model_training", f"Selected model: {NAVNE[valgt]}"), ("science", "Diebold–Mariano test"),
      ("straighten", "80% prediction interval")],
 ), unsafe_allow_html=True)
 

@@ -69,6 +69,10 @@ hr { border-color: #E1E6EA; }
 .sidehoved .under { color: #4A5A66; font-size: 1rem; max-width: 52em; margin: 0; line-height: 1.55; }
 .sidehoved .chips { display: flex; gap: .5rem 1.4rem; flex-wrap: wrap; margin-top: 1rem; }
 .chip { display: inline-flex; align-items: center; gap: .35rem; font-size: .78rem; color: #5B6B78; }
+.chip.live { color: #1B2B36; font-weight: 600; gap: .5rem; }
+.live-prik { width: 8px; height: 8px; border-radius: 50%; background: #2E9E6B; flex: none; animation: live 2.4s ease-out infinite; }
+@keyframes live { 0% { box-shadow: 0 0 0 0 rgba(46,158,107,.5); } 70%, 100% { box-shadow: 0 0 0 7px rgba(46,158,107,0); } }
+@media (prefers-reduced-motion: reduce) { .live-prik { animation: none; } }
 
 /* Executive summary */
 .resume { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px solid #0B2230; border-bottom: 1px solid #E1E6EA; margin: .4rem 0 2rem; }
@@ -130,6 +134,7 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .fodnote a { color: #1D4E6B; }
 .fodnote .afsender { font-size: .82rem; color: #1B2B36; margin-bottom: .45rem; }
 .fodnote .afsender a { font-weight: 600; }
+.fodnote .opdateret { color: #1B2B36; margin-bottom: .45rem; }
 </style>
 """
 
@@ -140,7 +145,9 @@ def ikon(navn: str, farve: str = "inherit", titel: str = "") -> str:
 
 
 def sidehoved(overlinje: str, titel: str, under: str, chips: list[tuple[str, str]] = ()) -> str:
-    chip_html = "".join(f'<span class="chip">{ikon(i)} {t}</span>' for i, t in chips)
+    # Ikonet "live" giver en grøn, pulserende prik – bruges til opdateringslinjen, så det ses, at data er friske.
+    chip_html = "".join(f'<span class="chip live"><i class="live-prik"></i>{t}</span>' if i == "live"
+                        else f'<span class="chip">{ikon(i)} {t}</span>' for i, t in chips)
     return (
         f'<div class="sidehoved"><div class="overlinje">{overlinje}</div><h1>{titel}</h1>'
         f'<p class="under">{under}</p><div class="chips">{chip_html}</div></div>'

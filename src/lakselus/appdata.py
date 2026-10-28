@@ -47,6 +47,25 @@ def _omraader(version: float) -> pd.DataFrame:
     return po[["id", "name", "polygon", "trafiklys"]].rename(columns={"id": "omraade", "name": "navn"})
 
 
+def opdatering(panel: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp | None]:
+    """Hvornår data sidst blev opdateret, og hvornår næste opdatering kommer.
+
+    Den ugentlige kørsel er onsdag i ugen efter den seneste komplette uge (uge_start er en mandag).
+    Er næste dato overskredet, gives None, så appen ikke lover en dato, der allerede er gået.
+    """
+    sidst = panel["uge_start"].max() + pd.Timedelta(days=9)
+    naeste = sidst + pd.Timedelta(weeks=1)
+    i_dag = pd.Timestamp.now(tz="Europe/Oslo").tz_localize(None).normalize()
+    return sidst, (naeste if i_dag <= naeste else None)
+
+
+def opdatering_tekst(panel: pd.DataFrame) -> str:
+    """Fx "Updated Wed 28 Oct 2026 · next update Wed 4 Nov"."""
+    sidst, naeste = opdatering(panel)
+    tekst = f"Updated {sidst.strftime('%a')} {sidst.day} {sidst.strftime('%b %Y')}"
+    return tekst + (f" · next update {naeste.strftime('%a')} {naeste.day} {naeste.strftime('%b')}" if naeste is not None else "")
+
+
 def status_pr_omraade(raa: pd.DataFrame, panel: pd.DataFrame) -> pd.DataFrame:
     """Nøgletal pr. område for seneste uge: hunlus, trend mod 4 uger før, andel over grænsen, temperatur."""
     seneste = panel["uge_start"].max()

@@ -10,7 +10,7 @@ st.set_page_config(page_title="Sea lice in Norwegian salmon farming", page_icon=
 st.markdown(CSS, unsafe_allow_html=True)
 
 try:
-    appdata.indlaes()
+    _, panel, _ = appdata.indlaes()
 except FileNotFoundError:
     if har_noegle():
         st.info("API key found, but no data yet. Run `python -m lakselus.hent`.")
@@ -32,6 +32,7 @@ st.markdown(
     '<div class="fodnote"><div class="afsender">Built by '
     '<a href="https://www.linkedin.com/in/martin-eckberg-bindner-872207422" target="_blank">Martin Eckberg Bindner</a>'
     ' · Data analyst · <a href="https://github.com/mebindner/lakselus" target="_blank">Code on GitHub</a></div>'
+    f'<div class="opdateret">{appdata.opdatering_tekst(panel)} · new lice counts every Wednesday</div>'
     f'{KILDE_TEKST} Licence: NLOD. '
     '<a href="https://www.barentswatch.no" target="_blank">barentswatch.no</a> · Independent portfolio project.</div>',
     unsafe_allow_html=True,
