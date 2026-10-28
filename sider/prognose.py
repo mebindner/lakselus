@@ -72,7 +72,10 @@ st.markdown(figur(
 forbind = pd.DataFrame([{"uge_start": sidst["uge_start"], "pred": sidst["hunlus"], "lo": sidst["hunlus"], "hi": sidst["hunlus"]}])
 lv_plot = pd.concat([forbind, lv[["uge_start", "pred", "lo", "hi"]]], ignore_index=True)
 naiv_plot = pd.DataFrame({"uge_start": lv_plot["uge_start"], "naiv": sidst["hunlus"]})
-x = alt.X("uge_start:T", title=None, axis=alt.Axis(format="%b %Y", grid=False, tickCount=6, labelOverlap=True))
+# Aksen går lidt forbi sidste prognoseuge, så prognosetallet kan stå lige til højre for punktet.
+x_slut = lv["uge_start"].max() + pd.Timedelta(weeks=5)
+x = alt.X("uge_start:T", title=None, scale=alt.Scale(domain=[omr["uge_start"].min().isoformat(), x_slut.isoformat()]),
+          axis=alt.Axis(format="%b %Y", grid=False, tickCount=6, labelOverlap=True))
 historik = alt.Chart(omr).mark_line(color=FARVER["blaek"], strokeWidth=1.6).encode(
     x=x, y=alt.Y("hunlus:Q", title="Adult female lice per fish"),
     tooltip=[alt.Tooltip("uge_start:T", title="Week", format="%d.%m.%Y"), alt.Tooltip("hunlus:Q", format=".3f")])
@@ -93,16 +96,18 @@ def note(uge_start, y, tekst, farve, dy):
         align="right", dx=-6, dy=dy, fontSize=11, fontWeight=600, color=farve).encode(x=x, y="y:Q", text="t:N")
 
 
-# Begge tekster står over kurven (prognosen øverst), så de ikke skærer historikken.
+# Seneste måling står over kurven; prognosetallet står lige til højre for sidste prognosepunkt.
 top = max(sidst["hunlus"], lv["hi"].max())
 annotation = (note(sidst["uge_start"], top, f"Week {uge_nu}: {tal(sidst['hunlus'], 2)}", FARVER["blaek"], -12)
-              + note(slut["uge_start"], top, f"Forecast week {uge_slut}: {tal(slut['pred'], 2)}", FARVER["laks_tekst"], -28))
+              + alt.Chart(pd.DataFrame({"uge_start": [slut["uge_start"]], "y": [slut["pred"]], "t": [f"Week {uge_slut}: {tal(slut['pred'], 2)}"]}))
+              .mark_text(align="left", dx=8, fontSize=11, fontWeight=600, color=FARVER["laks_tekst"]).encode(x=x, y="y:Q", text="t:N"))
 graense_tekst = alt.Chart(pd.DataFrame({"uge_start": [omr["uge_start"].min()], "y": [0.5], "t": ["Lice limit 0.5"]})).mark_text(
     align="left", dx=2, dy=-6, fontSize=10, color="#D64545").encode(x=x, y="y:Q", text="t:N")
 st.altair_chart((baand + historik + naiv_linje + linje + graense + graense_tekst + annotation).properties(height=340),
                 width="stretch")
 st.markdown(kilde("The interval is the empirical 10th–90th percentile of the model's own backtest errors for the area and horizon. "
-                  "Red dashed line: the lice limit of 0.5."), unsafe_allow_html=True)
+                  "Red dashed line: the lice limit of 0.5. Each week ahead has its own model, so the path can bend – "
+                  "for example when lice rebound after a treatment."), unsafe_allow_html=True)
 
 # --- Figur 2: modelsammenligning -------------------------------------------------------
 st.markdown(figur(
