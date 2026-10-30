@@ -6,7 +6,7 @@ import streamlit as st
 
 from lakselus import appdata, evaluering as ev
 from lakselus.modelrapport import BASELINES, NAVNE
-from lakselus.udseende import FARVER, figur, kilde, resume, sidehoved
+from lakselus.udseende import FARVER, figur, ikon, kilde, resume, sidehoved
 
 
 def tal(v: float, d: int = 3) -> str:
@@ -52,8 +52,15 @@ st.markdown(resume([
 ]), unsafe_allow_html=True)
 
 # --- Figur 1: prognose for valgt område ------------------------------------------------
-valg = st.selectbox("Production area", options=sorted(navne), format_func=lambda x: f"{x} · {navne[x]}",
-                    index=sorted(navne).index(3), key="omraade")
+# Områdevalget fremhæves med en hjælpeboble og en pulserende kant, indtil brugeren selv har valgt et område.
+with st.container(key="omraadevalg"):
+    if not st.session_state.get("omraade_skiftet"):
+        st.markdown(
+            f'<div class="valghjaelp" role="status"><b>{ikon("touch_app")} Pick a production area</b>'
+            f'See the forecast for any of the {len(navne)} areas along the coast.</div>', unsafe_allow_html=True)
+    valg = st.selectbox("Production area", options=sorted(navne), format_func=lambda x: f"{x} · {navne[x]}",
+                        index=sorted(navne).index(3), key="omraade",
+                        on_change=lambda: st.session_state.update(omraade_skiftet=True))
 live = appdata.live_prognose(panel, valgt, res)
 lv = live[live["omraade"] == valg]
 # Ét års historik, så prognosen (de sidste 4 uger) får plads – også på en smal mobilskærm.

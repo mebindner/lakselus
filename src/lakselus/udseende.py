@@ -91,6 +91,30 @@ hr { border-color: #E1E6EA; }
 .figur .undertitel { font-size: .85rem; color: #5B6B78; }
 .kilde { font-size: .74rem; color: #6B7A86; border-top: 1px solid #E1E6EA; padding-top: .4rem; margin-top: .3rem; }
 
+/* Områdevalg: tydelig kant og en hjælpeboble i samme stil som tidsmaskinens; boblen bliver, indtil man selv har valgt et område */
+.st-key-omraadevalg { position: relative; }
+.st-key-omraadevalg:has(.valghjaelp) { padding-top: 2rem; }
+.st-key-omraadevalg label p { font-weight: 600; color: #0B2230; }
+.st-key-omraadevalg .react-aria-ComboBox [role="group"] { border: 1.5px solid #E8603C; background: #FFFFFF; cursor: pointer; }
+.st-key-omraadevalg:has(.valghjaelp) .react-aria-ComboBox [role="group"] { animation: valgpuls 1.4s ease-in-out .6s 3; }
+@keyframes valgpuls { 0%, 100% { box-shadow: 0 0 0 0 rgba(232,96,60,0); } 50% { box-shadow: 0 0 0 5px rgba(232,96,60,.35); } }
+.st-key-omraadevalg [data-testid="stElementContainer"]:has(.valghjaelp) { position: absolute; right: 0; bottom: calc(2.5rem + 8px);
+  width: auto; z-index: 5; pointer-events: none; }
+.valghjaelp { position: relative; width: 250px; background: #F26B4F; color: #FFFFFF; border-radius: 8px;
+  padding: 9px 13px 10px; font-size: .8rem; line-height: 1.45; box-shadow: 0 10px 28px rgba(11,34,48,.22);
+  animation: valghjaelp .5s ease .3s both; }
+.valghjaelp b { display: flex; align-items: center; gap: .3rem; font-size: .86rem; margin-bottom: 2px; }
+.valghjaelp::after { content: ""; position: absolute; right: 22px; bottom: -6px; border: 6px solid transparent;
+  border-bottom: 0; border-top-color: #F26B4F; }
+@keyframes valghjaelp { from { opacity: 0; transform: translateY(6px); } }
+@media (max-width: 640px) {  /* smal skærm: boblen står over feltet i stedet for at dække etiketten */
+  .st-key-omraadevalg:has(.valghjaelp) { padding-top: 0; }
+  .st-key-omraadevalg [data-testid="stElementContainer"]:has(.valghjaelp) { position: static; }
+  .valghjaelp { width: auto; margin-bottom: 2px; }
+  .valghjaelp::after { right: auto; left: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { .valghjaelp, .st-key-omraadevalg .react-aria-ComboBox [role="group"] { animation: none; } }
+
 /* Tabel */
 table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-variant-numeric: tabular-nums; }
 .tabel th { text-align: left; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7A86;
