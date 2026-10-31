@@ -212,21 +212,35 @@ st.markdown(kilde(), unsafe_allow_html=True)
 # Hændelsesstudie (se lakselus/behandlingseffekt.py): lusetallet uge for uge omkring en behandling, i procent af
 # ugen før, mod en kontrolgruppe af ubehandlede lokaliteter med samme lusetal og samme årstid.
 effekt = appdata.behandlingseffekt_tabel()
+if effekt is not None and "omraade" not in effekt:  # ældre publicerede data uden opdeling pr. område
+    effekt = effekt.assign(omraade=0)
 if effekt is not None and len(effekt):
+    # Hele kysten er grundlaget; det valgte område lægges ovenpå, hvor det selv har nok behandlinger.
+    kyst = effekt[effekt["omraade"] == 0].drop(columns="omraade")
+    omr = (effekt[effekt["omraade"] == valg][["type", "k", "median", "n"]]
+           .rename(columns={"median": "omr_median", "n": "omr_n"}))
+    eff = kyst.merge(omr, on=["type", "k"], how="left")
+    omr_navn = navne[valg]
+
     # Nettoeffekt = hvor meget lavere de behandlede ligger end kontrollen; bruges til titel og rækkefølge.
-    netto = effekt.assign(netto=1 - effekt["median"] / effekt["kontrol"]).set_index(["type", "k"])["netto"]
+    netto = kyst.assign(netto=1 - kyst["median"] / kyst["kontrol"]).set_index(["type", "k"])["netto"]
     # "Other" er en blandet kategori – den vises sidst og bruges ikke i titlen.
     orden = sorted(netto.xs(0, level="k").sort_values(ascending=False).index, key=lambda t: t == "Other")
     bedst = orden[0]
     st.markdown(figur(
         5, f"{bedst} treatment removes {netto[(bedst, 0)]:.0%} of lice in the treatment week – six weeks later the "
            f"level is still {netto[(bedst, 6)]:.0%} below comparable untreated sites",
-        "Adult female lice per fish, relative to the week before treatment (= 100%). Line: median of single, "
-        "whole-site treatments; band: middle half of the sites. Dashed: untreated sites with the same lice level "
-        "in the same month.",
+        "Adult female lice per fish, relative to the week before treatment (= 100%). Orange: median of single, "
+        "whole-site treatments along the whole coast; band: middle half of the sites. Dashed: untreated sites with "
+        f"the same lice level in the same month. Dark line: {omr_navn}, where the area has at least 30 such treatments.",
     ), unsafe_allow_html=True)
 
-    eff = effekt.assign(titel=lambda d: d["type"] + " · " + d["n"].astype(str) + " treatments")
+    # Paneltitel med antal for hele kysten og for området; note i paneler, hvor området har for få behandlinger.
+    omr_antal = eff.groupby("type")["omr_n"].max()
+    eff["titel"] = eff["type"] + " · " + eff["n"].astype(str) + " treatments" + eff["type"].map(
+        lambda t: f" ({omr_antal[t]:.0f} in PO {valg})" if pd.notna(omr_antal[t]) else "")
+    eff["note"] = [f"Too few in {omr_navn}" if k == -3 and pd.isna(omr_antal[t]) else None
+                   for t, k in zip(eff["type"], eff["k"])]
     titler = [eff.loc[eff["type"] == t, "titel"].iloc[0] for t in orden]
     ex = alt.X("k:Q", title=None, scale=alt.Scale(domain=[-3, 6], nice=False),
                axis=alt.Axis(values=list(range(-3, 7)), labelExpr="datum.value == 0 ? 'Treat.' : (datum.value > 0 ? '+' : '') + datum.value",
@@ -237,10 +251,20 @@ if effekt is not None and len(effekt):
         x=ex, y=alt.Y("q25:Q", title=None, scale=alt.Scale(domain=[0, 1.5])), y2="q75:Q")
     kontrol_linje = alt.Chart().mark_line(color=FARVER["skifer"], strokeDash=[4, 3], strokeWidth=1.3).encode(
         x=ex, y="kontrol:Q")
-    linje = alt.Chart().mark_line(color=FARVER["laks"], strokeWidth=2.2, point=alt.OverlayMarkDef(size=14)).encode(
+    linje = alt.Chart().mark_line(color=FARVER["laks"], strokeWidth=2.2,
+                                  point=alt.OverlayMarkDef(size=14, color=FARVER["laks"])).encode(
         x=ex, y=ey, tooltip=[alt.Tooltip("type:N", title="Treatment"), alt.Tooltip("k:Q", title="Week"),
-                             alt.Tooltip("median:Q", title="Treated (median)", format=".0%"),
+                             alt.Tooltip("median:Q", title="Whole coast (median)", format=".0%"),
                              alt.Tooltip("kontrol:Q", title="Untreated", format=".0%")])
+    omr_linje = alt.Chart().mark_line(color=FARVER["blaek"], strokeWidth=1.8, clip=True,
+                                      point=alt.OverlayMarkDef(size=12, color=FARVER["blaek"])).encode(
+        x=ex, y=alt.Y("omr_median:Q", scale=alt.Scale(domain=[0, 1.5])),
+        tooltip=[alt.Tooltip("type:N", title="Treatment"), alt.Tooltip("k:Q", title="Week"),
+                 alt.Tooltip("omr_median:Q", title=f"{omr_navn} (median)", format=".0%")],
+    ).transform_filter("isValid(datum.omr_median)")
+    note = alt.Chart().mark_text(align="left", baseline="top", dx=2, fontSize=10, fontStyle="italic",
+                                 color=FARVER["skifer"]).encode(x=alt.datum(-3), y=alt.datum(1.5), text="note:N"
+                                 ).transform_filter("isValid(datum.note)")
     # Tallet i behandlingsugen står til højre for punktet (fri af den lodrette linje), tallet efter 6 uger over det.
     tal_0 = alt.Chart().mark_text(align="left", dx=6, dy=2, fontSize=10, fontWeight=600, color=FARVER["laks_tekst"]).encode(
         x=ex, y=ey, text=alt.Text("median:Q", format=".0%")).transform_filter("datum.k == 0")
@@ -250,7 +274,7 @@ if effekt is not None and len(effekt):
     behandling = alt.Chart().mark_rule(color=FARVER["blaek"], strokeDash=[2, 2], opacity=.5).encode(x=alt.datum(0))
 
     def effekt_multipler(kolonner: int, bredde: int, hoejde: int) -> alt.FacetChart:
-        return alt.layer(hundrede, behandling, baand, kontrol_linje, linje, tal_0, tal_6, data=eff).properties(
+        return alt.layer(hundrede, behandling, baand, kontrol_linje, linje, omr_linje, tal_0, tal_6, note, data=eff).properties(
             width=bredde, height=hoejde).facet(
             facet=alt.Facet("titel:N", sort=titler, header=alt.Header(labelFontSize=11, labelPadding=4)),
             columns=kolonner)

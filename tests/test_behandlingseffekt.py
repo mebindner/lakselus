@@ -26,7 +26,9 @@ def test_effekt_og_kontrol():
     efter = raa["lokalitet"].isin(behandlede) & (raa["uge_start"] >= "2025-03-03")
     raa.loc[efter, "hunlus"] = 0.2
 
-    t = be.effekt_tabel(raa, beh).set_index("k")
+    alle = be.effekt_tabel(raa, beh)
+    assert set(alle["omraade"]) == {0, 3}  # hele kysten og det ene område med nok behandlinger
+    t = alle[alle["omraade"] == 0].set_index("k")
     assert (t["type"] == "Thermal").all() and (t["n"] == be.MIN_HAENDELSER).all()
     assert t.loc[-1, "median"] == 1.0
     np.testing.assert_allclose(t.loc[0:6, "median"], 0.5)

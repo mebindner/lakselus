@@ -17,7 +17,7 @@ Indhold
 2. Lusetal pr. uge    – én værdi pr. (lokalitet, uge)
 3. Hændelser          – isolerede behandlinger af hele lokaliteten
 4. Forløb             – lusetal i forhold til ugen før, for behandlede og kontrol
-5. Samlet tabel       – median, kvartiler og antal pr. type og uge (det, appen viser)
+5. Samlet tabel       – median, kvartiler og antal pr. område, type og uge (det, appen viser)
 """
 
 import pandas as pd
@@ -118,16 +118,9 @@ def kontrol_forloeb(lus: pd.Series, beh: pd.DataFrame) -> pd.DataFrame:
 
 # --- 5. Samlet tabel -----------------------------------------------------------------------
 
-def effekt_tabel(raa: pd.DataFrame, beh: pd.DataFrame) -> pd.DataFrame:
-    """Pr. behandlingstype og uge: median og kvartiler for behandlede, matchet kontrol og antal hændelser.
-
-    Kolonner: type, k, median, q25, q75, kontrol, n. Indeks i procent af ugen før behandlingen.
-    """
-    lus = lusetal_pr_lokalitet(raa)
-    behandlet, kontrol = behandlede_forloeb(lus, beh), kontrol_forloeb(lus, beh)
-
-    # Kontrollens median pr. (niveaubånd, måned, uge) – vægtet med de behandledes fordeling pr. type.
-    kontrol_median = kontrol.groupby(["baand", "maaned", "k"])["indeks"].median().rename("kontrol")
+def _opsummer(behandlet: pd.DataFrame, kontrol_median: pd.Series) -> pd.DataFrame:
+    """Median, kvartiler, vægtet kontrol og antal hændelser pr. (type, k) for et udvalg af hændelser."""
+    # Kontrollen vægtes, så den har samme fordeling af udgangsniveau og måned som de behandlede.
     vaegte = behandlet[behandlet["k"] == -1].groupby(["type", "baand", "maaned"]).size().rename("w").reset_index()
     vaegtet = vaegte.merge(kontrol_median.reset_index(), on=["baand", "maaned"])
     kontrol_linje = (vaegtet.assign(vk=vaegtet["w"] * vaegtet["kontrol"]).groupby(["type", "k"])[["vk", "w"]].sum()
@@ -138,5 +131,24 @@ def effekt_tabel(raa: pd.DataFrame, beh: pd.DataFrame) -> pd.DataFrame:
                        kontrol_linje], axis=1).reset_index()
     n = behandlet[behandlet["k"] == -1].groupby("type").size()
     tabel["n"] = tabel["type"].map(n).astype(int)
-    tabel = tabel[tabel["n"] >= MIN_HAENDELSER]
-    return tabel.assign(type=tabel["type"].map(TYPER)).sort_values(["type", "k"]).reset_index(drop=True)
+    return tabel[tabel["n"] >= MIN_HAENDELSER]
+
+
+def effekt_tabel(raa: pd.DataFrame, beh: pd.DataFrame) -> pd.DataFrame:
+    """Pr. område, behandlingstype og uge: median og kvartiler for behandlede, matchet kontrol og antal hændelser.
+
+    Kolonner: omraade (0 = hele kysten), type, k, median, q25, q75, kontrol, n. Indeks i forhold til ugen før
+    behandlingen. Et område har kun rækker for de typer, hvor det selv har mindst MIN_HAENDELSER behandlinger.
+    """
+    lus = lusetal_pr_lokalitet(raa)
+    behandlet, kontrol = behandlede_forloeb(lus, beh), kontrol_forloeb(lus, beh)
+    # Kontrolgruppen er fælles for hele kysten: der er for få ubehandlede tvillinger til at matche pr. område.
+    kontrol_median = kontrol.groupby(["baand", "maaned", "k"])["indeks"].median().rename("kontrol")
+
+    dele = [_opsummer(behandlet, kontrol_median).assign(omraade=0)]
+    for omraade, del_ in behandlet.groupby("omraade"):
+        dele.append(_opsummer(del_, kontrol_median).assign(omraade=int(omraade)))
+    tabel = pd.concat(dele, ignore_index=True)
+    tabel = tabel[tabel["type"].isin(dele[0]["type"])]  # kun typer, der også vises for hele kysten
+    return (tabel.assign(type=tabel["type"].map(TYPER))[["omraade", "type", "k", "median", "q25", "q75", "kontrol", "n"]]
+            .sort_values(["omraade", "type", "k"]).reset_index(drop=True))
