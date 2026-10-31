@@ -14,6 +14,9 @@ consulting report. The forecasts are evaluated honestly against naive baselines.
 Built in **Python** (pandas, scikit-learn, Altair, pydeck/deck.gl, Streamlit). Independent portfolio
 project – analysis of open data, not prepared for or by any company.
 
+Developed with AI-assisted coding (Claude). Problem framing, methodology, model validation and all
+design decisions are my own.
+
 ## The app – three pages
 
 ### 1. Overview – weekly brief in consulting format
