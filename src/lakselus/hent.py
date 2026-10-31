@@ -33,6 +33,8 @@ def main() -> None:
     # --- Ugentlige data, ét år ad gangen og sekventielt – som BarentsWatch beder om ------
     for aar in range(args.fra, args.til + 1):
         til_uge = i_aar.week - 1 if aar == i_aar.year else dt.date(aar, 12, 28).isocalendar().week
+        if til_uge < 1:  # i ISO-uge 1 er ingen uger i det nye år afsluttet endnu
+            continue
         for praefiks, hent in AARLIGE_DATASAET.items():
             df = hent(aar, aar, til_uge)
             df.to_csv(DATA_RAW / f"{praefiks}_{aar}.csv", index=False)

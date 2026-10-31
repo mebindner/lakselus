@@ -43,3 +43,10 @@ def test_kun_isolerede_behandlinger_af_hele_lokaliteten_taeller():
         _behandling(4, 10), _behandling(4, 10, "mekanisk behandling"),  # to typer samme uge – udelades
     ])
     assert be.haendelser(beh)["lokalitet"].tolist() == [1]
+
+
+def test_behandlinger_uden_helt_vindue_udelades():
+    """En behandling i de seneste uger kan ikke vurderes endnu – de næste ugers tal er ikke indberettet."""
+    raa = _lusetal(n_uger=30)  # sidste uge: ISO-uge 31, 2025
+    beh = pd.DataFrame([_behandling(lok, 28) for lok in range(1, be.MIN_HAENDELSER + 1)])
+    assert be.effekt_tabel(raa, beh).empty

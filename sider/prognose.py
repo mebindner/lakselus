@@ -50,9 +50,11 @@ test_fra = ev.TEST[0][:4]
 st.markdown(sidehoved(
     f"Forecast · weeks {(seneste + pd.Timedelta(weeks=1)).isocalendar().week}–"
     f"{(seneste + pd.Timedelta(weeks=4)).isocalendar().week} · Data up to week {iso.week}, {iso.year}",
-    f"{NAVNE[valgt]} cuts forecast error by {abs(skill_t.loc[1]):.0%}–{abs(skill_t.loc[4]):.0%} "
-    f"versus the naive forecast in the test period" if skill_t.mean() > 0 else
-    f"{NAVNE[valgt]} does not beat the naive forecast in the test period",
+    # Overskriften skal holde, uanset hvordan tallene ændrer sig: et interval kun, når alle horisonter er bedre.
+    f"{NAVNE[valgt]} cuts forecast error by {skill_t.min():.0%}–{skill_t.max():.0%} versus the naive forecast "
+    "in the test period" if (skill_t > 0).all() else
+    f"{NAVNE[valgt]} cuts forecast error by up to {skill_t.max():.0%} versus the naive forecast in the test period"
+    if skill_t.mean() > 0 else f"{NAVNE[valgt]} does not beat the naive forecast in the test period",
     f"{len(NAVNE)} models were backtested week by week using only the data available at the time. The model was selected on "
     f"2023–24 and then measured once on {test_fra} onwards – data it was never tuned on.",
     [("live", appdata.opdatering_tekst(panel)), ("model_training", f"Selected model: {NAVNE[valgt]}"), ("science", "Diebold–Mariano test"),
@@ -60,11 +62,12 @@ st.markdown(sidehoved(
 ), unsafe_allow_html=True)
 
 st.markdown(resume([
-    (f"{skill_t.loc[4]:.0%}", f"lower mean absolute error than the naive forecast 4 weeks ahead in the test period "
-                              f"({skill_t.loc[1]:.0%} at 1 week)."),
+    (f"{abs(skill_t.loc[4]):.0%}", f"{'lower' if skill_t.loc[4] >= 0 else 'higher'} mean absolute error than the "
+                                   f"naive forecast 4 weeks ahead in the test period ({pct(skill_t.loc[1])} skill at 1 week)."),
     (f"{n_sig} of 4", "horizons where the improvement is statistically significant (Diebold–Mariano, p < 0.05)."),
     (f"{daek.mean():.0%}", "of actual outcomes in the test period fell inside the 80% interval – "
-                           "the intervals are well calibrated."),
+                           + ("the intervals are well calibrated." if abs(daek.mean() - 0.8) <= 0.05 else
+                              "the intervals are too narrow." if daek.mean() < 0.8 else "the intervals are too wide.")),
 ]), unsafe_allow_html=True)
 
 # --- 3. Figur 1: prognose for valgt område ------------------------------------------------
@@ -133,11 +136,19 @@ st.markdown(kilde("The interval is the empirical 10th–90th percentile of the m
                   "for example when lice rebound after a treatment."), unsafe_allow_html=True)
 
 # --- 4. Figur 2: modelsammenligning -------------------------------------------------------
+def figur2_titel(vindere: pd.Index, bedst_test: str) -> str:
+    """Titlen skal sige, hvilken model der faktisk er bedst i testperioden – også når det ikke er den valgte."""
+    if list(vindere) == [valgt]:
+        return f"Only {NAVNE[valgt].lower()} beats the naive forecast at all four horizons"
+    start = f"{len(vindere)} models beat the naive forecast at all horizons"
+    if bedst_test == valgt:
+        return f"{start}; {NAVNE[valgt].lower()} is best"
+    return (f"{start}; {NAVNE[bedst_test].lower()} is marginally ahead in the test period, but "
+            f"{NAVNE[valgt].lower()} was chosen on validation")
+
+
 st.markdown(figur(
-    2, (lambda vindere: f"Only {NAVNE[valgt].lower()} beats the naive forecast at all four horizons"
-        if list(vindere) == [valgt] else
-        f"{len(vindere)} models beat the naive forecast at all horizons; {NAVNE[valgt].lower()} is best")(
-        o["skill_test"].columns[(o["skill_test"] > 0).all()]),
+    2, figur2_titel(o["skill_test"].columns[(o["skill_test"] > 0).all()], o["skill_test"].mean().drop("naiv").idxmax()),
     f"Mean absolute error (MAE) in female lice per fish in the test period ({test_fra}→), skill vs. naive and "
     "Diebold–Mariano p-value. The model was selected on the 2023–24 validation period.",
 ), unsafe_allow_html=True)
@@ -186,7 +197,10 @@ bar = alt.Chart(omr_skill).mark_bar(height=14).encode(
     tooltip=[alt.Tooltip("etiket:N", title="Area"), alt.Tooltip("skill:Q", format=".1%")])
 nul = alt.Chart(pd.DataFrame({"x": [0]})).mark_rule(color=FARVER["skifer"]).encode(x="x:Q")
 st.altair_chart((bar + nul).properties(height=13 * 26), width="stretch")
-st.markdown(kilde("Areas 1 and 13 have fewer than 10 sites and are noisier."), unsafe_allow_html=True)
+smaa = panel.loc[panel["uge_start"] == seneste].query("n_lok < 10")["omraade"].astype(int).tolist()
+st.markdown(kilde(f"Area{'s' if len(smaa) > 1 else ''} {' and '.join(map(str, smaa))} "
+                  f"{'have' if len(smaa) > 1 else 'has'} fewer than 10 sites and {'are' if len(smaa) > 1 else 'is'} "
+                  "noisier." if smaa else ""), unsafe_allow_html=True)
 
 # --- 6. Figur 4: backtest-forløb ----------------------------------------------------------
 h_valg = st.segmented_control("Horizon", options=[1, 2, 3, 4], default=2, format_func=lambda h: f"{h} week{'s' if h > 1 else ''}",

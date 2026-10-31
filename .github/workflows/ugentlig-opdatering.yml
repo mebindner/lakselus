@@ -70,5 +70,7 @@ jobs:
             echo "Ingen nye data."
           else
             git commit -m "Weekly update of lice counts, treatments and models ($(date -u +%Y-%m-%d))"
+            # Er der pushet kode imens, lægges dataopdateringen oven på i stedet for at fejle.
+            git pull --rebase origin main
             git push
           fi

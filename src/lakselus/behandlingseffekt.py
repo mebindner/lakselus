@@ -92,7 +92,13 @@ def haendelser(beh: pd.DataFrame) -> pd.DataFrame:
 # --- 4. Forløb -----------------------------------------------------------------------------
 
 def _forloeb(lus: pd.Series, start: pd.DataFrame) -> pd.DataFrame:
-    """Langt datasæt: lusetal i uge k i forhold til ugen før (k = −1 er 100 %), med udgangsniveau og måned."""
+    """Langt datasæt: lusetal i uge k i forhold til ugen før (k = −1 er 100 %), med udgangsniveau og måned.
+
+    Kun startuger, hvor hele vinduet ligger inden for data: ellers kan en behandling i de seneste uger se
+    isoleret ud, blot fordi de næste ugers behandlinger og tællinger ikke er indberettet endnu.
+    """
+    sidste_uge = lus.index.get_level_values("uge_start").max()
+    start = start[start["uge_start"] <= sidste_uge - pd.Timedelta(weeks=max(UGER))]
     udgang = _slaa_op(lus, start["lokalitet"], start["uge_start"] - pd.Timedelta(weeks=1))
     start = start.assign(udgang=udgang)[udgang >= MIN_NIVEAU]
     dele = []
