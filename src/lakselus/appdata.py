@@ -1,16 +1,27 @@
-"""Cachede dataopslag, som deles af siderne i Streamlit-appen."""
+"""Cachede dataopslag, som deles af siderne i Streamlit-appen.
+
+Indhold
+1. Indlæsning           – lusetal, behandlinger og panel; cachen fornyes, når datafilerne ændres
+2. Produktionsområder   – omrids og trafiklys, slået op for den viste uge
+3. Opdateringsstatus    – hvornår data sidst blev opdateret, og hvornår næste opdatering kommer
+4. Nøgletal (Overview)  – status pr. område og sæsonprofil
+5. Modeller (Forecast)  – backtest, opsummering og live-prognose (læses fra disk, når de er friske)
+6. Behandlingseffekt     – hændelsesstudiet til Forecast-siden
+"""
 
 import ast
 
 import pandas as pd
 import streamlit as st
 
-from lakselus import data
+from lakselus import behandlingseffekt, data
 from lakselus.config import DATA_RAW
 from lakselus.data import APP_PRODUKTIONSOMRAADER
 
 TRAFIKLYS = {"green": "Green", "yellow": "Yellow", "red": "Red"}
 
+
+# --- 1. Indlæsning --------------------------------------------------------------------------
 
 def data_version() -> float:
     """Seneste ændringstid for datafilerne.
@@ -18,7 +29,8 @@ def data_version() -> float:
     Bruges som cache-nøgle: appen holdes vågen og genstarter sjældent, så uden den ville en ugentlig
     opdatering (nye filer via git push) aldrig blive indlæst – cachen ville vise de gamle tal.
     """
-    filer = [*DATA_RAW.glob("*.csv"), data.APP_LUSETAL, APP_PRODUKTIONSOMRAADER]
+    filer = [*DATA_RAW.glob("*.csv"), data.APP_LUSETAL, data.APP_BEHANDLINGER, behandlingseffekt.APP_FIL,
+             APP_PRODUKTIONSOMRAADER]
     return max((f.stat().st_mtime for f in filer if f.exists()), default=0.0)
 
 
@@ -29,8 +41,10 @@ def indlaes():
 @st.cache_data(show_spinner="Loading lice counts …", max_entries=2)
 def _indlaes(version: float):
     raa = data.indlaes_raa()
-    return raa, data.ugentligt_panel(raa), data.omraade_navne(raa)
+    return raa, data.ugentligt_panel(raa, data.indlaes_behandlinger()), data.omraade_navne(raa)
 
+
+# --- 2. Produktionsområder ------------------------------------------------------------------
 
 def omraader() -> pd.DataFrame:
     return _omraader(data_version())
@@ -65,6 +79,8 @@ def trafiklys_paa(po: pd.DataFrame, dato: pd.Timestamp) -> pd.DataFrame:
     return po.assign(trafiklys=lys.str[0], lys_fra=pd.to_datetime(lys.str[1]))
 
 
+# --- 3. Opdateringsstatus -------------------------------------------------------------------
+
 def opdatering(panel: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp | None]:
     """Hvornår data sidst blev opdateret, og hvornår næste opdatering kommer.
 
@@ -83,6 +99,8 @@ def opdatering_tekst(panel: pd.DataFrame) -> str:
     tekst = f"Updated {sidst.strftime('%a')} {sidst.day} {sidst.strftime('%b %Y')}"
     return tekst + (f" · next update {naeste.strftime('%a')} {naeste.day} {naeste.strftime('%b')}" if naeste is not None else "")
 
+
+# --- 4. Nøgletal (Overview) -----------------------------------------------------------------
 
 def status_pr_omraade(raa: pd.DataFrame, panel: pd.DataFrame) -> pd.DataFrame:
     """Nøgletal pr. område for seneste uge: hunlus, trend mod 4 uger før, andel over grænsen, temperatur."""
@@ -111,6 +129,8 @@ def saesonprofil(panel: pd.DataFrame) -> pd.DataFrame:
     nu = p[p["aar"] == i_aar].set_index(["omraade", "uge"])["hunlus"].rename("i_aar")
     return tidl.join(nu).reset_index().assign(aar=i_aar, foerste_aar=p["aar"].min())
 
+
+# --- 5. Modeller (Forecast) -----------------------------------------------------------------
 
 @st.cache_data(show_spinner="Running full backtest of all models (takes a few minutes the first time) …", max_entries=2)
 def backtest_resultater(panel: pd.DataFrame) -> pd.DataFrame:
@@ -146,3 +166,18 @@ def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame) -> pd.Data
         if (gemt["model"] == model).all() and gemt["uge_start"].min() == panel["uge_start"].max() + pd.Timedelta(weeks=1):
             return gemt
     return modelrapport.live_prognose(panel, model, res)
+
+
+# --- 6. Behandlingseffekt ------------------------------------------------------------------
+
+def behandlingseffekt_tabel() -> pd.DataFrame | None:
+    return _behandlingseffekt_tabel(data_version())
+
+
+@st.cache_data(show_spinner=False, max_entries=2)
+def _behandlingseffekt_tabel(version: float) -> pd.DataFrame | None:
+    """Den publicerede tabel; lokalt beregnes den fra rådata, hvis den mangler. None uden behandlingsdata."""
+    if behandlingseffekt.APP_FIL.exists():
+        return pd.read_parquet(behandlingseffekt.APP_FIL)
+    beh = data.indlaes_behandlinger_raa()
+    return behandlingseffekt.effekt_tabel(data.indlaes_raa(), beh) if beh is not None else None

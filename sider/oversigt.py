@@ -1,4 +1,15 @@
-"""Overview: ugebrief i konsulentstil – executive summary, figurer med handlingstitler og metode (engelsk UI)."""
+"""Overview: ugebrief i konsulentstil – executive summary, figurer med handlingstitler og metode (engelsk UI).
+
+Indhold
+0. Hjælpefunktioner
+1. Data og nøglefund       – seneste uge, lusegrænse, trafiklys og indberetningsstatus
+2. Sidehoved og resumé     – overskrift og tre nøgletal
+3. Figur 1: kort + søjler  – klik på et område viser hvert anlæg i området
+4. Figur 2: statustabel
+5. Figur 3: små multipler  – i år mod tidligere år pr. område
+6. Figur 4: sæsonmønster
+7. Metode og forbehold
+"""
 
 import math
 
@@ -13,6 +24,8 @@ from lakselus.udseende import (
 )
 
 
+# --- 0. Hjælpefunktioner ---------------------------------------------------------------
+
 def rgba(hex_farve: str, alpha: int) -> list[int]:
     h = hex_farve.lstrip("#")
     return [int(h[i:i + 2], 16) for i in (0, 2, 4)] + [alpha]
@@ -26,7 +39,7 @@ def pct(v: float, fortegn: bool = False) -> str:
     return (f"{v:+.0%}" if fortegn else f"{v:.0%}").replace("-", "−")
 
 
-# --- Data og nøglefund ----------------------------------------------------------
+# --- 1. Data og nøglefund -------------------------------------------------------
 raa, panel, navne = appdata.indlaes()
 seneste = panel["uge_start"].max()
 # Trafiklyset slås op for den viste uge – det er en politisk beslutning hvert andet år, ikke ugens lusetal.
@@ -50,7 +63,8 @@ top = solide["hunlus"].idxmax()
 roede = po[po["trafiklys"] == "red"]
 lys_fra = po["lys_fra"].max()
 # Lusegrænsen er 0,5 – men 0,2 i forårsugerne, hvor vildlaksen vandrer ud. Den gældende grænse står i data.
-graense = pd.to_numeric(talt["Lusegrense uke"].astype(str).str.replace(",", "."), errors="coerce").mode()
+graense = pd.to_numeric(talt.get("Lusegrense uke", pd.Series(dtype=str)).astype(str).str.replace(",", "."),
+                        errors="coerce").mode()
 graense = float(graense.iloc[0]) if len(graense) else 0.5
 uge_nu = profil[profil["uge"] == iso.week].dropna(subset=["i_aar"])
 over_snit = int((uge_nu["i_aar"] > uge_nu["snit"]).sum())
@@ -69,6 +83,7 @@ elif len(mangler) == 1:
     indberetning = f"week {mangler[0]} is still being reported"
 else:
     indberetning = f"weeks {mangler[0]}–{mangler[-1]} are still being reported"
+# --- 2. Sidehoved og resumé ------------------------------------------------------------
 st.markdown(sidehoved(
     f"Weekly brief · Sea lice in Norwegian salmon farming · Week {iso.week}, {iso.year} · latest complete week",
     f"Lice levels are {abs(aendring):.0%} {retning} than a year ago – pressure is highest in {status.loc[top, 'navn']}",
@@ -90,7 +105,9 @@ st.markdown(resume([
                             "mortality in wild salmon – not from this week's counts. Red means a cut in production capacity."),
 ]), unsafe_allow_html=True)
 
-# --- Figur 1: kort og rangering ------------------------------------------------------
+# --- 3. Figur 1: kort og rangering -------------------------------------------------
+
+# 3a. Valg og tilstand
 # Kortet og søjlerne er forbundet: klik på et område (på kortet eller som søjle) viser hvert anlæg i området.
 # Et nyt nøgletal (kort_n) tegner kort og graf forfra, så kortet zoomer ind på valget og markeringen nulstilles.
 st.session_state.setdefault("po_valgt", None)
@@ -130,6 +147,7 @@ def udsnit(polygon: list, bredde: int = 420, hoejde: int = 440) -> pdk.ViewState
                          zoom=min(zoom, 8))
 
 
+# 3b. Overskrift – konklusionen og den gældende lusegrænse står i titlen
 valgt = st.session_state.po_valgt if st.session_state.po_valgt in status.index else None
 over_tekst = "above" if status.loc[top, "hunlus"] > graense else "below"
 st.markdown(figur(
@@ -140,6 +158,7 @@ st.markdown(figur(
 ), unsafe_allow_html=True)
 
 venstre, hoejre = st.columns([1, 1.15], gap="large")
+# 3c. Kort: områder farvet efter trafiklys, anlæg farvet efter lusetal
 with venstre:
     st.markdown(f'<div class="korthjaelp">{ikon("touch_app")} Click an area on the map or a bar to see every site in it</div>',
                 unsafe_allow_html=True)
@@ -178,6 +197,7 @@ with venstre:
                                              "fontFamily": "Inter, sans-serif", "fontSize": "12px"}},
     ), height=440, on_select=fra_kort, selection_mode="single-object", key=f"kort_{n}")
 
+# 3d. Søjler: alle områder – eller hvert anlæg i det valgte område
 # Grænselinjer: 0,2 i forårsugerne og den almindelige grænse på 0,5. Teksterne står på hver sin linje.
 graenser = pd.DataFrame({"x": [0.2, 0.5], "t": ["0.2 spring weeks", "0.5 lice limit"]})
 linjer = alt.Chart(graenser).mark_rule(strokeDash=[3, 3], color="#D64545", opacity=.7).encode(x="x:Q")
@@ -271,7 +291,7 @@ st.markdown(kilde(f"Area figures are unweighted means over sites that counted li
                   f"* Fewer than {MIN_LOK} sites (faded, at the bottom) – the figure is uncertain and excluded from the conclusions."),
             unsafe_allow_html=True)
 
-# --- Figur 2: statustabel -------------------------------------------------------------
+# --- 4. Figur 2: statustabel ----------------------------------------------------------
 st.markdown(figur(
     2, "Status by production area",
     "Lice level, change vs. the previous 4 weeks, share of sites above the limit and sea temperature.",
@@ -306,7 +326,7 @@ st.markdown(
 st.markdown(kilde(f"Δ 4 weeks: change vs. the mean of the four preceding weeks; below {LAVT_NIVEAU} lice per fish "
                   f"shown in lice per fish instead of percent. * Fewer than {MIN_LOK} sites."), unsafe_allow_html=True)
 
-# --- Figur 3: små multipler ----------------------------------------------------------
+# --- 5. Figur 3: små multipler --------------------------------------------------------
 foerste, i_aar = int(profil["foerste_aar"].iloc[0]), int(profil["aar"].iloc[0])
 st.markdown(figur(
     3, f"{over_snit} of {len(uge_nu)} areas are above the normal level for the time of year",
@@ -339,7 +359,7 @@ with st.container(key="smaa_mobil"):
     st.altair_chart(smaa_multipler(1, 285, 64), width="content")
 st.markdown(kilde(f"Week 53 is omitted. Mean and band are based on {foerste}–{i_aar - 1}."), unsafe_allow_html=True)
 
-# --- Figur 4: sæsonmønster -----------------------------------------------------------
+# --- 6. Figur 4: sæsonmønster ---------------------------------------------------------
 st.markdown(figur(
     4, f"The peak comes later the further north: around week {syd_top} in the south vs. week {nord_top} in Finnmark",
     f"Mean adult female lice per fish by ISO week, {foerste}–{i_aar - 1}.",
@@ -361,7 +381,7 @@ top_pkt = alt.Chart(topper).mark_point(shape="circle", filled=True, size=34, col
 st.altair_chart((varme + top_pkt).properties(height=13 * 28), width="stretch")
 st.markdown(kilde("○ = the area's peak week (highest mean)."), unsafe_allow_html=True)
 
-# --- Metode ---------------------------------------------------------------------------
+# --- 7. Metode og forbehold -----------------------------------------------------------
 st.markdown(
     '<div class="metode"><b>Method and caveats.</b> Data are weekly lice counts per site from BarentsWatch '
     "(reported to the Norwegian Food Safety Authority). Area figures are unweighted means over sites that counted "

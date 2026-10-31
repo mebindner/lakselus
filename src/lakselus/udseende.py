@@ -2,10 +2,19 @@
 
 Hvid flade, dyb havblå tekst, én laksefarvet accent. Serif-handlingstitler (konklusionen står i titlen),
 nummererede figurer med enhed og kildeangivelse, minimalistiske tabeller og små multipler.
+
+Indhold
+1. Farver og skrifttyper
+2. CSS               – al styling af appen samlet ét sted, opdelt efter komponent
+3. HTML-byggeklodser – sidehoved, resumé, figurtitel, kildeangivelse, nøgletalskort
+4. Lusetal i tekst   – niveau og trend til tabeller og forklaringer
+5. Altair-tema       – fælles grafstil
 """
 
 import altair as alt
 import pandas as pd
+
+# --- 1. Farver og skrifttyper ---------------------------------------------------------------
 
 FARVER = {
     "blaek": "#0B2230",      # dyb havblå – titler, primære dataserier
@@ -33,6 +42,8 @@ SEKVENS = ["#F3F6F8", "#C9D8E2", "#7FA2BA", "#2F5D7C", "#0B2230"]  # én-farvet 
 
 SERIF = "'Source Serif 4', Georgia, serif"
 SANS = "Inter, 'Helvetica Neue', Arial, sans-serif"
+
+# --- 2. CSS ---------------------------------------------------------------------------------
 
 CSS = """
 <style>
@@ -135,10 +146,10 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .tabel .minibar { display: inline-block; height: 6px; border-radius: 1px; vertical-align: middle; margin-left: .45rem; }
 /* Brede tabeller og små multipler scrolles vandret på mobil i stedet for at blive skåret af */
 [data-testid="stMarkdownContainer"]:has(table.tabel), [data-testid="stFullScreenFrame"]:has([data-testid="stVegaLiteChart"]) { overflow-x: auto; }
-.st-key-smaa_mobil { display: none; }
+.st-key-smaa_mobil, .st-key-effekt_mobil { display: none; }
 @media (max-width: 640px) {
-  .st-key-smaa_bred { display: none; }
-  .st-key-smaa_mobil { display: block; }
+  .st-key-smaa_bred, .st-key-effekt_bred { display: none; }
+  .st-key-smaa_mobil, .st-key-effekt_mobil { display: block; }
   .tabel .ekstra { display: none; }             /* sekundære kolonner skjules på mobil */
   .tabel th, .tabel th.tal { white-space: normal; letter-spacing: .04em; }
   .tabel td, .tabel th { padding: .4rem .35rem; }
@@ -170,6 +181,8 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 </style>
 """
 
+
+# --- 3. HTML-byggeklodser ----------------------------------------------------------------------
 
 def ikon(navn: str, farve: str = "inherit", titel: str = "") -> str:
     """Material Symbols-ikon (outlined), fx 'thermostat', 'trending_up', 'warning'."""
@@ -210,6 +223,8 @@ def kort(etiket: str, tal: str, note: str = "", ikon_navn: str = "", bar: tuple[
     return f'<div class="kort">{hoved}<div class="tal">{tal}</div><div class="note">{note}</div>{bjaelke}</div>'
 
 
+# --- 4. Lusetal i tekst ---------------------------------------------------------------------
+
 def lus_niveau(v: float) -> str:
     return "lav" if v < 0.2 else ("mellem" if v <= 0.5 else "hoej")
 
@@ -230,6 +245,8 @@ def trend(nu: float, foer: float) -> tuple[str, str, str]:
         return "trending_down", "#1F7A8C", f"falling ({rel:+.0%} vs. previous 4 weeks)"
     return "trending_flat", "#6B7A86", f"stable ({rel:+.0%} vs. previous 4 weeks)"
 
+
+# --- 5. Altair-tema ---------------------------------------------------------------------------
 
 @alt.theme.register("konsulent", enable=True)
 def _altair_tema() -> alt.theme.ThemeConfig:

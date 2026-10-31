@@ -1,4 +1,11 @@
-"""Streamlit-app med tre sider (engelsk UI). Start med:  streamlit run app.py"""
+"""Streamlit-app med tre sider (engelsk UI). Start med:  streamlit run app.py
+
+Indhold
+1. Opsætning   – sidetitel og fælles designsystem (CSS)
+2. Data        – indlæses én gang; uden data vises en vejledning i stedet for siderne
+3. Navigation  – Overview, Time machine og Forecast i topbjælken
+4. Fodnote     – afsender, opdateringsstatus og kildeangivelse (krav i BarentsWatch' vilkår)
+"""
 
 import streamlit as st
 
@@ -6,9 +13,11 @@ from lakselus import KILDE_TEKST, appdata
 from lakselus.config import har_noegle
 from lakselus.udseende import CSS
 
+# --- 1. Opsætning ---------------------------------------------------------------------------
 st.set_page_config(page_title="Sea lice in Norwegian salmon farming", page_icon="🐟", layout="wide")
 st.markdown(CSS, unsafe_allow_html=True)
 
+# --- 2. Data -------------------------------------------------------------------------------
 try:
     _, panel, _ = appdata.indlaes()
 except FileNotFoundError:
@@ -18,6 +27,7 @@ except FileNotFoundError:
         st.warning("No API key found. Create `.env` from `.env.example` (see README).")
     st.stop()
 
+# --- 3. Navigation -------------------------------------------------------------------------
 side = st.navigation(
     [
         st.Page("sider/oversigt.py", title="Overview", icon=":material/map:", default=True),
@@ -28,6 +38,7 @@ side = st.navigation(
 )
 side.run()
 
+# --- 4. Fodnote ----------------------------------------------------------------------------
 st.markdown(
     '<div class="fodnote"><div class="afsender">Built by '
     '<a href="https://www.linkedin.com/in/martin-eckberg-bindner-872207422" target="_blank">Martin Eckberg Bindner</a>'

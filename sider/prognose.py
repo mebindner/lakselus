@@ -1,4 +1,16 @@
-"""Prognose: modelvalg, prognose med usikkerhed og ærlig evaluering i konsulentformat."""
+"""Prognose: modelvalg, prognose med usikkerhed og ærlig evaluering i konsulentformat.
+
+Indhold
+0. Hjælpefunktioner
+1. Data og modelresultater  – backtest, valgt model, skill og Diebold–Mariano-test
+2. Sidehoved og resumé
+3. Figur 1: prognose for det valgte område (med 80 %-interval)
+4. Figur 2: modelsammenligning
+5. Figur 3: hvor hjælper modellen
+6. Figur 4: backtest-forløb
+7. Figur 5: behandlingernes effekt (hændelsesstudie med kontrolgruppe)
+8. Metode
+"""
 
 import altair as alt
 import pandas as pd
@@ -8,6 +20,8 @@ from lakselus import appdata, evaluering as ev
 from lakselus.modelrapport import BASELINES, NAVNE
 from lakselus.udseende import FARVER, figur, ikon, kilde, resume, sidehoved
 
+
+# --- 0. Hjælpefunktioner ---------------------------------------------------------------
 
 def tal(v: float, d: int = 3) -> str:
     return f"{v:.{d}f}"
@@ -21,6 +35,7 @@ def p_tekst(p: float) -> str:
     return "< 0.001" if p < 0.001 else tal(p, 3)
 
 
+# --- 1. Data og modelresultater ---------------------------------------------------------
 raa, panel, navne = appdata.indlaes()
 seneste = panel["uge_start"].max()
 iso = seneste.isocalendar()
@@ -31,13 +46,14 @@ skill_t, p_dm, daek = o["skill_test"][valgt], o["dm_test"][valgt], o["daekning_t
 n_sig = int((p_dm < 0.05).sum())
 test_fra = ev.TEST[0][:4]
 
+# --- 2. Sidehoved og resumé ------------------------------------------------------------
 st.markdown(sidehoved(
     f"Forecast · weeks {(seneste + pd.Timedelta(weeks=1)).isocalendar().week}–"
     f"{(seneste + pd.Timedelta(weeks=4)).isocalendar().week} · Data up to week {iso.week}, {iso.year}",
     f"{NAVNE[valgt]} cuts forecast error by {abs(skill_t.loc[1]):.0%}–{abs(skill_t.loc[4]):.0%} "
     f"versus the naive forecast in the test period" if skill_t.mean() > 0 else
     f"{NAVNE[valgt]} does not beat the naive forecast in the test period",
-    "Six models were backtested week by week using only the data available at the time. The model was selected on "
+    f"{len(NAVNE)} models were backtested week by week using only the data available at the time. The model was selected on "
     f"2023–24 and then measured once on {test_fra} onwards – data it was never tuned on.",
     [("live", appdata.opdatering_tekst(panel)), ("model_training", f"Selected model: {NAVNE[valgt]}"), ("science", "Diebold–Mariano test"),
      ("straighten", "80% prediction interval")],
@@ -51,7 +67,7 @@ st.markdown(resume([
                            "the intervals are well calibrated."),
 ]), unsafe_allow_html=True)
 
-# --- Figur 1: prognose for valgt område ------------------------------------------------
+# --- 3. Figur 1: prognose for valgt område ------------------------------------------------
 # Områdevalget fremhæves med en hjælpeboble og en pulserende kant, indtil brugeren selv har valgt et område.
 with st.container(key="omraadevalg"):
     if not st.session_state.get("omraade_skiftet"):
@@ -116,7 +132,7 @@ st.markdown(kilde("The interval is the empirical 10th–90th percentile of the m
                   "Red dashed line: the lice limit of 0.5. Each week ahead has its own model, so the path can bend – "
                   "for example when lice rebound after a treatment."), unsafe_allow_html=True)
 
-# --- Figur 2: modelsammenligning -------------------------------------------------------
+# --- 4. Figur 2: modelsammenligning -------------------------------------------------------
 st.markdown(figur(
     2, (lambda vindere: f"Only {NAVNE[valgt].lower()} beats the naive forecast at all four horizons"
         if list(vindere) == [valgt] else
@@ -151,7 +167,7 @@ st.markdown(kilde("Skill = 1 − MAE_model / MAE_naive. ★ = selected on valida
                   "The DM test uses Newey–West variance and the Harvey correction; "
                   "\"worse\" = higher error than the naive forecast."), unsafe_allow_html=True)
 
-# --- Figur 3: hvor hjælper modellen ----------------------------------------------------
+# --- 5. Figur 3: hvor hjælper modellen ----------------------------------------------------
 pr_omr = o["mae_omraade_test"]
 omr_skill = (1 - pr_omr[valgt] / pr_omr["naiv"]).groupby(level="omraade").mean().rename("skill").reset_index()
 omr_skill["etiket"] = "PO " + omr_skill["omraade"].astype(str) + "  " + omr_skill["omraade"].map(navne)
@@ -172,7 +188,7 @@ nul = alt.Chart(pd.DataFrame({"x": [0]})).mark_rule(color=FARVER["skifer"]).enco
 st.altair_chart((bar + nul).properties(height=13 * 26), width="stretch")
 st.markdown(kilde("Areas 1 and 13 have fewer than 10 sites and are noisier."), unsafe_allow_html=True)
 
-# --- Figur 4: backtest-forløb ----------------------------------------------------------
+# --- 6. Figur 4: backtest-forløb ----------------------------------------------------------
 h_valg = st.segmented_control("Horizon", options=[1, 2, 3, 4], default=2, format_func=lambda h: f"{h} week{'s' if h > 1 else ''}",
                               key="horisont") or 2
 bt = ev.intervaller(res[res["model"] == valgt].drop(columns="model"))
@@ -192,7 +208,66 @@ st.altair_chart((
 ).properties(height=300), width="stretch")
 st.markdown(kilde(), unsafe_allow_html=True)
 
-# --- Metode -------------------------------------------------------------------------------
+# --- 7. Figur 5: behandlingernes effekt --------------------------------------------------
+# Hændelsesstudie (se lakselus/behandlingseffekt.py): lusetallet uge for uge omkring en behandling, i procent af
+# ugen før, mod en kontrolgruppe af ubehandlede lokaliteter med samme lusetal og samme årstid.
+effekt = appdata.behandlingseffekt_tabel()
+if effekt is not None and len(effekt):
+    # Nettoeffekt = hvor meget lavere de behandlede ligger end kontrollen; bruges til titel og rækkefølge.
+    netto = effekt.assign(netto=1 - effekt["median"] / effekt["kontrol"]).set_index(["type", "k"])["netto"]
+    # "Other" er en blandet kategori – den vises sidst og bruges ikke i titlen.
+    orden = sorted(netto.xs(0, level="k").sort_values(ascending=False).index, key=lambda t: t == "Other")
+    bedst = orden[0]
+    st.markdown(figur(
+        5, f"{bedst} treatment removes {netto[(bedst, 0)]:.0%} of lice in the treatment week – six weeks later the "
+           f"level is still {netto[(bedst, 6)]:.0%} below comparable untreated sites",
+        "Adult female lice per fish, relative to the week before treatment (= 100%). Line: median of single, "
+        "whole-site treatments; band: middle half of the sites. Dashed: untreated sites with the same lice level "
+        "in the same month.",
+    ), unsafe_allow_html=True)
+
+    eff = effekt.assign(titel=lambda d: d["type"] + " · " + d["n"].astype(str) + " treatments")
+    titler = [eff.loc[eff["type"] == t, "titel"].iloc[0] for t in orden]
+    ex = alt.X("k:Q", title=None, scale=alt.Scale(domain=[-3, 6], nice=False),
+               axis=alt.Axis(values=list(range(-3, 7)), labelExpr="datum.value == 0 ? 'Treat.' : (datum.value > 0 ? '+' : '') + datum.value",
+                             grid=False, labelFontSize=9))
+    ey = alt.Y("median:Q", title=None, scale=alt.Scale(domain=[0, 1.5]),
+               axis=alt.Axis(values=[0, 0.5, 1, 1.5], format=".0%", labelFontSize=9))
+    baand = alt.Chart().mark_area(color=FARVER["laks"], opacity=.15, clip=True).encode(
+        x=ex, y=alt.Y("q25:Q", title=None, scale=alt.Scale(domain=[0, 1.5])), y2="q75:Q")
+    kontrol_linje = alt.Chart().mark_line(color=FARVER["skifer"], strokeDash=[4, 3], strokeWidth=1.3).encode(
+        x=ex, y="kontrol:Q")
+    linje = alt.Chart().mark_line(color=FARVER["laks"], strokeWidth=2.2, point=alt.OverlayMarkDef(size=14)).encode(
+        x=ex, y=ey, tooltip=[alt.Tooltip("type:N", title="Treatment"), alt.Tooltip("k:Q", title="Week"),
+                             alt.Tooltip("median:Q", title="Treated (median)", format=".0%"),
+                             alt.Tooltip("kontrol:Q", title="Untreated", format=".0%")])
+    # Tallet i behandlingsugen står til højre for punktet (fri af den lodrette linje), tallet efter 6 uger over det.
+    tal_0 = alt.Chart().mark_text(align="left", dx=6, dy=2, fontSize=10, fontWeight=600, color=FARVER["laks_tekst"]).encode(
+        x=ex, y=ey, text=alt.Text("median:Q", format=".0%")).transform_filter("datum.k == 0")
+    tal_6 = alt.Chart().mark_text(align="right", dy=-9, fontSize=10, fontWeight=600, color=FARVER["laks_tekst"]).encode(
+        x=ex, y=ey, text=alt.Text("median:Q", format=".0%")).transform_filter("datum.k == 6")
+    hundrede = alt.Chart().mark_rule(color=FARVER["taage"]).encode(y=alt.datum(1))
+    behandling = alt.Chart().mark_rule(color=FARVER["blaek"], strokeDash=[2, 2], opacity=.5).encode(x=alt.datum(0))
+
+    def effekt_multipler(kolonner: int, bredde: int, hoejde: int) -> alt.FacetChart:
+        return alt.layer(hundrede, behandling, baand, kontrol_linje, linje, tal_0, tal_6, data=eff).properties(
+            width=bredde, height=hoejde).facet(
+            facet=alt.Facet("titel:N", sort=titler, header=alt.Header(labelFontSize=11, labelPadding=4)),
+            columns=kolonner)
+
+    # Tre kolonner på brede skærme, én på mobil – CSS i udseende.py viser den ene og skjuler den anden.
+    with st.container(key="effekt_bred"):
+        st.altair_chart(effekt_multipler(3, 225, 130), width="content")
+    with st.container(key="effekt_mobil"):
+        st.altair_chart(effekt_multipler(1, 285, 120), width="content")
+    st.markdown(kilde(
+        f"Isolated treatments: one treatment type for the whole site and no other treatment from 3 weeks before to "
+        f"6 weeks after; the week before had at least 0.05 lice per fish. Types with fewer than 30 such treatments are "
+        f"left out. Observational data: sites choose when and how to treat, so the comparison with untreated sites "
+        f"removes the natural drop after a peak but cannot rule out every difference. In-feed treatment works "
+        f"slowly and mainly stops lice numbers from growing."), unsafe_allow_html=True)
+
+# --- 8. Metode -------------------------------------------------------------------------------
 st.markdown(
     '<div class="metode"><b>Method.</b> The models predict the <i>change</i> in an area\'s lice level 1–4 weeks ahead '
     "(direct multi-horizon, one model per horizon), so the naive forecast is the starting point. Features: level and "
@@ -203,8 +278,12 @@ st.markdown(
     "the forecasts are unchanged.<br><br><b>Evaluation.</b> Model choice and settings were decided on 2023–24; the "
     f"figures above are from {test_fra} onwards, which was not used for any choice. The Diebold–Mariano test compares "
     "errors week by week against the naive forecast. Prediction intervals are causal empirical quantiles of the "
-    "model's own past errors by area and horizon.<br><br><b>Caveats.</b> Lice treatments are not included as an "
-    "explanatory variable and account for some of the abrupt drops. Data are retrieved as they look today; late "
-    "corrections were not necessarily known in the forecast week.</div>",
+    "model's own past errors by area and horizon.<br><br><b>Lice treatments.</b> One candidate also uses the share of "
+    "an area's sites treated against lice that week and over the past four weeks (mechanical, thermal, freshwater and "
+    "medicinal). On 2023–24 it did not improve on gradient boosting without treatments: farms treat when lice counts "
+    "are high, which the lice history already shows. It stays in the weekly backtest, so the model choice would pick "
+    "it up if that changes.<br><br><b>Caveats.</b> Treatments explain some of the abrupt drops but cannot be known "
+    "ahead of time. Data are retrieved as they look today; late corrections were not necessarily known in the "
+    "forecast week.</div>",
     unsafe_allow_html=True,
 )

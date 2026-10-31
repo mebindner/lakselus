@@ -5,12 +5,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# --- Stier ---------------------------------------------------------------------------------
 ROD = Path(__file__).resolve().parents[2]
 DATA_RAW = ROD / "data" / "raw"
 DATA_PROCESSED = ROD / "data" / "processed"
 # Kompakte, færdigbehandlede data, der committes, så den hostede app kører uden API-nøgle.
 DATA_APP = ROD / "data" / "app"
 
+# --- API-nøgle (BarentsWatch) --------------------------------------------------------------
 load_dotenv(ROD / ".env")
 
 

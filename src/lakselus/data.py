@@ -1,10 +1,23 @@
-"""Dataklargøring: fra rå lusetællinger pr. lokalitet til ugentligt panel pr. produktionsområde."""
+"""Dataklargøring: fra rå tællinger og behandlinger pr. lokalitet til ugentligt panel pr. produktionsområde.
+
+Indhold
+1. Filer og kolonnenavne
+2. Lusetal          – indlæsning og frasortering af uger, der stadig indberettes
+3. Behandlinger     – antal behandlede lokaliteter pr. område og uge
+4. Ugentligt panel  – ét komplet ugegitter pr. område, som modellerne bygger på
+5. Områdenavne
+"""
 
 import pandas as pd
 
 from lakselus.config import DATA_APP, DATA_RAW
 
+
+# --- 1. Filer og kolonnenavne --------------------------------------------------------------
+
+# Kompakte app-data (skrives af `python -m lakselus.publicer`), som den hostede app bruger uden API-nøgle.
 APP_LUSETAL = DATA_APP / "lusetal.parquet"
+APP_BEHANDLINGER = DATA_APP / "behandlinger.parquet"
 APP_PRODUKTIONSOMRAADER = DATA_APP / "produktionsomraader.csv"
 
 KOLONNER = {
@@ -23,6 +36,13 @@ KOLONNER = {
 }
 
 
+def _uge_start(aar: pd.Series, uge: pd.Series) -> pd.Series:
+    """Mandagen i ISO-ugen – fælles tidsnøgle for alle datasæt."""
+    return pd.to_datetime(aar.astype(str) + "-W" + uge.astype(str).str.zfill(2) + "-1", format="%G-W%V-%u")
+
+
+# --- 2. Lusetal ----------------------------------------------------------------------------
+
 def indlaes_raa() -> pd.DataFrame:
     """Alle cachede år samlet, med korte danske kolonnenavne.
 
@@ -38,9 +58,7 @@ def indlaes_raa() -> pd.DataFrame:
         raise FileNotFoundError("Ingen data i data/raw. Kør først: python -m lakselus.hent")
     raa = pd.concat((pd.read_csv(f, low_memory=False) for f in filer), ignore_index=True)
     raa = raa.rename(columns=KOLONNER)
-    raa["uge_start"] = pd.to_datetime(
-        raa["aar"].astype(str) + "-W" + raa["uge"].astype(str).str.zfill(2) + "-1", format="%G-W%V-%u"
-    )
+    raa["uge_start"] = _uge_start(raa["aar"], raa["uge"])
     return fjern_ufaerdige_uger(raa)
 
 
@@ -56,11 +74,45 @@ def fjern_ufaerdige_uger(raa: pd.DataFrame, andel: float = 0.8) -> pd.DataFrame:
     return raa[raa["uge_start"] <= antal.index[-1]]
 
 
-def ugentligt_panel(raa: pd.DataFrame) -> pd.DataFrame:
+# --- 3. Behandlinger -----------------------------------------------------------------------
+
+def behandlinger_pr_omraade(beh: pd.DataFrame) -> pd.DataFrame:
+    """Antal lokaliteter pr. (omraade, uge_start), der blev behandlet mod lus.
+
+    n_beh: lokaliteter med mindst én behandling (alle typer). n_med: heraf med medicin (bad eller fôr).
+    En lokalitet tæller én gang pr. uge, selv om den har flere behandlinger eller behandler flere merder.
+    """
+    beh = beh.assign(uge_start=_uge_start(beh["År"], beh["Uke"]),
+                     med_lok=beh["Lokalitetsnummer"].where(beh["Tiltak"].eq("medikamentell")))
+    agg = beh.groupby(["ProduksjonsområdeId", "uge_start"]).agg(
+        n_beh=("Lokalitetsnummer", "nunique"), n_med=("med_lok", "nunique"))
+    return agg.rename_axis(["omraade", "uge_start"]).reset_index().astype({"omraade": int})
+
+
+def indlaes_behandlinger_raa() -> pd.DataFrame | None:
+    """Alle behandlinger pr. lokalitet (én række pr. behandling) fra data/raw. None uden rådata."""
+    filer = sorted(DATA_RAW.glob("behandlinger_*.csv"))
+    return pd.concat((pd.read_csv(f) for f in filer), ignore_index=True) if filer else None
+
+
+def indlaes_behandlinger() -> pd.DataFrame | None:
+    """Behandlinger pr. område og uge – fra rådata, ellers fra app-data. None, hvis ingen findes."""
+    raa = indlaes_behandlinger_raa()
+    if raa is not None:
+        return behandlinger_pr_omraade(raa)
+    if APP_BEHANDLINGER.exists():
+        return pd.read_parquet(APP_BEHANDLINGER)
+    return None
+
+
+# --- 4. Ugentligt panel --------------------------------------------------------------------
+
+def ugentligt_panel(raa: pd.DataFrame, behandlinger: pd.DataFrame | None = None) -> pd.DataFrame:
     """Ét rækkesæt pr. (omraade, uge_start) på et komplet ugegitter.
 
     hunlus = uvægtet gennemsnit af voksne hunlus pr. fisk over lokaliteter, der har talt den uge.
     Uger uden tællinger i et område står som NaN (gitteret er komplet, så shift(k) = k uger tilbage).
+    Med `behandlinger` får panelet også n_beh og n_med (0 i uger uden indberettede behandlinger).
     """
     talt = raa[(raa["har_talt"] == "Ja") & raa["omraade"].notna()].copy()
     talt["omraade"] = talt["omraade"].astype(int)
@@ -73,8 +125,14 @@ def ugentligt_panel(raa: pd.DataFrame) -> pd.DataFrame:
     gitter = pd.MultiIndex.from_product([sorted(talt["omraade"].unique()), uger], names=agg.index.names)
     panel = agg.reindex(gitter).reset_index()
     panel["n_lok"] = panel["n_lok"].fillna(0).astype(int)
+    if behandlinger is not None:
+        b = behandlinger.set_index(["omraade", "uge_start"])[["n_beh", "n_med"]]
+        panel = panel.join(b, on=["omraade", "uge_start"])
+        panel[["n_beh", "n_med"]] = panel[["n_beh", "n_med"]].fillna(0).astype(int)
     return panel
 
+
+# --- 5. Områdenavne ------------------------------------------------------------------------
 
 # Officielle navne (Fiskeridirektoratet), hvor BarentsWatchs to kilder staver forskelligt:
 # lusetallene skriver "Nordhordaland", områdelisten "Ryfylket".

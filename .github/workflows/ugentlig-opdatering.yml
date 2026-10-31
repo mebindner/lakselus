@@ -1,4 +1,4 @@
-# Henter nye lusetal hver uge, genberegner modellerne og publicerer app-data.
+# Henter nye lusetal og lusebehandlinger hver uge, genberegner modellerne og publicerer app-data.
 # Et push til main får Streamlit Community Cloud til at opdatere den offentlige side.
 # Kræver repository-secrets BW_CLIENT_ID og BW_CLIENT_SECRET (Settings → Secrets and variables → Actions).
 name: Ugentlig opdatering
@@ -46,7 +46,7 @@ jobs:
         if: steps.noegle.outputs.klar == 'true'
         run: pip install -e . pytest
 
-      - name: Hent nye lusetal fra BarentsWatch
+      - name: Hent nye lusetal og behandlinger fra BarentsWatch
         if: steps.noegle.outputs.klar == 'true'
         run: python -m lakselus.hent --fra 2019
 
@@ -69,6 +69,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Ingen nye data."
           else
-            git commit -m "Ugentlig opdatering af lusetal og modeller ($(date -u +%Y-%m-%d))"
+            git commit -m "Weekly update of lice counts, treatments and models ($(date -u +%Y-%m-%d))"
             git push
           fi

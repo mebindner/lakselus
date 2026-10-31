@@ -1,4 +1,9 @@
-"""Tidsmaskinen: pakker ugentlige lusetal pr. lokalitet kompakt til et 3D-kort, der afspilles i browseren."""
+"""Tidsmaskinen: pakker ugentlige lusetal pr. lokalitet kompakt til et 3D-kort, der afspilles i browseren.
+
+Indhold
+1. Pakning   – én byte pr. (uge, lokalitet), base64-kodet
+2. HTML      – data indsættes i skabelonen tidsmaskine.html
+"""
 
 import base64
 import json
@@ -10,6 +15,8 @@ import pandas as pd
 SKABELON = Path(__file__).with_name("tidsmaskine.html")
 MANGLER = 255  # byte-værdi for "ikke talt denne uge"
 
+
+# --- 1. Pakning ----------------------------------------------------------------------------
 
 def pak(raa: pd.DataFrame, fra: str = "2019-01-01") -> dict:
     """Én byte pr. (uge, lokalitet): round(hunlus * 100), loftet ved 2,54; 255 = ingen tælling.
@@ -35,6 +42,8 @@ def pak(raa: pd.DataFrame, fra: str = "2019-01-01") -> dict:
         "vaerdier": base64.b64encode(matrix.tobytes()).decode("ascii"),
     }
 
+
+# --- 2. HTML -------------------------------------------------------------------------------
 
 def html(pakke: dict) -> str:
     data = json.dumps(pakke, ensure_ascii=False).replace("</", "<\\/")

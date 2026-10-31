@@ -1,7 +1,14 @@
 """Fuld modelevaluering: backtest af alle modeller, modelvalg på validering, rapport på test.
 
 Kør:  python -m lakselus.modelrapport
-Gemmer data/processed/backtest.parquet, som Streamlit-appen læser.
+Gemmer data/app/backtest.parquet og data/app/prognose.parquet, som Streamlit-appen læser.
+
+Indhold
+1. Filer og modelnavne
+2. Backtest                    – alle baselines og kandidater på samme panel
+3. Modelvalg og opsummering    – valg på validering (2023–24), rapport på test (2025→)
+4. Live-prognose               – 1–4 uger frem med 80 %-interval fra backtest-fejlene
+5. Kommandolinje
 """
 
 import time
@@ -10,6 +17,8 @@ import pandas as pd
 
 from lakselus import data, evaluering as ev, modeller as m
 from lakselus.config import DATA_APP
+
+# --- 1. Filer og modelnavne -----------------------------------------------------------------
 
 # Committes sammen med app-data, så den hostede app ikke skal køre backtesten ved opstart.
 BACKTEST_FIL = DATA_APP / "backtest.parquet"
@@ -22,9 +31,12 @@ NAVNE = {
     "saeson_justeret": "Naive + seasonal change",
     "ridge": "Ridge regression",
     "gbm": "Gradient boosting",
+    "gbm_beh": "Gradient boosting + treatments",
     "ensemble": "Ensemble",
 }
 
+
+# --- 2. Backtest ----------------------------------------------------------------------------
 
 def koer(panel: pd.DataFrame, log=print) -> pd.DataFrame:
     """Backtest af baselines og modelkandidater; ét langt datasæt med kolonnen `model`."""
@@ -35,6 +47,8 @@ def koer(panel: pd.DataFrame, log=print) -> pd.DataFrame:
         log(f"  {navn:16s} {time.time() - t:5.1f} s")
     return pd.concat(dele, ignore_index=True)
 
+
+# --- 3. Modelvalg og opsummering ------------------------------------------------------------
 
 def som_dict(res: pd.DataFrame) -> dict[str, pd.DataFrame]:
     return {navn: r.drop(columns="model") for navn, r in res.groupby("model", sort=False)}
@@ -65,6 +79,8 @@ def opsummer(res: pd.DataFrame) -> dict[str, pd.DataFrame]:
     return ud
 
 
+# --- 4. Live-prognose ------------------------------------------------------------------------
+
 def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame, niveau: float = 0.8) -> pd.DataFrame:
     """Prognose 1–4 uger frem fra seneste uge med den valgte model og et 80 %-interval pr. område.
 
@@ -85,8 +101,10 @@ def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame, niveau: fl
     return pd.DataFrame(rows).assign(model=model)
 
 
+# --- 5. Kommandolinje -----------------------------------------------------------------------
+
 def main() -> None:
-    panel = data.ugentligt_panel(data.indlaes_raa())
+    panel = data.ugentligt_panel(data.indlaes_raa(), data.indlaes_behandlinger())
     print("Backtest (dette tager et par minutter) …")
     res = koer(panel)
     DATA_APP.mkdir(parents=True, exist_ok=True)

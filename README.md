@@ -41,11 +41,11 @@ Playback runs entirely in the browser: ~1,000 sites × ~400 weeks are packed as 
 
 ### 3. Forecast – model selection and honest evaluation
 Same consulting format: a summary of the test result, a 1–4 week forecast with an 80% interval for
-the selected area, a comparison of six models, the gain by area and the backtest track in the test period.
+the selected area, a comparison of seven models, the gain by area and the backtest track in the test period.
 
 ## Models and evaluation
 
-Six models are backtested week by week (expanding window, retrained every quarter). Every forecast is
+Seven models are backtested week by week (expanding window, retrained every quarter). Every forecast is
 made **only with the data available at the time** – tested automatically by corrupting all future data
 and checking that the forecasts are unchanged.
 
@@ -56,7 +56,8 @@ and checking that the forecasts are unchanged.
 | Naive + seasonal change | Last level + the area's typical change for the time of year |
 | Ridge regression | Direct model per horizon on the change y(t+h) − y(t) |
 | **Gradient boosting** | Same target, non-linear, MAE loss, pooled across areas |
-| Ensemble | Mean of the three above |
+| Gradient boosting + treatments | As above, plus the share of the area's sites treated against lice |
+| Ensemble | Mean of naive + seasonal change, ridge and gradient boosting |
 
 Features: level and changes over 1–8 weeks, rolling mean and spread, sea temperature, ISO week
 (sine/cosine), the area's seasonal profile, number of sites, and the coast-wide trend. The seasonal
@@ -83,17 +84,30 @@ are well calibrated.
 
 Reproduce the figures with `python -m lakselus.modelrapport` (a few minutes).
 
-**Caveats:** Lice treatments are not included as an explanatory variable and account for some of the
-abrupt drops. Data are retrieved as they look today; late corrections were not necessarily known in the
-forecast week.
+**Lice treatments:** One candidate also uses the share of an area's sites treated against lice that week
+and over the past four weeks (mechanical, thermal, freshwater and medicinal treatments, from the
+BarentsWatch treatment export). On the validation period it did not beat gradient boosting without
+treatments (skill 13.0% vs. 13.5% at two weeks; Diebold–Mariano p > 0.05 at every horizon). Farms treat
+when lice counts are high, and the model already sees the lice history. In the test period it came out
+marginally ahead (skill 27.7% vs. 26.9% at four weeks), but the model is chosen on validation only, so that
+does not change the selection. The candidate stays in the weekly backtest, so the model choice will pick it
+up if treatments start to add information on the validation period's terms.
+
+**What treatments do:** The Forecast page also shows an event study of single, whole-site treatments:
+the lice level week by week around a treatment, compared with untreated sites that had the same lice level
+in the same month. Thermal and mechanical treatments remove most lice within a week, bath treatments work
+over a few weeks, and in-feed treatments mainly stop growth. Computed in `behandlingseffekt.py`.
+
+**Caveats:** Treatments explain some of the abrupt drops but cannot be known ahead of time. Data are
+retrieved as they look today; late corrections were not necessarily known in the forecast week.
 
 ## Data
 
 - **Source:** [BarentsWatch Fishhealth API](https://www.barentswatch.no/bwapi/openapi/) – the bulk export
-  of weekly lice counts per site with sea temperature and production area, plus production-area
-  boundaries and traffic lights.
+  of weekly lice counts per site with sea temperature and production area, the export of lice
+  treatments per site and week, plus production-area boundaries and traffic lights.
 - **Licence:** NLOD (Norwegian Licence for Open Government Data). Data delivered by BarentsWatch;
-  information about lice is provided by the Norwegian Food Safety Authority (Mattilsynet).
+  information about lice and treatments is provided by the Norwegian Food Safety Authority (Mattilsynet).
 - **Processing:** Area figures are unweighted means over sites that counted lice that week (the number of
   fish per site is not in the dataset). The latest week is only included once at least 80% of sites have
   reported.
@@ -121,7 +135,7 @@ The app runs for free on **Streamlit Community Cloud** and needs no API key ther
 pre-processed data from `data/app/` (≈ 2 MB, committed to the repo), including the finished backtest.
 
 A **GitHub Action** (`.github/workflows/ugentlig-opdatering.yml`) runs every Wednesday: it fetches new
-lice counts, re-runs the models, publishes `data/app/`, runs all tests as a quality gate and pushes.
+lice counts and treatments, re-runs the models, publishes `data/app/`, runs all tests as a quality gate and pushes.
 Streamlit Cloud redeploys automatically on every push. The workflow needs the repository secrets
 `BW_CLIENT_ID` and `BW_CLIENT_SECRET`; without them it is skipped.
 
@@ -148,8 +162,9 @@ src/lakselus/
   hent.py                  fetches raw data into a local cache
   data.py                  data preparation: weekly panel by area
   evaluering.py            baselines, backtest, MAE/skill, Diebold–Mariano, intervals
-  modeller.py              features and model candidates (ridge, gradient boosting, ensemble)
+  modeller.py              features and model candidates (ridge, gradient boosting with/without treatments, ensemble)
   modelrapport.py          full backtest, selection on validation, report on test
+  behandlingseffekt.py     event study of how much each treatment type lowers lice counts
   publicer.py              writes compact app data to data/app for hosting
   appdata.py               cached lookups and key figures for the app
   tidsmaskine.py/.html     data packing and deck.gl view

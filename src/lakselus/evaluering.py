@@ -1,7 +1,14 @@
-"""Baselines og rullende backtest.
+"""Baselines, rullende backtest og statistisk evaluering.
 
 En forecaster er en funktion  f(historik, h) -> pd.Series  (indeks = omraade), der kun må se
 `historik` (panelet til og med forecast-ugen) og forudsiger hunlus h uger frem.
+
+Indhold
+1. Baselines            – naiv (sidste uge) og sæson-naiv (samme uge sidste år)
+2. Backtest             – expanding window, uge for uge, med kun de data, der fandtes dengang
+3. Fejlmål              – MAE og skill mod den naive prognose
+4. Perioder og test     – validering/test-opdeling og Diebold–Mariano-test
+5. Prognoseintervaller  – empiriske 80 %-intervaller fra modellens egne tidligere fejl
 """
 
 from collections.abc import Callable
@@ -11,6 +18,8 @@ import pandas as pd
 
 Forecaster = Callable[[pd.DataFrame, int], pd.Series]
 
+
+# --- 1. Baselines ---------------------------------------------------------------------------
 
 def naiv(historik: pd.DataFrame, h: int) -> pd.Series:
     """Samme værdi som i forecast-ugen."""
@@ -23,6 +32,8 @@ def saeson_naiv(historik: pd.DataFrame, h: int) -> pd.Series:
     maal = historik["uge_start"].max() + pd.Timedelta(weeks=h - 52)
     return historik[historik["uge_start"] == maal].set_index("omraade")["hunlus"]
 
+
+# --- 2. Backtest ----------------------------------------------------------------------------
 
 def backtest(
     panel: pd.DataFrame,
@@ -47,6 +58,8 @@ def backtest(
     return res.dropna(subset=["pred", "faktisk"])
 
 
+# --- 3. Fejlmål -----------------------------------------------------------------------------
+
 def mae(resultater: dict[str, pd.DataFrame], efter: list[str] = ["h"]) -> pd.DataFrame:
     """MAE pr. model (kolonner) grupperet efter fx ['h'] eller ['omraade', 'h'].
 
@@ -69,7 +82,7 @@ def skill(mae_tabel: pd.DataFrame, reference: str = "naiv") -> pd.DataFrame:
     return 1 - mae_tabel.div(mae_tabel[reference], axis=0)
 
 
-# --- Statistisk evaluering ------------------------------------------------------------
+# --- 4. Perioder og test ---------------------------------------------------------------------
 
 VALIDERING = ("2023-01-01", "2024-12-31")  # modelvalg og indstillinger
 TEST = ("2025-01-01", "2100-01-01")       # rapporteres én gang, efter valget er truffet
@@ -105,6 +118,8 @@ def dm_test(res_model: pd.DataFrame, res_ref: pd.DataFrame, h: int) -> tuple[flo
     dm *= np.sqrt((n + 1 - 2 * h + h * (h - 1) / n) / n)
     return float(dm), float(2 * stats.t.sf(abs(dm), df=n - 1))
 
+
+# --- 5. Prognoseintervaller -----------------------------------------------------------------
 
 def intervaller(res: pd.DataFrame, niveau: float = 0.8, min_obs: int = 26) -> pd.DataFrame:
     """Kausale prognoseintervaller fra modellens egne tidligere fejl (empirisk/konform metode).

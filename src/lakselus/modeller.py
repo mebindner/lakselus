@@ -7,10 +7,18 @@ Kandidater
 - saeson_justeret:  sidste uges niveau + den typiske ændring fra denne uge til uge+h i tidligere år (pr. område).
 - ridge:            lineær model (direkte pr. horisont) på ændringen y(t+h) − y(t).
 - gbm:              gradient boosting med MAE-tab, samme mål og features, fælles for alle områder.
+- gbm_beh:          som gbm, men også med lusebehandlinger som forklarende variabel.
 - ensemble:         gennemsnit af saeson_justeret, ridge og gbm.
 
 Modellerne forudsiger *ændringen* fra i dag frem for niveauet. Så er den naive prognose (ændring = 0)
 modellens udgangspunkt, og den skal kun lære, hvornår og hvor meget niveauet afviger fra uge til uge.
+
+Indhold
+1. Featurelister            – hvilke forklarende variable hver model må bruge
+2. Features                 – kausale features pr. område og uge (lusetal, temperatur, sæson, kyst, behandlinger)
+3. Sæsonmodel               – naiv + typisk sæsonændring
+4. Læringsmodeller          – ridge og gradient boosting som direkte multi-horisont-modeller
+5. Ensemble og kandidater   – de modeller, backtesten sammenligner
 """
 
 import numpy as np
@@ -22,13 +30,19 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+# --- 1. Featurelister ----------------------------------------------------------------------
+
+# Områdets egen udvikling, temperatur, sæson og datagrundlag.
 NUMERISKE = ["y", "d1", "d2", "d4", "d8", "rul4", "rul12", "std4", "temp_nu", "temp_d4",
              "uge_sin", "uge_cos", "log_n", "saes_d"]
+# Hele kystens niveau og ændring samme uge.
 NATIONALE = ["nat_y", "nat_d1"]
+# Lusebehandlinger: andel af områdets lokaliteter, der blev behandlet i ugen og i snit de sidste 4 uger.
+BEHANDLINGER = ["beh_andel", "beh_rul4"]
 REFIT_UGER = 13  # gen-træn hvert kvartal i backtesten
 
 
-# --- Features --------------------------------------------------------------------------
+# --- 2. Features ---------------------------------------------------------------------------
 
 def _iso_uge(datoer: pd.Series) -> pd.Series:
     return datoer.dt.isocalendar().week.astype(int).clip(upper=52)
@@ -53,8 +67,11 @@ def features(historik: pd.DataFrame, h: int) -> pd.DataFrame:
 
     Undtagelse: `saes_d` er sæsonprofilen fra andre år i historikken – den kender intet efter forecast-ugen.
     """
-    p = historik[["omraade", "uge_start", "hunlus", "temp", "n_lok"]].sort_values(["omraade", "uge_start"]).copy()
+    kolonner = ["omraade", "uge_start", "hunlus", "temp", "n_lok"] + [k for k in ("n_beh",) if k in historik]
+    p = historik[kolonner].sort_values(["omraade", "uge_start"]).copy()
     g = p.groupby("omraade")
+
+    # Områdets lusetal: niveau (ffill over uger uden tællinger), ændringer og glidende vinduer.
     p["y"] = g["hunlus"].ffill()
     p["temp_nu"] = g["temp"].ffill()
     gy, gt = p.groupby("omraade")["y"], p.groupby("omraade")["temp_nu"]
@@ -65,6 +82,8 @@ def features(historik: pd.DataFrame, h: int) -> pd.DataFrame:
     p["rul12"] = rul(12, 4).mean().reset_index(level=0, drop=True)
     p["std4"] = rul(4, 2).std().reset_index(level=0, drop=True)
     p["temp_d4"] = p["temp_nu"] - gt.shift(4)
+
+    # Sæson og datagrundlag.
     uge = _iso_uge(p["uge_start"])
     p["uge_sin"], p["uge_cos"] = np.sin(2 * np.pi * uge / 52), np.cos(2 * np.pi * uge / 52)
     p["log_n"] = np.log1p(p["n_lok"])
@@ -72,11 +91,22 @@ def features(historik: pd.DataFrame, h: int) -> pd.DataFrame:
     nat = p.groupby("uge_start")[["y", "d1"]].transform("mean")
     p["nat_y"], p["nat_d1"] = nat["y"], nat["d1"]
     p["saes_d"] = saeson_aendring_uden_egen(p, h)
-    p["maal"] = p.groupby("omraade")["hunlus"].shift(-h) - p["y"]  # ændringen h uger frem (kun til træning)
+
+    # Behandlinger: mange behandlinger slår lusetallet ned de følgende uger – og viser samtidig, at presset er højt.
+    # Andelen af aktive lokaliteter gør områder af forskellig størrelse sammenlignelige. Uden data: NaN.
+    if "n_beh" in p:
+        p["beh_andel"] = p["n_beh"] / p["n_lok"].where(p["n_lok"] > 0)
+        p["beh_rul4"] = (p.groupby("omraade")["beh_andel"].rolling(4, min_periods=1).mean()
+                         .reset_index(level=0, drop=True))
+    else:
+        p["beh_andel"] = p["beh_rul4"] = np.nan
+
+    # Målet: ændringen h uger frem (bruges kun til træning).
+    p["maal"] = p.groupby("omraade")["hunlus"].shift(-h) - p["y"]
     return p
 
 
-# --- Forecastere ---------------------------------------------------------------------------
+# --- 3. Sæsonmodel -------------------------------------------------------------------------
 
 def saeson_justeret(historik: pd.DataFrame, h: int) -> pd.Series:
     """Sidste niveau + den typiske sæsonændring for området fra denne uge til h uger frem."""
@@ -84,6 +114,8 @@ def saeson_justeret(historik: pd.DataFrame, h: int) -> pd.Series:
     nu = f[f["uge_start"] == f["uge_start"].max()].set_index("omraade")
     return (nu["y"] + nu["saes_d"].fillna(0)).clip(lower=0)
 
+
+# --- 4. Læringsmodeller ---------------------------------------------------------------------
 
 def _ridge(kolonner: list[str]):
     pre = ColumnTransformer([
@@ -130,6 +162,8 @@ class DirekteModel:
         return pd.Series((nu["y"].to_numpy() + aendring).clip(min=0), index=nu["omraade"].to_numpy())
 
 
+# --- 5. Ensemble og kandidater ----------------------------------------------------------------
+
 class Ensemble:
     """Gennemsnit af flere forecastere – reducerer variansen fra den enkelte model."""
 
@@ -144,10 +178,14 @@ def kandidater() -> dict:
     """Friske modelinstanser (de har tilstand pga. refit-cache)."""
     # Valgt på valideringsperioden 2023–24 (se README): nationale features gav GBM en lille, konsistent
     # forbedring, men ikke ridge. Dybere/fladere træer ændrede skill < 0,01 – standardindstillingerne beholdes.
+    # Behandlinger (tilføjet okt. 2026) gav på validering ingen forbedring – hverken for GBM eller ridge, fordi
+    # anlæggene behandler, når lusetallet er højt, og det kender modellen allerede. GBM med behandlinger køres
+    # med som selvstændig kandidat, så modelvalget hver uge afgør, om behandlingerne begynder at gøre en forskel.
     ridge, gbm = DirekteModel(_ridge, NUMERISKE), DirekteModel(_gbm, NUMERISKE + NATIONALE)
     return {
         "saeson_justeret": saeson_justeret,
         "ridge": ridge,
         "gbm": gbm,
+        "gbm_beh": DirekteModel(_gbm, NUMERISKE + NATIONALE + BEHANDLINGER),
         "ensemble": Ensemble(saeson_justeret, ridge, gbm),
     }
