@@ -42,9 +42,27 @@ def _omraader(version: float) -> pd.DataFrame:
     fil = DATA_RAW / "produktionsomraader.csv"
     po = pd.read_csv(fil if fil.exists() else APP_PRODUKTIONSOMRAADER)
     po["polygon"] = po["geometry.coordinates"].map(lambda s: ast.literal_eval(s)[0])
-    po["trafiklys"] = po["colors"].map(lambda s: ast.literal_eval(s)[-1]["color"])
+    po["lys_historik"] = po["colors"].map(ast.literal_eval)
+    po["trafiklys"] = po["lys_historik"].map(lambda h: h[-1]["color"])
     po["name"] = [data.RETTEDE_NAVNE.get(i, n) for i, n in zip(po["id"], po["name"])]
-    return po[["id", "name", "polygon", "trafiklys"]].rename(columns={"id": "omraade", "name": "navn"})
+    return po[["id", "name", "polygon", "trafiklys", "lys_historik"]].rename(columns={"id": "omraade", "name": "navn"})
+
+
+def trafiklys_paa(po: pd.DataFrame, dato: pd.Timestamp) -> pd.DataFrame:
+    """Trafiklysfarven, der gjaldt på datoen, og hvornår den blev besluttet.
+
+    Regeringen fastsætter farven hvert andet år ud fra beregnet lusedødelighed hos vild laks – ikke ud fra
+    ugens lusetal på anlæggene. Farven slås op for den viste uge, så en ældre uge ikke får en senere beslutning.
+    """
+    def opslag(historik: list[dict]) -> tuple[str, pd.Timestamp]:
+        for p in reversed(historik):
+            fra = pd.Timestamp(p["fromDate"]).tz_localize(None)
+            if fra <= dato:
+                return p["color"], fra
+        return historik[0]["color"], pd.Timestamp(historik[0]["fromDate"]).tz_localize(None)
+
+    lys = po["lys_historik"].map(opslag)
+    return po.assign(trafiklys=lys.str[0], lys_fra=pd.to_datetime(lys.str[1]))
 
 
 def opdatering(panel: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp | None]:

@@ -115,6 +115,14 @@ hr { border-color: #E1E6EA; }
 }
 @media (prefers-reduced-motion: reduce) { .valghjaelp, .st-key-omraadevalg .react-aria-ComboBox [role="group"] { animation: none; } }
 
+/* Kort og søjler i figur 1 er forbundet: lille hjælpelinje over kortet og et hoved for det valgte område */
+.korthjaelp { display: flex; align-items: center; gap: .35rem; font-size: .8rem; font-weight: 500; color: #C4472A; margin-bottom: .35rem; }
+.omraadehoved { margin: -.3rem 0 .6rem; }
+.omraadehoved b { display: block; font-family: 'Source Serif 4', serif; font-size: 1.1rem; color: #0B2230; }
+.omraadehoved span { font-size: .8rem; color: #5B6B78; }
+.omraadehoved .prik { margin-left: .1rem; }
+.st-key-alle_omraader button { color: #C4472A; font-weight: 600; padding: 0; min-height: 0; }
+
 /* Tabel */
 table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-variant-numeric: tabular-nums; }
 .tabel th { text-align: left; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7A86;

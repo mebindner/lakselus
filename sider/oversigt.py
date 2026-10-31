@@ -1,5 +1,7 @@
 """Overview: ugebrief i konsulentstil – executive summary, figurer med handlingstitler og metode (engelsk UI)."""
 
+import math
+
 import altair as alt
 import pandas as pd
 import pydeck as pdk
@@ -26,11 +28,12 @@ def pct(v: float, fortegn: bool = False) -> str:
 
 # --- Data og nøglefund ----------------------------------------------------------
 raa, panel, navne = appdata.indlaes()
-po = appdata.omraader().set_index("omraade")
-status = appdata.status_pr_omraade(raa, panel).join(po[["navn", "trafiklys"]])
+seneste = panel["uge_start"].max()
+# Trafiklyset slås op for den viste uge – det er en politisk beslutning hvert andet år, ikke ugens lusetal.
+po = appdata.trafiklys_paa(appdata.omraader(), seneste).set_index("omraade")
+status = appdata.status_pr_omraade(raa, panel).join(po[["navn", "trafiklys", "lys_fra"]])
 profil = appdata.saesonprofil(panel)
 
-seneste = panel["uge_start"].max()
 iso = seneste.isocalendar()
 talt = raa[(raa["har_talt"] == "Ja") & (raa["uge_start"] == seneste)]
 aar_siden = raa[(raa["har_talt"] == "Ja") & (raa["uge_start"] == seneste - pd.Timedelta(weeks=52))]
@@ -45,6 +48,10 @@ MIN_LOK = 10
 solide = status[status["n_lok"] >= MIN_LOK]
 top = solide["hunlus"].idxmax()
 roede = po[po["trafiklys"] == "red"]
+lys_fra = po["lys_fra"].max()
+# Lusegrænsen er 0,5 – men 0,2 i forårsugerne, hvor vildlaksen vandrer ud. Den gældende grænse står i data.
+graense = pd.to_numeric(talt["Lusegrense uke"].astype(str).str.replace(",", "."), errors="coerce").mode()
+graense = float(graense.iloc[0]) if len(graense) else 0.5
 uge_nu = profil[profil["uge"] == iso.week].dropna(subset=["i_aar"])
 over_snit = int((uge_nu["i_aar"] > uge_nu["snit"]).sum())
 top_uge_pr_omr = profil.loc[profil.groupby("omraade")["snit"].idxmax()].set_index("omraade")["uge"]
@@ -75,75 +82,181 @@ st.markdown(sidehoved(
 st.markdown(resume([
     (tal(gns), f"adult female lice per fish on average along the coast in week {iso.week} – {abs(aendring):.0%} "
                f"{retning} than the same week last year ({tal(gns_sidst)})."),
-    (f"{len(over)} of {len(talt)}", f"sites ({pct(len(over) / len(talt))}) were above the lice limit; most in "
-                                    + " and ".join(f"PO {o}" for o in over_pr_omr.index[:2]) + "."),
-    (f"{len(roede)} of 13", f"production areas {'has' if len(roede) == 1 else 'have'} a red traffic light and must reduce production: "
-                            + ", ".join(roede["navn"]) + "."),
+    (f"{len(over)} of {len(talt)}", f"sites ({pct(len(over) / len(talt))}) were above the {tal(graense, 1)} lice limit"
+                                    + ("; most in " + " and ".join(f"PO {o}" for o in over_pr_omr.index[:2]) if len(over) else "") + "."),
+    (f"{len(roede)} of 13", f"production areas {'has' if len(roede) == 1 else 'have'} a red traffic light"
+                            + (": " + ", ".join(roede["navn"]) if len(roede) else "")
+                            + f". The colour is set by the government (latest decision {lys_fra:%b %Y}) from estimated lice "
+                            "mortality in wild salmon – not from this week's counts. Red means a cut in production capacity."),
 ]), unsafe_allow_html=True)
 
 # --- Figur 1: kort og rangering ------------------------------------------------------
+# Kortet og søjlerne er forbundet: klik på et område (på kortet eller som søjle) viser hvert anlæg i området.
+# Et nyt nøgletal (kort_n) tegner kort og graf forfra, så kortet zoomer ind på valget og markeringen nulstilles.
+st.session_state.setdefault("po_valgt", None)
+st.session_state.setdefault("lok_valgt", None)
+st.session_state.setdefault("kort_n", 0)
+n = st.session_state.kort_n
+
+
+def vaelg(omraade: int | None, lokalitet: int | None = None) -> None:
+    st.session_state.po_valgt, st.session_state.lok_valgt = omraade, lokalitet
+    st.session_state.kort_n += 1
+
+
+def fra_kort() -> None:
+    objekter = [o for liste in st.session_state[f"kort_{n}"].selection.get("objects", {}).values() for o in liste]
+    if objekter:
+        o = objekter[0]
+        vaelg(int(o["omraade"]), int(o["lokalitet"]) if "lokalitet" in o else None)
+
+
+def fra_soejler() -> None:
+    valg = st.session_state[f"rang_{n}"].selection.get("vaelg", [])
+    if valg and "lokalitet" in valg[0]:
+        vaelg(st.session_state.po_valgt, int(valg[0]["lokalitet"]))
+    elif valg:
+        vaelg(int(valg[0]["omraade"]))
+
+
+def udsnit(polygon: list, bredde: int = 420, hoejde: int = 440) -> pdk.ViewState:
+    """Kortudsnit, der rammer polygonet (web-mercator), så det valgte område fylder kortet."""
+    lon, lat = [p[0] for p in polygon], [p[1] for p in polygon]
+    y = lambda b: math.log(math.tan(math.pi / 4 + math.radians(b) / 2))
+    midt_y = (y(max(lat)) + y(min(lat))) / 2
+    zoom = min(math.log2(bredde / 512 * 360 / (max(lon) - min(lon))),  # deck.gl: verden er 512 px bred ved zoom 0
+               math.log2(hoejde / 512 * 2 * math.pi / (y(max(lat)) - y(min(lat))))) - 0.2
+    return pdk.ViewState(longitude=(max(lon) + min(lon)) / 2, latitude=math.degrees(2 * math.atan(math.exp(midt_y)) - math.pi / 2),
+                         zoom=min(zoom, 8))
+
+
+valgt = st.session_state.po_valgt if st.session_state.po_valgt in status.index else None
+over_tekst = "above" if status.loc[top, "hunlus"] > graense else "below"
 st.markdown(figur(
-    1, f"{status.loc[top, 'navn']} has the highest lice level among the larger areas; {len(roede)} {'has' if len(roede) == 1 else 'have'} a red light",
-    f"Adult female lice per fish, week {iso.week} {iso.year}. Map: sites and production areas coloured by traffic light.",
+    1, f"{status.loc[top, 'navn']} has the highest lice level among the larger areas ({tal(status.loc[top, 'hunlus'])}) – "
+       f"{over_tekst} the {tal(graense, 1)} lice limit",
+    f"Adult female lice per fish, week {iso.week} {iso.year}. Dots: sites, coloured by lice level. Area colour: the "
+    "government traffic light, which reflects estimated harm to wild salmon – not this week's counts.",
 ), unsafe_allow_html=True)
 
 venstre, hoejre = st.columns([1, 1.15], gap="large")
 with venstre:
-    lok = talt.dropna(subset=["lat", "lon", "hunlus"]).copy()
-    lok["farve"] = lok["hunlus"].map(lambda v: rgba(LUS_FARVER[lus_niveau(v)], 230))
-    lok["tip"] = "<b>" + lok["lokalitet_navn"] + "</b><br>" + lok["hunlus"].map(tal) + " adult female lice per fish"
-    po_kort = po.reset_index().assign(
-        fyld=lambda d: d["trafiklys"].map(lambda c: rgba(LYS_FARVER[c][0], 30)),
-        kant=lambda d: d["trafiklys"].map(lambda c: rgba(LYS_FARVER[c][0], 170)),
-        tip=lambda d: "<b>PO " + d["omraade"].astype(str) + " · " + d["navn"] + "</b><br>Traffic light: "
-                      + d["trafiklys"].map(appdata.TRAFIKLYS),
-    )
+    st.markdown(f'<div class="korthjaelp">{ikon("touch_app")} Click an area on the map or a bar to see every site in it</div>',
+                unsafe_allow_html=True)
+    lok = talt.dropna(subset=["lat", "lon", "hunlus"]).assign(omraade=lambda d: d["omraade"].astype(int))
+    i_valgt = (lok["omraade"] == valgt) if valgt else pd.Series(True, index=lok.index)
+    lok["farve"] = [rgba(LUS_FARVER[lus_niveau(v)], 235 if v_ else 70) for v, v_ in zip(lok["hunlus"], i_valgt)]
+    lok["tip"] = ("<b>" + lok["lokalitet_navn"] + "</b><br>PO " + lok["omraade"].astype(str) + " · "
+                  + lok["hunlus"].map(tal) + " adult female lice per fish")
+    lok = lok[["lon", "lat", "omraade", "lokalitet", "farve", "tip"]]
+    po_kort = po.reset_index().join(status[["hunlus", "n_lok"]], on="omraade").assign(
+        fyld=lambda d: [rgba(LYS_FARVER[c][0], 55 if o == valgt else 12 if valgt else 30) for c, o in zip(d["trafiklys"], d["omraade"])],
+        kant=lambda d: [rgba(LYS_FARVER[c][0], 255 if o == valgt else 90 if valgt else 170) for c, o in zip(d["trafiklys"], d["omraade"])],
+        tip=lambda d: "<b>PO " + d["omraade"].astype(str) + " · " + d["navn"] + "</b><br>"
+                      + d["hunlus"].map(tal) + " adult female lice per fish · " + d["n_lok"].fillna(0).astype(int).astype(str)
+                      + " sites<br>Traffic light: " + d["trafiklys"].map(appdata.TRAFIKLYS)
+                      + " (decided " + d["lys_fra"].dt.strftime("%b %Y") + ")<br><i>Click to see its sites</i>",
+    )[["omraade", "polygon", "fyld", "kant", "tip"]]
+    lag = [
+        pdk.Layer("PolygonLayer", po_kort, id="omraader", get_polygon="polygon", get_fill_color="fyld",
+                  get_line_color="kant", line_width_min_pixels=1, pickable=True, auto_highlight=True,
+                  highlight_color=[232, 96, 60, 70]),
+        pdk.Layer("ScatterplotLayer", lok, id="anlaeg", get_position=["lon", "lat"], get_fill_color="farve",
+                  get_radius=2400, radius_min_pixels=2.2 if not valgt else 4, radius_max_pixels=9, stroked=True,
+                  get_line_color=[255, 255, 255], line_width_min_pixels=0.4, pickable=True, auto_highlight=True),
+    ]
+    if st.session_state.lok_valgt in set(lok["lokalitet"]):
+        lag.append(pdk.Layer("ScatterplotLayer", lok[lok["lokalitet"] == st.session_state.lok_valgt], id="markeret",
+                             get_position=["lon", "lat"], get_fill_color="farve", get_radius=2400, radius_min_pixels=8,
+                             stroked=True, get_line_color=[11, 34, 48], line_width_min_pixels=2.5))
     st.pydeck_chart(pdk.Deck(
-        layers=[
-            pdk.Layer("PolygonLayer", po_kort, get_polygon="polygon", get_fill_color="fyld",
-                      get_line_color="kant", line_width_min_pixels=1, pickable=True, auto_highlight=True),
-            pdk.Layer("ScatterplotLayer", lok, get_position=["lon", "lat"], get_fill_color="farve",
-                      get_radius=2400, radius_min_pixels=2.2, radius_max_pixels=7, stroked=True,
-                      get_line_color=[255, 255, 255], line_width_min_pixels=0.4, pickable=True),
-        ],
-        initial_view_state=pdk.ViewState(latitude=65.0, longitude=14.2, zoom=3.25),
+        layers=lag,
+        initial_view_state=udsnit(po.loc[valgt, "polygon"]) if valgt else pdk.ViewState(latitude=65.0, longitude=14.2, zoom=3.25),
         views=[pdk.View(type="MapView", controller={"scrollZoom": False, "dragPan": True, "doubleClickZoom": True})],
         map_style=pdk.map_styles.CARTO_LIGHT,
         tooltip={"html": "{tip}", "style": {"backgroundColor": "#0B2230", "color": "#FFFFFF",
                                              "fontFamily": "Inter, sans-serif", "fontSize": "12px"}},
-    ), height=470)
+    ), height=440, on_select=fra_kort, selection_mode="single-object", key=f"kort_{n}")
+
+# Grænselinjer: 0,2 i forårsugerne og den almindelige grænse på 0,5. Teksterne står på hver sin linje.
+graenser = pd.DataFrame({"x": [0.2, 0.5], "t": ["0.2 spring weeks", "0.5 lice limit"]})
+linjer = alt.Chart(graenser).mark_rule(strokeDash=[3, 3], color="#D64545", opacity=.7).encode(x="x:Q")
+linjetekst = (
+    alt.Chart(graenser.iloc[[0]]).mark_text(align="left", dx=3, fontSize=10, color="#D64545")
+    .encode(x="x:Q", y=alt.value(-16), text="t:N")
+    + alt.Chart(graenser.iloc[[1]]).mark_text(align="right", dx=-3, fontSize=10, color="#D64545")
+    .encode(x="x:Q", y=alt.value(-4), text="t:N")
+)
+farveskala = alt.Scale(domain=["lav", "mellem", "hoej"], range=[LUS_FARVER["lav"], LUS_FARVER["mellem"], LUS_FARVER["hoej"]])
 
 with hoejre:
-    rang = status.reset_index().assign(
-        etiket=lambda d: "PO " + d["omraade"].astype(str) + "  " + d["navn"] + d["n_lok"].map(lambda n: " *" if n < MIN_LOK else ""),
-        niveau=lambda d: d["hunlus"].map(lus_niveau),
-        tekst=lambda d: d["hunlus"].map(tal),
-        lille=lambda d: d["n_lok"] < MIN_LOK,
-    )
-    # Små områder nederst og nedtonet, så rangeringen stemmer med konklusionen (som kun bygger på de solide).
-    rang = rang.sort_values(["lille", "hunlus"], ascending=[True, False])
-    y = alt.Y("etiket:N", sort=list(rang["etiket"]), title=None, axis=alt.Axis(labelLimit=220, labelFontSize=11.5, labelColor="#1B2B36"))
-    soejler = alt.Chart(rang).mark_bar(height=15).encode(
-        x=alt.X("hunlus:Q", title="Adult female lice per fish", scale=alt.Scale(domain=[0, 0.55]),
-                axis=alt.Axis(format=".1f", tickCount=6, grid=True)),
-        y=y,
-        color=alt.Color("niveau:N", legend=None, scale=alt.Scale(
-            domain=["lav", "mellem", "hoej"], range=[LUS_FARVER["lav"], LUS_FARVER["mellem"], LUS_FARVER["hoej"]])),
-        opacity=alt.condition("datum.lille", alt.value(0.35), alt.value(1.0)),
-        tooltip=[alt.Tooltip("etiket:N", title="Area"), alt.Tooltip("hunlus:Q", title="Female lice", format=".3f")],
-    )
-    tekster = alt.Chart(rang).mark_text(align="left", dx=4, fontSize=11, color="#1B2B36").encode(
-        x="hunlus:Q", y=y, text="tekst:N")
-    # Grænseteksterne står på hver sin linje og vender ind mod midten, så de ikke overlapper på en smal skærm.
-    graenser = pd.DataFrame({"x": [0.2, 0.5], "t": ["0.2 spring weeks", "0.5 lice limit"]})
-    linjer = alt.Chart(graenser).mark_rule(strokeDash=[3, 3], color="#D64545", opacity=.7).encode(x="x:Q")
-    linjetekst = (
-        alt.Chart(graenser.iloc[[0]]).mark_text(align="left", dx=3, fontSize=10, color="#D64545")
-        .encode(x="x:Q", y=alt.value(-16), text="t:N")
-        + alt.Chart(graenser.iloc[[1]]).mark_text(align="right", dx=-3, fontSize=10, color="#D64545")
-        .encode(x="x:Q", y=alt.value(-4), text="t:N")
-    )
-    st.altair_chart((soejler + tekster + linjer + linjetekst).properties(height=440), width="stretch")
+    if valgt is None:
+        rang = status.reset_index().assign(
+            etiket=lambda d: "PO " + d["omraade"].astype(str) + "  " + d["navn"] + d["n_lok"].map(lambda n_: " *" if n_ < MIN_LOK else ""),
+            niveau=lambda d: d["hunlus"].map(lus_niveau),
+            tekst=lambda d: d["hunlus"].map(tal),
+            lille=lambda d: d["n_lok"] < MIN_LOK,
+        )
+        # Små områder nederst og nedtonet, så rangeringen stemmer med konklusionen (som kun bygger på de solide).
+        rang = rang.sort_values(["lille", "hunlus"], ascending=[True, False])
+        y = alt.Y("etiket:N", sort=list(rang["etiket"]), title=None, axis=alt.Axis(labelLimit=220, labelFontSize=11.5, labelColor="#1B2B36"))
+        soejler = alt.Chart(rang).mark_bar(height=15, cursor="pointer").encode(
+            x=alt.X("hunlus:Q", title="Adult female lice per fish", scale=alt.Scale(domain=[0, 0.55]),
+                    axis=alt.Axis(format=".1f", tickCount=6, grid=True)),
+            y=y,
+            color=alt.Color("niveau:N", legend=None, scale=farveskala),
+            opacity=alt.condition("datum.lille", alt.value(0.35), alt.value(1.0)),
+            tooltip=[alt.Tooltip("etiket:N", title="Area"), alt.Tooltip("hunlus:Q", title="Female lice", format=".3f"),
+                     alt.Tooltip("n_lok:Q", title="Sites")],
+        ).add_params(alt.selection_point(name="vaelg", fields=["omraade"]))
+        tekster = alt.Chart(rang).mark_text(align="left", dx=4, fontSize=11, color="#1B2B36").encode(
+            x="hunlus:Q", y=y, text="tekst:N")
+        st.altair_chart((soejler + tekster + linjer + linjetekst).properties(height=440), width="stretch",
+                        on_select=fra_soejler, key=f"rang_{n}")
+    else:
+        s = status.loc[valgt]
+        omr_tal = talt.loc[talt["omraade"] == valgt, "hunlus"].dropna()
+        top_x = max(0.55, min(float(omr_tal.max()) * 1.12, 1.2))
+        anlaeg = talt[talt["omraade"] == valgt].dropna(subset=["hunlus"]).sort_values("hunlus", ascending=False).assign(
+            niveau=lambda d: d["hunlus"].map(lus_niveau), tekst=lambda d: d["hunlus"].map(tal),
+            markeret=lambda d: d["lokalitet"] == st.session_state.lok_valgt,
+            # Enkelte anlæg kan ligge langt over resten; aksen kappes, og søjlen ender i en pil med det rigtige tal.
+            x_vis=lambda d: d["hunlus"].clip(upper=top_x), kappet=lambda d: d["hunlus"] > top_x,
+            tekst_vis=lambda d: d["tekst"].where(~d["kappet"], d["tekst"] + " →"),
+            # Navne kan gå igen – lokalitetsnummeret skiller dem ad på aksen.
+            etiket=lambda d: d["lokalitet_navn"].where(~d["lokalitet_navn"].duplicated(keep=False),
+                                                       d["lokalitet_navn"] + " (" + d["lokalitet"].astype(int).astype(str) + ")"),
+        )
+        n_over = int((anlaeg["over_graense"] == "Ja").sum())
+        lys_kant, lys_bg, lys_tekst = LYS_FARVER[s.trafiklys]
+        st.button("← All areas", on_click=vaelg, args=(None,), key="alle_omraader", type="tertiary")
+        st.markdown(
+            f'<div class="omraadehoved"><b>PO {valgt} · {s.navn}</b>'
+            f'<span>{len(anlaeg)} sites · mean {tal(s.hunlus)} · {n_over} above the limit · '
+            f'<i class="prik" style="background:{lys_kant}"></i>{appdata.TRAFIKLYS[s.trafiklys]} traffic light</span></div>',
+            unsafe_allow_html=True)
+        y = alt.Y("etiket:N", sort=list(anlaeg["etiket"]), title=None,
+                  axis=alt.Axis(labelLimit=180, labelFontSize=11, labelColor="#1B2B36", labelOverlap=False))
+        soejler = alt.Chart(anlaeg).mark_bar(height=11, cursor="pointer", stroke=FARVER["blaek"]).encode(
+            x=alt.X("x_vis:Q", title="Adult female lice per fish", scale=alt.Scale(domain=[0, top_x]),
+                    axis=alt.Axis(format=".1f", grid=True, orient="top")),
+            y=y,
+            color=alt.Color("niveau:N", legend=None, scale=farveskala),
+            strokeWidth=alt.condition("datum.markeret", alt.value(2), alt.value(0)),
+            tooltip=[alt.Tooltip("lokalitet_navn:N", title="Site"), alt.Tooltip("hunlus:Q", title="Female lice", format=".2f"),
+                     alt.Tooltip("temp:Q", title="Sea temp. °C", format=".1f")],
+        ).add_params(alt.selection_point(name="vaelg", fields=["lokalitet"]))
+        tekster = alt.Chart(anlaeg).mark_text(align="left", dx=4, fontSize=10, color="#1B2B36").encode(
+            x="x_vis:Q", y=y, text="tekst_vis:N")
+        snit_linje = alt.Chart(pd.DataFrame({"x": [s.hunlus]})).mark_rule(color=FARVER["blaek"], strokeWidth=1.2).encode(x="x:Q")
+        omr_graenser = alt.Chart(graenser).mark_rule(strokeDash=[4, 3], color="#D64545", strokeWidth=1.2).encode(x="x:Q")
+        graf = soejler + tekster + snit_linje + omr_graenser
+        # Lange områder rulles i en ramme med samme højde som kortet.
+        with st.container(height=360, border=False):
+            st.altair_chart(graf.properties(height=max(120, 17 * len(anlaeg))), width="stretch",
+                            on_select=fra_soejler, key=f"rang_{n}")
+        st.markdown(f'<div class="kilde">Bars: each site that counted lice in week {iso.week}. Solid line: area mean. '
+                    f'Dashed: 0.2 and 0.5 limits. Click a bar to mark the site on the map.</div>', unsafe_allow_html=True)
 
 st.markdown(
     '<div class="forklaring">'
@@ -151,7 +264,7 @@ st.markdown(
     f'<span><i class="prik" style="background:{LUS_FARVER["mellem"]}"></i>0.2–0.5</span>'
     f'<span><i class="prik" style="background:{LUS_FARVER["hoej"]}"></i>Above 0.5</span>'
     f'<span><i class="prik" style="background:{LYS_FARVER["green"][0]}"></i><i class="prik" style="background:{LYS_FARVER["yellow"][0]}"></i>'
-    f'<i class="prik" style="background:{LYS_FARVER["red"][0]}"></i>Traffic light (area colour on the map)</span></div>',
+    f'<i class="prik" style="background:{LYS_FARVER["red"][0]}"></i>Traffic light (area colour: government decision on wild-salmon risk)</span></div>',
     unsafe_allow_html=True,
 )
 st.markdown(kilde(f"Area figures are unweighted means over sites that counted lice that week. "
@@ -255,7 +368,9 @@ st.markdown(
     "lice that week; the number of fish per site is not included. Farms report a week's counts during the following "
     "week, so the brief usually trails the calendar by 1–2 weeks: the latest week is only included once at least "
     "80% of sites have reported. The lice limit is 0.5 adult female lice per fish (0.2 during the spring weeks). "
-    "The traffic light is the government's most recent colour per production area. The analysis is independent "
+    "The traffic light is the colour the government had set for each production area in the week shown. It is decided "
+    "every second year from estimated lice-induced mortality in wild salmon, so an area can be red even when its farms "
+    "are below the lice limit. The analysis is independent "
     "and not prepared for or by any company.</div>",
     unsafe_allow_html=True,
 )
