@@ -361,7 +361,9 @@ st.markdown(kilde(f"Week 53 is omitted. Mean and band are based on {foerste}–{
 
 # --- 6. Figur 4: sæsonmønster ---------------------------------------------------------
 st.markdown(figur(
-    4, f"The peak comes later the further north: around week {syd_top} in the south vs. week {nord_top} in Finnmark",
+    4, (f"The peak comes later the further north: around week {syd_top} in the south vs. week {nord_top} in Finnmark"
+        if nord_top > syd_top else
+        f"The lice peak comes around week {syd_top} in the south and week {nord_top} in Finnmark"),
     f"Mean adult female lice per fish by ISO week, {foerste}–{i_aar - 1}.",
 ), unsafe_allow_html=True)
 vx = alt.X("uge:O", title="ISO week", axis=alt.Axis(values=[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50], labelAngle=0))

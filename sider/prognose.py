@@ -243,7 +243,8 @@ if effekt is not None and len(effekt):
     bedst = orden[0]
     st.markdown(figur(
         5, f"{bedst} treatment leaves {netto[(bedst, 0)]:.0%} fewer lice than at similar untreated sites within a "
-           f"week – six weeks later the gap has shrunk to {netto[(bedst, 6)]:.0%}",
+           f"week – six weeks later the gap {'has shrunk to' if netto[(bedst, 6)] < netto[(bedst, 0)] else 'is'} "
+           f"{netto[(bedst, 6)]:.0%}",
         "How lice numbers develop around a treatment, compared with similar sites that were not treated. "
         "100% = the site's lice level in the week before treatment.",
     ), unsafe_allow_html=True)
@@ -313,13 +314,17 @@ if effekt is not None and len(effekt):
         st.altair_chart(effekt_multipler(3, 280, 165), width="content")
     with st.container(key="effekt_mobil"):
         st.altair_chart(effekt_multipler(1, 285, 150), width="content")
+    # Forklaringen af fôrbehandling står kun, når data viser mønsteret: lille straks-effekt, større efter 6 uger.
+    foder = "In-feed (medicinal)"
+    foder_tekst = ("In-feed treatment works slowly and mainly stops lice numbers from growing. "
+                   if (foder, 0) in netto and netto[(foder, 0)] < 0.2 and netto[(foder, 6)] > netto[(foder, 0)] + 0.1
+                   else "")
     st.markdown(kilde(
         f"Isolated treatments: one treatment type for the whole site and no other treatment from 3 weeks before to "
         f"6 weeks after; the week before had at least 0.05 lice per fish. Types with fewer than 30 such treatments are "
         f"left out. Observational data: sites choose when and how to treat, so the comparison with untreated sites "
-        f"removes the natural drop after a peak but cannot rule out every difference. In-feed treatment works "
-        f"slowly and mainly stops lice numbers from growing. Treated sites: median of the sites; the middle half is "
-        f"shown on hover."), unsafe_allow_html=True)
+        f"removes the natural drop after a peak but cannot rule out every difference. {foder_tekst}Treated sites: "
+        f"median of the sites; the middle half is shown on hover."), unsafe_allow_html=True)
 
 # --- 8. Metode -------------------------------------------------------------------------------
 st.markdown(
@@ -334,9 +339,11 @@ st.markdown(
     "errors week by week against the naive forecast. Prediction intervals are causal empirical quantiles of the "
     "model's own past errors by area and horizon.<br><br><b>Lice treatments.</b> One candidate also uses the share of "
     "an area's sites treated against lice that week and over the past four weeks (mechanical, thermal, freshwater and "
-    "medicinal). On 2023–24 it did not improve on gradient boosting without treatments: farms treat when lice counts "
-    "are high, which the lice history already shows. It stays in the weekly backtest, so the model choice would pick "
-    "it up if that changes.<br><br><b>Caveats.</b> Treatments explain some of the abrupt drops but cannot be known "
+    + ("medicinal). On 2023–24 it did not improve on gradient boosting without treatments: farms treat when lice "
+       "counts are high, which the lice history already shows. It stays in the weekly backtest, so the model choice "
+       "would pick it up if that changes." if valgt != "gbm_beh" else
+       "medicinal). On 2023–24 it had the lowest error of all models and is the selected model.")
+    + "<br><br><b>Caveats.</b> Treatments explain some of the abrupt drops but cannot be known "
     "ahead of time. Data are retrieved as they look today; late corrections were not necessarily known in the "
     "forecast week.</div>",
     unsafe_allow_html=True,

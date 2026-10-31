@@ -60,3 +60,20 @@ def test_kvalitetstjek_stopper_hvis_behandlinger_forsvinder():
     from lakselus.publicer import kvalitetstjek
     ny = _uge("2026-10-19")
     assert any("behandlingsdata" in p for p in kvalitetstjek(ny, None, False, True))
+
+
+# --- Sammenhæng i de publicerede modeldata ---------------------------------------------------
+
+@pytest.mark.skipif(not (data.DATA_APP / "backtest.parquet").exists(), reason="kræver publiceret backtest")
+def test_publiceret_prognose_bruger_den_valgte_model():
+    """Prognosen, appen viser, skal være lavet med den model, valideringen peger på – og starte ugen efter data."""
+    from lakselus import modelrapport
+
+    res = pd.read_parquet(modelrapport.BACKTEST_FIL)
+    prognose = pd.read_parquet(modelrapport.PROGNOSE_FIL)
+    assert set(prognose["model"]) == {modelrapport.vaelg_model(res)}
+    assert sorted(prognose["h"].unique()) == [1, 2, 3, 4]
+    assert prognose["omraade"].nunique() == 13
+    assert (prognose["lo"] <= prognose["pred"]).all() and (prognose["pred"] <= prognose["hi"]).all()
+    # Backtesten slutter 1 uge før seneste data (målet for h=1 skal være kendt); prognosen starter ugen efter data.
+    assert prognose["uge_start"].min() == res["origin"].max() + pd.Timedelta(weeks=2)
