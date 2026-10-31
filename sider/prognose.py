@@ -222,74 +222,90 @@ if effekt is not None and len(effekt):
     eff = kyst.merge(omr, on=["type", "k"], how="left")
     omr_navn = navne[valg]
 
-    # Nettoeffekt = hvor meget lavere de behandlede ligger end kontrollen; bruges til titel og rækkefølge.
+    # Effekt = hvor meget færre lus de behandlede har end sammenlignelige ubehandlede: 1 − behandlet / ubehandlet.
     netto = kyst.assign(netto=1 - kyst["median"] / kyst["kontrol"]).set_index(["type", "k"])["netto"]
     # "Other" er en blandet kategori – den vises sidst og bruges ikke i titlen.
     orden = sorted(netto.xs(0, level="k").sort_values(ascending=False).index, key=lambda t: t == "Other")
     bedst = orden[0]
     st.markdown(figur(
-        5, f"{bedst} treatment removes {netto[(bedst, 0)]:.0%} of lice in the treatment week – six weeks later the "
-           f"level is still {netto[(bedst, 6)]:.0%} below comparable untreated sites",
-        "Adult female lice per fish, relative to the week before treatment (= 100%). Orange: median of single, "
-        "whole-site treatments along the whole coast; band: middle half of the sites. Dashed: untreated sites with "
-        f"the same lice level in the same month. Dark line: {omr_navn}, where the area has at least 30 such treatments.",
+        5, f"{bedst} treatment leaves {netto[(bedst, 0)]:.0%} fewer lice than at similar untreated sites within a "
+           f"week – six weeks later the gap has shrunk to {netto[(bedst, 6)]:.0%}",
+        "How lice numbers develop around a treatment, compared with similar sites that were not treated. "
+        "100% = the site's lice level in the week before treatment.",
     ), unsafe_allow_html=True)
 
-    # Paneltitel med antal for hele kysten og for området; note i paneler, hvor området har for få behandlinger.
+    # Forklaring over grafen: hvad hver linje og flade betyder, med samme farver som i grafen.
+    har_omr = eff["omr_median"].notna().any()
+    st.markdown(
+        '<div class="effektnoegle">'
+        f'<span><i class="streg" style="border-color:{FARVER["laks"]}"></i>Treated sites</span>'
+        f'<span><i class="streg stiplet" style="border-color:{FARVER["skifer"]}"></i>Similar untreated sites</span>'
+        f'<span><i class="flade" style="background:{FARVER["laks"]}"></i>Effect of the treatment</span>'
+        + (f'<span><i class="streg" style="border-color:{FARVER["blaek"]}"></i>Treated sites in {omr_navn}</span>'
+           if har_omr else "")
+        + "</div>", unsafe_allow_html=True)
+
+    # Paneltitel i tre linjer: behandling og antal (og om området har nok behandlinger) – derefter effekten i ord.
+    def faerre(v: float) -> str:
+        return f"{v:.0%} fewer" if v >= 0 else f"{-v:.0%} more"
+
     omr_antal = eff.groupby("type")["omr_n"].max()
-    eff["titel"] = eff["type"] + " · " + eff["n"].astype(str) + " treatments" + eff["type"].map(
-        lambda t: f" ({omr_antal[t]:.0f} in PO {valg})" if pd.notna(omr_antal[t]) else "")
-    eff["note"] = [f"Too few in {omr_navn}" if k == -3 and pd.isna(omr_antal[t]) else None
-                   for t, k in zip(eff["type"], eff["k"])]
-    titler = [eff.loc[eff["type"] == t, "titel"].iloc[0] for t in orden]
-    ex = alt.X("k:Q", title=None, scale=alt.Scale(domain=[-3, 6], nice=False),
-               axis=alt.Axis(values=list(range(-3, 7)), labelExpr="datum.value == 0 ? 'Treat.' : (datum.value > 0 ? '+' : '') + datum.value",
-                             grid=False, labelFontSize=9))
-    ey = alt.Y("median:Q", title=None, scale=alt.Scale(domain=[0, 1.5]),
-               axis=alt.Axis(values=[0, 0.5, 1, 1.5], format=".0%", labelFontSize=9))
-    baand = alt.Chart().mark_area(color=FARVER["laks"], opacity=.15, clip=True).encode(
-        x=ex, y=alt.Y("q25:Q", title=None, scale=alt.Scale(domain=[0, 1.5])), y2="q75:Q")
-    kontrol_linje = alt.Chart().mark_line(color=FARVER["skifer"], strokeDash=[4, 3], strokeWidth=1.3).encode(
-        x=ex, y="kontrol:Q")
-    linje = alt.Chart().mark_line(color=FARVER["laks"], strokeWidth=2.2,
-                                  point=alt.OverlayMarkDef(size=14, color=FARVER["laks"])).encode(
+
+    def titel(t: str) -> str:
+        omraade = ("" if not har_omr else f" · {omr_antal[t]:.0f} in PO {valg}" if pd.notna(omr_antal[t])
+                   else f" · too few in PO {valg}")
+        return (f"{t} · {eff.loc[eff['type'] == t, 'n'].iloc[0]} treatments{omraade}\n"
+                f"Same week: {faerre(netto[(t, 0)])} lice\nAfter 6 weeks: {faerre(netto[(t, 6)])} lice")
+
+    eff["titel"] = eff["type"].map(titel)
+    titler = [titel(t) for t in orden]
+
+    skala_y = alt.Scale(domain=[0, 1.5])
+    ex = alt.X("k:Q", title="Weeks before / after treatment", scale=alt.Scale(domain=[-3, 6], nice=False),
+               axis=alt.Axis(values=[-3, 0, 3, 6], grid=False, labelFontSize=10, titleFontSize=10, titleFontWeight=400,
+                             labelExpr="datum.value == 0 ? 'Treatment' : (datum.value > 0 ? '+' : '') + datum.value"))
+    ey = alt.Y("median:Q", title=None, scale=skala_y,
+               axis=alt.Axis(values=[0, 0.5, 1, 1.5], format=".0%", labelFontSize=10))
+    # Fladen mellem behandlede og ubehandlede er effekten; den starter i ugen før, hvor begge er 100 %.
+    effekt_flade = alt.Chart().mark_area(color=FARVER["laks"], opacity=.18).encode(
+        x=ex, y=alt.Y("median:Q", scale=skala_y), y2="kontrol:Q").transform_filter("datum.k >= -1")
+    kontrol_linje = alt.Chart().mark_line(color=FARVER["skifer"], strokeDash=[5, 3], strokeWidth=1.6).encode(
+        x=ex, y=alt.Y("kontrol:Q", scale=skala_y))
+    linje = alt.Chart().mark_line(color=FARVER["laks"], strokeWidth=2.6,
+                                  point=alt.OverlayMarkDef(size=18, color=FARVER["laks"])).encode(
         x=ex, y=ey, tooltip=[alt.Tooltip("type:N", title="Treatment"), alt.Tooltip("k:Q", title="Week"),
-                             alt.Tooltip("median:Q", title="Whole coast (median)", format=".0%"),
-                             alt.Tooltip("kontrol:Q", title="Untreated", format=".0%")])
+                             alt.Tooltip("median:Q", title="Treated sites (median)", format=".0%"),
+                             alt.Tooltip("kontrol:Q", title="Similar untreated sites", format=".0%"),
+                             alt.Tooltip("q25:Q", title="Treated, 25th percentile", format=".0%"),
+                             alt.Tooltip("q75:Q", title="Treated, 75th percentile", format=".0%")])
     omr_linje = alt.Chart().mark_line(color=FARVER["blaek"], strokeWidth=1.8, clip=True,
                                       point=alt.OverlayMarkDef(size=12, color=FARVER["blaek"])).encode(
-        x=ex, y=alt.Y("omr_median:Q", scale=alt.Scale(domain=[0, 1.5])),
+        x=ex, y=alt.Y("omr_median:Q", scale=skala_y),
         tooltip=[alt.Tooltip("type:N", title="Treatment"), alt.Tooltip("k:Q", title="Week"),
                  alt.Tooltip("omr_median:Q", title=f"{omr_navn} (median)", format=".0%")],
     ).transform_filter("isValid(datum.omr_median)")
-    note = alt.Chart().mark_text(align="left", baseline="top", dx=2, fontSize=10, fontStyle="italic",
-                                 color=FARVER["skifer"]).encode(x=alt.datum(-3), y=alt.datum(1.5), text="note:N"
-                                 ).transform_filter("isValid(datum.note)")
-    # Tallet i behandlingsugen står til højre for punktet (fri af den lodrette linje), tallet efter 6 uger over det.
-    tal_0 = alt.Chart().mark_text(align="left", dx=6, dy=2, fontSize=10, fontWeight=600, color=FARVER["laks_tekst"]).encode(
-        x=ex, y=ey, text=alt.Text("median:Q", format=".0%")).transform_filter("datum.k == 0")
-    tal_6 = alt.Chart().mark_text(align="right", dy=-9, fontSize=10, fontWeight=600, color=FARVER["laks_tekst"]).encode(
-        x=ex, y=ey, text=alt.Text("median:Q", format=".0%")).transform_filter("datum.k == 6")
     hundrede = alt.Chart().mark_rule(color=FARVER["taage"]).encode(y=alt.datum(1))
-    behandling = alt.Chart().mark_rule(color=FARVER["blaek"], strokeDash=[2, 2], opacity=.5).encode(x=alt.datum(0))
+    behandling = alt.Chart().mark_rule(color=FARVER["blaek"], strokeDash=[2, 2], opacity=.45).encode(x=alt.datum(0))
 
     def effekt_multipler(kolonner: int, bredde: int, hoejde: int) -> alt.FacetChart:
-        return alt.layer(hundrede, behandling, baand, kontrol_linje, linje, omr_linje, tal_0, tal_6, note, data=eff).properties(
-            width=bredde, height=hoejde).facet(
-            facet=alt.Facet("titel:N", sort=titler, header=alt.Header(labelFontSize=11, labelPadding=4)),
-            columns=kolonner)
+        return alt.layer(hundrede, behandling, effekt_flade, kontrol_linje, linje, omr_linje, data=eff).properties(width=bredde, height=hoejde).facet(
+            facet=alt.Facet("titel:N", sort=titler, header=alt.Header(
+                labelExpr="split(datum.value, '\\n')", labelFontSize=11.5, labelFontWeight=600, labelPadding=8,
+                labelLineHeight=17, labelColor=FARVER["blaek"])),
+            columns=kolonner, spacing={"row": 28, "column": 22})
 
     # Tre kolonner på brede skærme, én på mobil – CSS i udseende.py viser den ene og skjuler den anden.
     with st.container(key="effekt_bred"):
-        st.altair_chart(effekt_multipler(3, 225, 130), width="content")
+        st.altair_chart(effekt_multipler(3, 280, 165), width="content")
     with st.container(key="effekt_mobil"):
-        st.altair_chart(effekt_multipler(1, 285, 120), width="content")
+        st.altair_chart(effekt_multipler(1, 285, 150), width="content")
     st.markdown(kilde(
         f"Isolated treatments: one treatment type for the whole site and no other treatment from 3 weeks before to "
         f"6 weeks after; the week before had at least 0.05 lice per fish. Types with fewer than 30 such treatments are "
         f"left out. Observational data: sites choose when and how to treat, so the comparison with untreated sites "
         f"removes the natural drop after a peak but cannot rule out every difference. In-feed treatment works "
-        f"slowly and mainly stops lice numbers from growing."), unsafe_allow_html=True)
+        f"slowly and mainly stops lice numbers from growing. Treated sites: median of the sites; the middle half is "
+        f"shown on hover."), unsafe_allow_html=True)
 
 # --- 8. Metode -------------------------------------------------------------------------------
 st.markdown(

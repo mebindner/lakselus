@@ -134,6 +134,13 @@ hr { border-color: #E1E6EA; }
 .omraadehoved .prik { margin-left: .1rem; }
 .st-key-alle_omraader button { color: #C4472A; font-weight: 600; padding: 0; min-height: 0; }
 
+/* Forklaring over behandlingsfiguren: linjer og flade tegnet som i grafen */
+.effektnoegle { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; font-size: .82rem; color: #1B2B36; margin: .3rem 0 .8rem; }
+.effektnoegle span { display: inline-flex; align-items: center; gap: .45rem; }
+.effektnoegle .streg { display: inline-block; width: 22px; border-top: 3px solid; }
+.effektnoegle .streg.stiplet { border-top-style: dashed; border-top-width: 2px; }
+.effektnoegle .flade { display: inline-block; width: 16px; height: 11px; opacity: .3; border-radius: 2px; }
+
 /* Tabel */
 table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-variant-numeric: tabular-nums; }
 .tabel th { text-align: left; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7A86;
