@@ -2,7 +2,7 @@
 
 Indhold
 0. Friske moduler – genindlæs lakselus-pakken, hvis koden er ændret, mens appen kørte
-1. Opsætning   – sidetitel og fælles designsystem (CSS)
+1. Opsætning   – sidetitel, ordmærke i topbjælken og fælles designsystem (CSS)
 2. Data        – indlæses én gang; uden data vises en vejledning i stedet for siderne
 3. Navigation  – Overview, Time machine og Forecast i topbjælken
 4. Fodnote     – afsender, opdateringsstatus og kildeangivelse (krav i BarentsWatch' vilkår)
@@ -11,6 +11,7 @@ Indhold
 import importlib
 import os
 import sys
+from pathlib import Path
 
 import streamlit as st
 
@@ -59,6 +60,7 @@ from lakselus.udseende import CSS  # noqa: E402
 # --- 1. Opsætning ---------------------------------------------------------------------------
 st.set_page_config(page_title="Sea lice in Norwegian salmon farming", page_icon="🐟", layout="wide")
 st.markdown(CSS, unsafe_allow_html=True)
+st.logo(str(Path(__file__).parent / "assets" / "logo.svg"), size="large")  # et klik fører til forsiden
 
 # --- 2. Data -------------------------------------------------------------------------------
 try:

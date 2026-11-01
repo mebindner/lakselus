@@ -234,7 +234,7 @@ n = st.session_state.kort_n
 with st.container(key="soegning"):
     st.selectbox(":material/search: Find your area or site", list(valg), format_func=valg.get, index=None, key="soeg",
                  on_change=fra_soeg,
-                 placeholder=f"Search {len(anlaeg)} fish farms and {len(navne)} areas – by name or site number")
+                 placeholder=f"Search {len(anlaeg)} farms or {len(navne)} areas")
 if st.session_state.pop("rul_op", False):  # kun efter et klik på et kort – kort og søjler bliver hvor de er
     st.html("<script>document.querySelector('[data-testid=\"stMain\"]')?.scrollTo({top: 0, behavior: 'smooth'})</script>",
             unsafe_allow_javascript=True)
@@ -511,7 +511,7 @@ with venstre:
     lag = [
         pdk.Layer("PolygonLayer", po_kort, id="omraader", get_polygon="polygon", get_fill_color="fyld",
                   get_line_color="kant", line_width_min_pixels=1, pickable=True, auto_highlight=True,
-                  highlight_color=[232, 96, 60, 70]),
+                  highlight_color=[111, 125, 60, 70]),
         pdk.Layer("ScatterplotLayer", lok, id="anlaeg", get_position=["lon", "lat"], get_fill_color="farve",
                   get_radius=2400, radius_min_pixels=2.2 if not valgt else 4, radius_max_pixels=9, stroked=True,
                   get_line_color=[255, 255, 255], line_width_min_pixels=0.4, pickable=True, auto_highlight=True),
