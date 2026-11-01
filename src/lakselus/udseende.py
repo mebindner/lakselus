@@ -7,6 +7,7 @@ Indhold
 1. Farver og skrifttyper
 2. CSS               – al styling af appen samlet ét sted, opdelt efter komponent
 3. HTML-byggeklodser – sidehoved, resumé, figurtitel, kildeangivelse, nøgletalskort, info-bobler
+3b. Minigrafer       – små SVG-grafer til nøgletallene: kurve, andelsbjælke, prikker og strimmel
 4. Lusetal i tekst   – niveau og trend til tabeller og forklaringer
 5. Altair-tema       – fælles grafstil
 """
@@ -93,6 +94,14 @@ hr { border-color: #E1E6EA; }
 .resume .stor { font-family: 'Source Serif 4', serif; font-size: 2.3rem; font-weight: 600; color: #0B2230; line-height: 1.05;
                 margin: .3rem 0 .35rem; font-variant-numeric: tabular-nums; }
 .resume .tekst { font-size: .9rem; color: #2A3A46; line-height: 1.45; }
+.resume .mini { margin: .1rem 0 .55rem; max-width: 220px; }
+.mini svg { display: block; width: 100%; height: auto; overflow: visible; }
+.mini-note { font-size: .68rem; color: #8A99A6; margin-top: .2rem; letter-spacing: .01em; }
+.mini .andel { height: 8px; background: #EDF1F4; border-radius: 4px; overflow: hidden; margin: .9rem 0 .2rem; }
+.mini .andel i { display: block; height: 100%; background: #D64545; border-radius: 4px; }
+.mini .prikrad { display: flex; gap: 5px; flex-wrap: wrap; margin: .75rem 0 .1rem; }
+.mini .prikrad i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+.mini .prikrad i.valgt { box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 3.5px #0B2230; }
 @media (max-width: 760px) { .resume { grid-template-columns: 1fr; } .resume > div + div { padding-left: 0; border-left: 0; border-top: 1px solid #E1E6EA; } }
 
 /* Figurer */
@@ -126,10 +135,43 @@ hr { border-color: #E1E6EA; }
 }
 @media (prefers-reduced-motion: reduce) { .valghjaelp, .st-key-omraadevalg .react-aria-ComboBox [role="group"] { animation: none; } }
 
+/* Ugens udsving: klikbare kort under nøgletallene. Hele kortet løfter sig ved hover, knappen er handlingen. */
+.udsving-hoved { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; margin: -.6rem 0 .6rem; }
+.udsving-hoved b { font-family: 'Source Serif 4', serif; font-size: 1.15rem; color: #0B2230; }
+.udsving-hoved span { font-size: .8rem; color: #6B7A86; }
+[class*="st-key-udsving_"] { background: #FFFFFF; border: 1px solid #E1E6EA; border-radius: 10px; padding: .85rem 1rem .55rem;
+  gap: .2rem; height: 100%; transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease; }
+[class*="st-key-udsving_"]:hover { border-color: #F2B5A3; box-shadow: 0 8px 22px rgba(11,34,48,.10); transform: translateY(-2px); }
+.udsving-kort .etiket { display: flex; align-items: center; gap: .3rem; font-size: .68rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: #6B7A86; }
+.udsving-kort .navn { font-weight: 600; color: #0B2230; font-size: .98rem; margin-top: .45rem; line-height: 1.25; }
+.udsving-kort .stort { font-family: 'Source Serif 4', serif; font-size: 1.7rem; font-weight: 600; line-height: 1.1; margin: .15rem 0;
+  font-variant-numeric: tabular-nums; }
+.udsving-kort .note { font-size: .76rem; color: #5B6B78; line-height: 1.4; }
+.udsving-kort { padding-bottom: .9rem; }
+/* Kortene i rækken får samme højde, og knappen står nederst i hvert kort */
+[data-testid="stHorizontalBlock"]:has([class*="st-key-udsving_"]) { align-items: stretch; }
+[data-testid="stColumn"]:has([class*="st-key-udsving_"]) > [data-testid="stVerticalBlock"] { height: 100%; }
+[data-testid="stLayoutWrapper"]:has(> [class*="st-key-udsving_"]) { flex: 1; }
+[class*="st-key-udsving_"] { justify-content: space-between; }
+[class*="st-key-aabn_"] button { color: #C4472A; font-weight: 600; padding: 0; min-height: 0; }
+@media (max-width: 640px) {  /* to kort pr. række på mobil i stedet for fire under hinanden */
+  [data-testid="stHorizontalBlock"]:has([class*="st-key-udsving_"]) { flex-wrap: wrap; gap: .6rem; }
+  [data-testid="stColumn"]:has([class*="st-key-udsving_"]) { flex: 1 1 calc(50% - .3rem) !important;
+    min-width: calc(50% - .3rem) !important; width: calc(50% - .3rem) !important; }
+  [class*="st-key-udsving_"] { padding: .7rem .75rem .45rem; }
+  .udsving-kort .stort { font-size: 1.45rem; }
+  .udsving-kort .navn { font-size: .9rem; }
+}
+@media (prefers-reduced-motion: reduce) { [class*="st-key-udsving_"] { transition: none; } [class*="st-key-udsving_"]:hover { transform: none; } }
+
 /* Søgefeltet øverst på Overview: samme tydelige kant som områdevalget; valgt række i tabeller fremhæves */
-.st-key-soegning { max-width: 560px; }
-.st-key-soegning label p { font-weight: 600; color: #0B2230; }
-.st-key-soegning .react-aria-ComboBox [role="group"] { border: 1.5px solid #E8603C; background: #FFFFFF; }
+.st-key-soegning { max-width: 620px; }
+.st-key-soegning label p { font-weight: 600; color: #0B2230; font-size: .95rem; }
+.st-key-soegning .react-aria-ComboBox [role="group"] { border: 1.5px solid #E8603C; background: #FFFFFF; min-height: 2.9rem;
+  border-radius: 10px; box-shadow: 0 4px 14px rgba(232,96,60,.12); transition: box-shadow .15s; }
+.st-key-soegning .react-aria-ComboBox [role="group"]:focus-within { box-shadow: 0 0 0 4px rgba(232,96,60,.18); }
+.st-key-soegning input { font-size: .98rem; }
 .tabel tr.valgt td { background: #FDEEE9; }
 .tabel tr.valgt td:first-child { box-shadow: inset 3px 0 0 #E8603C; }
 
@@ -156,6 +198,16 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .tabel td.tal, .tabel th.tal { text-align: right; white-space: nowrap; }
 .tabel tr:hover td { background: #F6F8FA; }
 .tabel .navn { font-weight: 500; }
+/* Navne i tabellerne er links: diskrete i hvile, laksefarvede med pil, når rækken peges på */
+.tabel a.radlink { color: inherit; text-decoration: none; }
+.tabel a.radlink::after { content: " →"; color: #C4472A; opacity: 0; transition: opacity .15s; }
+.tabel tr:hover a.radlink { color: #C4472A; }
+.tabel tr:hover a.radlink::after, .tabel a.radlink:focus-visible::after { opacity: 1; }
+/* Hele rækken er klikbar (linket strækkes over rækken); info-boblerne ligger ovenpå og virker stadig */
+.tabel tr:has(a.radlink) { position: relative; }
+.tabel a.radlink::before { content: ""; position: absolute; inset: 0; }
+.tabel .info { z-index: 2; }
+.tabel .info:hover, .tabel .info:focus { z-index: 70; }
 .tabel .po { color: #6B7A86; width: 2.2rem; }
 .tabel .minibar { display: inline-block; height: 6px; border-radius: 1px; vertical-align: middle; margin-left: .45rem; }
 /* Brede tabeller og små multipler scrolles vandret på mobil i stedet for at blive skåret af */
@@ -244,11 +296,11 @@ def sidehoved(overlinje: str, titel: str, under: str, chips: list[tuple[str, str
 
 
 def resume(punkter: list[tuple]) -> str:
-    """Executive summary: [(stort tal, forklarende tekst[, info-tekst om beregningen]), ...]."""
+    """Executive summary: [(stort tal, forklarende tekst[, info-tekst om beregningen[, minigraf]]), ...]."""
     # Boblen i sidste kolonne åbner mod venstre, så den ikke går ud over sidens højre kant.
     felter = "".join(
         f'<div><div class="nr">{i:02d}</div><div class="stor">{p[0]}{info(p[2], "hoejre" if i == len(punkter) else "venstre") if len(p) > 2 and p[2] else ""}</div>'
-        f'<div class="tekst">{p[1]}</div></div>'
+        f'{p[3] if len(p) > 3 and p[3] else ""}<div class="tekst">{p[1]}</div></div>'
         for i, p in enumerate(punkter, 1)
     )
     return f'<div class="resume">{felter}</div>'
@@ -279,6 +331,78 @@ def kort(etiket: str, tal: str, note: str = "", ikon_navn: str = "", bar: tuple[
     hoved = f'<div class="hoved">{ikon(ikon_navn) if ikon_navn else ""}<span class="etiket">{etiket}</span></div>'
     bjaelke = f'<div class="bar"><i style="width:{min(bar[0], 1):.0%};background:{bar[1]}"></i></div>' if bar else ""
     return f'<div class="kort">{hoved}<div class="tal">{tal}</div><div class="note">{note}</div>{bjaelke}</div>'
+
+
+# --- 3b. Minigrafer -------------------------------------------------------------------------
+# Små, rene SVG-grafer, der giver nøgletallene et billede. De skalerer med bredden (viewBox) og bruger
+# designsystemets farver; tallene står stadig i teksten, så graferne er pynt med mening – ikke eneste kilde.
+
+def _sti(vaerdier: list[float], x, y) -> str:
+    """SVG-sti gennem punkterne; manglende værdier (NaN) giver et hul i linjen."""
+    sti, ny = [], True
+    for i, v in enumerate(vaerdier):
+        if pd.isna(v):
+            ny = True
+            continue
+        sti.append(f"{'M' if ny else 'L'}{x(i):.1f},{y(v):.1f}")
+        ny = False
+    return " ".join(sti)
+
+
+def kurve(vaerdier: list[float], sammenlign: list[float] | None = None, graense: float | None = None,
+          note: str = "", bredde: int = 180, hoejde: int = 38) -> str:
+    """Lille kurve over de seneste uger: laksefarvet linje, stiplet sammenligning og grænsen som rød prikket linje."""
+    alle = [v for v in [*vaerdier, *(sammenlign or []), graense or 0] if pd.notna(v)]
+    top = max(alle + [0.05]) * 1.1
+    n = max(len(vaerdier) - 1, 1)
+    x = lambda i: 3 + i * (bredde - 6) / n
+    y = lambda v: hoejde - 3 - min(v, top) / top * (hoejde - 6)
+    dele = []
+    if graense:
+        dele.append(f'<line x1="0" x2="{bredde}" y1="{y(graense):.1f}" y2="{y(graense):.1f}" stroke="#D64545" '
+                    'stroke-width="1" stroke-dasharray="2 3" opacity=".8"/>')
+    if sammenlign:
+        dele.append(f'<path d="{_sti(sammenlign, x, y)}" fill="none" stroke="#8A99A6" stroke-width="1.3" stroke-dasharray="3 2"/>')
+    dele.append(f'<path d="{_sti(vaerdier, x, y)}" fill="none" stroke="#E8603C" stroke-width="2" stroke-linejoin="round"/>')
+    sidste = [(i, v) for i, v in enumerate(vaerdier) if pd.notna(v)]
+    if sidste:
+        i, v = sidste[-1]
+        dele.append(f'<circle cx="{x(i):.1f}" cy="{y(v):.1f}" r="3" fill="#E8603C" stroke="#FFFFFF" stroke-width="1.2"/>')
+    return (f'<div class="mini"><svg viewBox="0 0 {bredde} {hoejde}" role="img" '
+            f'aria-label="{note}">{"".join(dele)}</svg><div class="mini-note">{note}</div></div>')
+
+
+def andelsbjaelke(andel: float, note: str = "") -> str:
+    """Vandret bjælke med andelen i rødt (mindst et par pixel, så en lille andel stadig ses)."""
+    return (f'<div class="mini"><div class="andel"><i style="width:max(3px, {andel:.1%})"></i></div>'
+            f'<div class="mini-note">{note}</div></div>')
+
+
+def prikker(punkter: list[tuple[str, str, bool]], note: str = "") -> str:
+    """Række af prikker: (farve, etiket til tooltip, fremhævet). Fx de 13 områders trafiklys."""
+    p = "".join(f'<i class="{"valgt" if valgt else ""}" style="background:{farve}" title="{etiket}"></i>'
+                for farve, etiket, valgt in punkter)
+    return f'<div class="mini"><div class="prikrad">{p}</div><div class="mini-note">{note}</div></div>'
+
+
+def strimmel(vaerdier: list[float], markeret: float | None, graense: float | None = None, note: str = "",
+             bredde: int = 180, hoejde: int = 26) -> str:
+    """Alle anlæg i et område som prikker langs en akse; det valgte anlæg står stort og mørkt omkranset."""
+    # Aksen kappes ved 1,2 (eller 2 × grænsen), så ét ekstremt anlæg ikke klemmer resten sammen i venstre side;
+    # anlæg over kappet står ved højre kant.
+    top = min(max([*vaerdier, markeret or 0, graense or 0, 0.05]) * 1.05, max(1.2, 2 * (graense or 0)))
+    x = lambda v: 4 + min(v, top) / top * (bredde - 8)
+    dele = []
+    if graense:
+        dele.append(f'<line x1="{x(graense):.1f}" x2="{x(graense):.1f}" y1="2" y2="{hoejde - 2}" stroke="#D64545" '
+                    'stroke-width="1" stroke-dasharray="2 2"/>')
+    dele += [f'<circle cx="{x(v):.1f}" cy="{hoejde / 2}" r="2.6" fill="{LUS_FARVER[lus_niveau(v)]}" opacity=".45"/>'
+             for v in vaerdier if pd.notna(v)]
+    if markeret is not None and pd.notna(markeret):
+        dele.append(f'<circle cx="{x(markeret):.1f}" cy="{hoejde / 2}" r="5.5" fill="{LUS_FARVER[lus_niveau(markeret)]}" '
+                    'stroke="#0B2230" stroke-width="2"/>')
+    return (f'<div class="mini"><svg viewBox="0 0 {bredde} {hoejde}" role="img" aria-label="{note}">{"".join(dele)}</svg>'
+            f'<div class="mini-note">{note}</div></div>')
 
 
 # --- 4. Lusetal i tekst ---------------------------------------------------------------------

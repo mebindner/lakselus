@@ -103,3 +103,12 @@ def test_lokalitet_historik_komplet_gitter_med_naboer_og_graense():
     assert h["nabo_snit"].iloc[0] == 0.3 and h["nabo_snit"].iloc[-1] == 0.1
     # Grænsen kommer fra områdets indberetninger – også i ugen, hvor anlægget selv ikke talte
     assert h["graense"].iloc[0] == 0.5
+
+
+def test_udsving_nu_foer_og_forskel():
+    u = appdata.udsving(RAA, SENESTE).set_index("lokalitet")
+    assert list(u.index) == [1, 2]  # kun anlæg, der talte i seneste uge
+    assert u.loc[1, "nu"] == 0.6 and u.loc[1, "foer"] == pytest.approx(0.3)  # snit af 0,2 og 0,4
+    assert u.loc[1, "forskel"] == pytest.approx(0.3)
+    assert u.loc[2, "forskel"] == pytest.approx(-0.2)
+    assert u.loc[2, "omraade"] == 3

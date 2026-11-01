@@ -24,8 +24,8 @@ import streamlit as st
 
 from lakselus import appdata
 from lakselus.udseende import (
-    FARVER, LAVT_NIVEAU, LUS_FARVER, LYS_FARVER, SEKVENS, figur, forklar, ikon, info, kilde, lus_niveau, resume, sidehoved,
-    trend,
+    FARVER, LAVT_NIVEAU, LUS_FARVER, LYS_FARVER, SEKVENS, andelsbjaelke, figur, forklar, ikon, info, kilde, kurve,
+    lus_niveau, prikker, resume, sidehoved, strimmel, trend,
 )
 
 
@@ -53,6 +53,12 @@ def aendring_tekst(nu: float, foer: float) -> str:
     return pct(nu / foer - 1, True)
 
 
+def radlink(tekst: str, noegle: str) -> str:
+    """Et navn i en tabel som link til området eller anlægget (?po= / ?site=); siden åbner med valget fra URL'en."""
+    navn, nr = noegle.split(":")
+    return f'<a class="radlink" href="?{navn}={nr}" target="_self">{tekst}</a>'
+
+
 def praecis(v: float) -> str:
     """Et tal med op til 4 decimaler (mindst 2) til regnestykker, så de går op med det viste resultat."""
     t = f"{v:.4f}".rstrip("0")
@@ -75,6 +81,21 @@ def aendring_celle(nu: float, foer: float) -> str:
         forklaring = (f"<b>{praecis(nu)}</b> in week {iso.week} vs. <b>{praecis(foer)}</b> on average in {uger_foer}."
                       f"<span class='regnestykke'>{praecis(nu)} ÷ {praecis(foer)} − 1 = {vis}</span>")
     return forklar(vis, forklaring)
+
+
+def ugeserie(r: pd.DataFrame, uger: int = 26) -> tuple[list[float], list[float]]:
+    """Ugentligt snit af hunlus de seneste `uger` uger – og de samme uger et år før – til minikurverne."""
+    r = r[(r["har_talt"] == "Ja") & (r["uge_start"] > seneste - pd.Timedelta(weeks=52 + uger))]
+    t = r.groupby("uge_start")["hunlus"].mean()
+    nu_uger = pd.date_range(seneste - pd.Timedelta(weeks=uger - 1), seneste, freq="W-MON")
+    return t.reindex(nu_uger).tolist(), t.reindex(nu_uger - pd.Timedelta(weeks=52)).tolist()
+
+
+def lys_prikker(fremhaev: int | None = None) -> str:
+    """De 13 områders trafiklys som prikker fra syd til nord; det valgte område omkranses."""
+    return prikker([(LYS_FARVER[po.loc[o, "trafiklys"]][0], f"PO {o} {po.loc[o, 'navn']}: "
+                     f"{appdata.TRAFIKLYS[po.loc[o, 'trafiklys']]}", o == fremhaev) for o in sorted(po.index)],
+                   "PO 1–13, south to north")
 
 
 def mod_sidste_aar(nu: float, foer: float) -> str:
@@ -194,6 +215,12 @@ def fra_soeg() -> None:
     vaelg(*fra_noegle(st.session_state.soeg))
 
 
+def aabn(omraade: int, lokalitet: int | None) -> None:
+    """Fra et kort under nøgletallene: vælg – og rul til toppen, så man ser det nye sidehoved."""
+    vaelg(omraade, lokalitet)
+    st.session_state.rul_op = True
+
+
 # Søgefeltets værdi forsvinder, når man skifter side. Første gang (og efter et sideskift) hentes valget fra
 # URL'en – et delt link – og ellers fra det valg, man havde, før man skiftede side.
 if "soeg" not in st.session_state:
@@ -205,8 +232,12 @@ if "soeg" not in st.session_state:
 n = st.session_state.kort_n
 
 with st.container(key="soegning"):
-    st.selectbox("Find your area or site", list(valg), format_func=valg.get, index=None, key="soeg", on_change=fra_soeg,
-                 placeholder="Type a site name, site number or production area")
+    st.selectbox(":material/search: Find your area or site", list(valg), format_func=valg.get, index=None, key="soeg",
+                 on_change=fra_soeg,
+                 placeholder=f"Search {len(anlaeg)} fish farms and {len(navne)} areas – by name or site number")
+if st.session_state.pop("rul_op", False):  # kun efter et klik på et kort – kort og søjler bliver hvor de er
+    st.html("<script>document.querySelector('[data-testid=\"stMain\"]')?.scrollTo({top: 0, behavior: 'smooth'})</script>",
+            unsafe_allow_javascript=True)
 if st.query_params.to_dict() != appdata.til_url(st.session_state.soeg):
     st.query_params.from_dict(appdata.til_url(st.session_state.soeg))
 
@@ -244,6 +275,21 @@ if lok_v is not None:
     nab_tekst = (f"the {len(nab)} sites within {appdata.NABO_KM} km" if n_inden == len(nab)
                  else f"the {len(nab)} nearest sites (up to {nab['km'].max():.0f} km away)")
 
+# 2d. Minigrafer til nøgletallene
+KURVE_NOTE = "26 weeks · dashed: a year earlier"
+if lok_v is not None:
+    l_kurve = kurve(hist["hunlus"].tail(26).tolist(), hist["nabo_snit"].tail(26).tolist(), l_graense,
+                    "26 weeks · dashed: neighbours · red: limit")
+    l_strimmel = strimmel(a_talt["hunlus"].dropna().tolist(), l_nu if len(l_rad) else None, a_graense,
+                          f"Each dot a site in PO {valgt}" + (f" · ringed: {l_navn}" if len(l_rad) else ""))
+    l_prikker = prikker([(LUS_FARVER[lus_niveau(r.hunlus)] if pd.notna(r.hunlus) else "#D5DDE3",
+                          f"{r.lokalitet_navn}, {r.km:.1f} km: " + (tal(r.hunlus) if pd.notna(r.hunlus) else "not counted"),
+                          False) for r in nab.itertuples()], "Neighbours, nearest first · grey: not counted")
+elif valgt is not None:
+    a_kurve = kurve(*ugeserie(raa[raa["omraade"] == valgt]), note=KURVE_NOTE)
+    a_strimmel = strimmel(a_talt["hunlus"].dropna().tolist(), None, a_graense,
+                          f"Each dot a site in PO {valgt} · red line: limit")
+
 # --- 3. Sidehoved og resumé ------------------------------------------------------------
 if lok_v is not None:
     if len(l_rad):
@@ -269,17 +315,17 @@ if lok_v is not None:
                     f"{tal(l_graense, 1)}. The level is {l_trend}.",
          f"The count {l_navn} reported for week {iso.week}. The trend compares it with the site's mean in {uger_foer}"
          + (f" (<b>{praecis(l_foer)}</b>)" if pd.notna(l_foer) else "") + ": rising or falling means a change of more than 15%."
-         + f"<br><br>{INFO_GRAENSE}") if len(l_rad) else
+         + f"<br><br>{INFO_GRAENSE}", l_kurve) if len(l_rad) else
         (tal(l_sidst.hunlus), f"adult female lice per fish at the last count, week {l_sidst_iso.week} "
                               f"{l_sidst_iso.year}. The site did not count lice in week {iso.week}.",
          "Sites report lice counts for the weeks they have fish in the sea. A site with no count may be between "
-         "production cycles."),
+         "production cycles.", l_kurve),
         (f"{int((a_talt['hunlus'] > l_nu).sum()) + 1} of {len(a_talt)}",
          f"sites in PO {valgt} ranked by lice level (1 = highest). The area mean is {tal(s_v.hunlus)}.",
          f"The {len(a_talt)} sites in PO {valgt} that counted lice in week {iso.week}, sorted from the highest count. "
-         f"Sites with the same count share a rank. The area mean is over the same sites. {INFO_SNIT}") if len(l_rad) else
+         f"Sites with the same count share a rank. The area mean is over the same sites. {INFO_SNIT}", l_strimmel) if len(l_rad) else
         (tal(s_v.hunlus), f"adult female lice per fish on average in PO {valgt} in week {iso.week}, "
-                          f"across {len(a_talt)} sites.", INFO_SNIT),
+                          f"across {len(a_talt)} sites.", INFO_SNIT, l_strimmel),
         (f"{nab_over} of {len(nab_talt)}", f"neighbouring sites above the limit this week ({len(nab_talt)} of "
                                            f"{nab_tekst} counted lice). Their mean is {tal(nabo_nu)}"
                                            + (f", {trend(nabo_nu, nabo_foer)[2]}." if nabo_ord else "."),
@@ -287,7 +333,7 @@ if lok_v is not None:
          f"the past year (if fewer than {appdata.MIN_NABOER}, the nearest {appdata.MIN_NABOER}). Lice larvae drift with the "
          f"currents, so high counts nearby raise the pressure on the site. Their mean is over the neighbours that counted "
          f"in week {iso.week}; the trend compares it with their mean in {uger_foer}"
-         + (f" (<b>{praecis(nabo_foer)}</b>)" if pd.notna(nabo_foer) else "") + ".")
+         + (f" (<b>{praecis(nabo_foer)}</b>)" if pd.notna(nabo_foer) else "") + ".", l_prikker)
         if len(nab_talt) else ("–", f"None of {nab_tekst} counted lice in week {iso.week}."),
     ]), unsafe_allow_html=True)
 elif valgt is not None:
@@ -309,16 +355,16 @@ elif valgt is not None:
          f"Mean over the {len(a_talt)} sites in PO {valgt} that counted lice in week {iso.week}. {INFO_SNIT}"
          + (f"<span class='regnestykke'>vs. the same week a year earlier: {praecis(s_v.hunlus)} ÷ {praecis(a_sidst)} − 1 "
             f"= {pct(s_v.hunlus / a_sidst - 1, True)}</span>" if pd.notna(a_sidst) and a_sidst else "")
-         + f"<br>The rank compares the means of all {len(status)} areas; 1 is the highest."),
+         + f"<br>The rank compares the means of all {len(status)} areas; 1 is the highest.", a_kurve),
         (f"{len(a_over)} of {len(a_talt)}", f"sites ({pct(len(a_over) / len(a_talt))}) were above the "
                                             f"{tal(a_graense, 1)} lice limit"
                                             + (f"; the highest was {a_top.iloc[0].lokalitet_navn} ({tal(a_top.iloc[0].hunlus)})"
-                                               if len(a_top) else "") + ".", INFO_GRAENSE),
+                                               if len(a_top) else "") + ".", INFO_GRAENSE, a_strimmel),
         (appdata.TRAFIKLYS[s_v.trafiklys], f"traffic light for PO {valgt}. The colour is set by the government "
                                            f"(latest decision {s_v.lys_fra:%b %Y}) from estimated lice mortality in wild "
                                            "salmon – not from this week's counts."
                                            + (" Red means a cut in production capacity." if s_v.trafiklys == "red" else ""),
-         INFO_LYS),
+         INFO_LYS, lys_prikker(valgt)),
     ]), unsafe_allow_html=True)
 else:
     st.markdown(sidehoved(
@@ -336,16 +382,56 @@ else:
                    f"{retning} than the same week last year ({tal(gns_sidst)}).",
          f"Mean over the {len(talt)} sites that counted lice in week {iso.week}. {INFO_SNIT}"
          f"<span class='regnestykke'>vs. the same week a year earlier ({len(aar_siden)} sites): "
-         f"{praecis(gns)} ÷ {praecis(gns_sidst)} − 1 = {pct(aendring, True)}</span>"),
+         f"{praecis(gns)} ÷ {praecis(gns_sidst)} − 1 = {pct(aendring, True)}</span>",
+         kurve(*ugeserie(raa), note=KURVE_NOTE)),
         (f"{len(over)} of {len(talt)}", f"sites ({pct(len(over) / len(talt))}) were above the {tal(graense, 1)} lice limit"
                                         + ("; most in " + " and ".join(f"PO {o}" for o in over_pr_omr.index[:2]) if len(over) else "") + ".",
-         INFO_GRAENSE),
+         INFO_GRAENSE, andelsbjaelke(len(over) / len(talt), f"Red: the {len(over)} sites above the limit")),
         (f"{len(roede)} of 13", f"production areas {'has' if len(roede) == 1 else 'have'} a red traffic light"
                                 + (": " + ", ".join(roede["navn"]) if len(roede) else "")
                                 + f". The colour is set by the government (latest decision {lys_fra:%b %Y}) from estimated lice "
                                 "mortality in wild salmon – not from this week's counts. Red means a cut in production capacity.",
-         INFO_LYS),
+         INFO_LYS, lys_prikker()),
     ]), unsafe_allow_html=True)
+
+# 3b. Værd at se på i denne uge: kort med det højeste lusetal og de største udsving – et klik åbner anlægget.
+# Forskellen måles i lus pr. fisk, så små tal ikke giver store procenter; det højeste anlæg tælles ikke igen.
+if lok_v is None:
+    u = appdata.udsving(raa, seneste)
+    u = u[u["omraade"] == valgt] if valgt is not None else u
+    udsving_kort = []  # (nøgle, ikon, etiket, navn, stort tal, farve, note, (område, anlæg))
+    if len(u):
+        h = u.loc[u["nu"].idxmax()]
+        udsving_kort.append(("hoejest", "priority_high", "Highest count", h.lokalitet_navn, tal(h.nu),
+                             LUS_FARVER[lus_niveau(h.nu)], f"adult female lice per fish · PO {h.omraade}",
+                             (h.omraade, h.lokalitet)))
+        rest = u.drop(index=h.name).dropna(subset=["forskel"])
+        for noegle, ikon_, etiket, r in (("op", "trending_up", "Sharpest rise", rest.loc[rest["forskel"].idxmax()] if len(rest) else None),
+                                         ("ned", "trending_down", "Steepest fall", rest.loc[rest["forskel"].idxmin()] if len(rest) else None)):
+            if r is not None and (r.forskel > 0 if noegle == "op" else r.forskel < 0):
+                udsving_kort.append((noegle, ikon_, etiket, r.lokalitet_navn, f"{r.forskel:+.2f}".replace("-", "−"),
+                                     "#D64545" if noegle == "op" else "#1F7A8C",
+                                     f"{tal(r.nu)} now vs. {tal(r.foer)} in {uger_foer} · PO {r.omraade}",
+                                     (r.omraade, r.lokalitet)))
+    if valgt is None:
+        stigning = (solide["hunlus"] / solide["hunlus_4u_foer"] - 1).dropna()
+        if len(stigning) and stigning.max() > 0:
+            o = int(stigning.idxmax())
+            udsving_kort.append(("omraade", "map", "Fastest-rising area", f"PO {o} · {status.loc[o, 'navn']}",
+                                 pct(stigning.max(), True), "#D64545",
+                                 f"{tal(status.loc[o, 'hunlus'])} now vs. {tal(status.loc[o, 'hunlus_4u_foer'])} in {uger_foer}",
+                                 (o, None)))
+    if udsving_kort:
+        st.markdown(f'<div class="udsving-hoved"><b>Worth a look this week</b><span>'
+                    f'{"In PO " + str(valgt) + " · " if valgt is not None else ""}click a card to open it</span></div>',
+                    unsafe_allow_html=True)
+        for kol, (noegle, ikon_, etiket, navn_, stort, farve, note, maal) in zip(st.columns(len(udsving_kort)), udsving_kort):
+            with kol, st.container(key=f"udsving_{noegle}"):
+                st.markdown(f'<div class="udsving-kort"><div class="etiket">{ikon(ikon_)} {etiket}</div>'
+                            f'<div class="navn">{navn_}</div><div class="stort" style="color:{farve}">{stort}</div>'
+                            f'<div class="note">{note}</div></div>', unsafe_allow_html=True)
+                st.button("Open area →" if maal[1] is None else "Open site →", key=f"aabn_{noegle}",
+                          on_click=aabn, args=maal, type="tertiary")
 
 # --- 4. Figur: kort og rangering --------------------------------------------------
 
@@ -600,7 +686,7 @@ if lok_v is not None:
 
     nabo_raekker = [nabo_raekke(f"{l_navn} <span style='color:#6B7A86'>(selected)</span>", "–", valgt, l_nu, l_foer,
                                 "Ja" if l_over else ("Nei" if len(l_rad) else ""), "valgt")]
-    nabo_raekker += [nabo_raekke(r.lokalitet_navn, f"{r.km:.1f} km", r.omraade, r.hunlus, r.hunlus_4u_foer,
+    nabo_raekker += [nabo_raekke(radlink(r.lokalitet_navn, f"site:{r.lokalitet}"), f"{r.km:.1f} km", r.omraade, r.hunlus, r.hunlus_4u_foer,
                                  r.over_graense if isinstance(r.over_graense, str) else "") for r in nab.itertuples()]
     st.markdown(
         '<table class="tabel"><thead><tr><th>Site</th>'
@@ -629,7 +715,7 @@ for o, s in status.iterrows():
     farve = LUS_FARVER[lus_niveau(s.hunlus)]
     lys_kant, _, lys_tekst = LYS_FARVER[s.trafiklys]
     raekker.append(
-        f'<tr class="{"valgt" if o == valgt else ""}"><td class="po ekstra">{o}</td><td class="navn">{s.navn}{" <span style=\'color:#6B7A86\'>*</span>" if s.n_lok < MIN_LOK else ""}</td>'
+        f'<tr class="{"valgt" if o == valgt else ""}"><td class="po ekstra">{o}</td><td class="navn">{s.navn if o == valgt else radlink(s.navn, f"po:{o}")}{" <span style=\'color:#6B7A86\'>*</span>" if s.n_lok < MIN_LOK else ""}</td>'
         f'<td><i class="prik" style="background:{lys_kant}"></i><span class="ekstra">{appdata.TRAFIKLYS[s.trafiklys]}</span></td>'
         f'<td class="tal">{tal(s.hunlus)}<span class="minibar" style="width:{min(s.hunlus / 0.5, 1) * 60:.0f}px;background:{farve}"></span></td>'
         f'<td class="tal" style="color:{t_farve}"><span class="ekstra">{ikon(t_ikon, t_farve, t_tekst)}</span> {aend_tekst}</td>'

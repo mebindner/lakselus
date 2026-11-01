@@ -8,6 +8,7 @@ Indhold
 5. Modeller (Forecast)  – backtest, opsummering og live-prognose (læses fra disk, når de er friske)
 6. Behandlingseffekt     – hændelsesstudiet til Forecast-siden
 7. Opslag (Overview)     – søg område eller anlæg, valget i URL'en, anlæggets historik og naboer
+8. Ugens udsving        – anlæg med det højeste lusetal og de største stigninger og fald (Overview)
 """
 
 import ast
@@ -293,3 +294,19 @@ def lokalitet_historik(raa: pd.DataFrame, lokalitet: int, naboer_: list[int], se
         "nabo_snit": r[r["lokalitet"].isin(naboer_)].groupby("uge_start")["hunlus"].mean(),
         "graense": graense_tal(omr["Lusegrense uke"]).groupby(omr["uge_start"]).median() if "Lusegrense uke" in omr else np.nan,
     }).reindex(gitter).reset_index()
+
+
+# --- 8. Ugens udsving -----------------------------------------------------------------------
+
+def udsving(raa: pd.DataFrame, seneste: pd.Timestamp, uger: int = 4) -> pd.DataFrame:
+    """Hvert anlæg, der talte i seneste uge, med lusetal nu, snittet af de `uger` uger før og forskellen.
+
+    Forskellen er i lus pr. fisk (ikke procent), så et fald fra 0,01 til 0 ikke ligner et dramatisk skift.
+    Anlæg uden tælling i ugerne før har foer = NaN. Bruges til kortene "Worth a look this week".
+    """
+    talt = raa[(raa["har_talt"] == "Ja") & (raa["uge_start"] >= seneste - pd.Timedelta(weeks=uger))
+               & (raa["uge_start"] <= seneste) & raa["omraade"].notna()]
+    nu = talt[talt["uge_start"] == seneste].groupby("lokalitet").agg(
+        lokalitet_navn=("lokalitet_navn", "first"), omraade=("omraade", "first"), nu=("hunlus", "mean"))
+    foer = talt[talt["uge_start"] < seneste].groupby("lokalitet")["hunlus"].mean()
+    return nu.assign(omraade=nu["omraade"].astype(int), foer=foer, forskel=lambda d: d["nu"] - d["foer"]).reset_index()

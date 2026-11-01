@@ -23,7 +23,8 @@ design decisions are my own.
 Structured like a report deliverable:
 
 - **Action titles** that state the conclusion (e.g. *"Lice levels are 24% lower than a year ago – pressure is highest in Karmøy til Sotra"*). Titles and figures are computed from the data and update every week.
-- **Executive summary** with three key findings: the coast-wide average, sites above the lice limit (*lusegrense*), and areas with a red traffic light (*trafikklyssystemet*).
+- **Executive summary** with three key findings: the coast-wide average, sites above the lice limit (*lusegrense*), and areas with a red traffic light (*trafikklyssystemet*). Each has a small chart (26-week trend against a year earlier, share above the limit, the 13 traffic lights) and an info bubble explaining the calculation.
+- **Worth a look this week**: clickable cards for the highest count, the sharpest rise, the steepest fall and the fastest-rising area. Rows in the tables open the area or site as well.
 - **Numbered exhibits** with units and sources:
   1. Map of sites and production areas (coloured by the government traffic light) and a ranking of the 13 areas against the lice limit.
   2. Status table by area: lice level, 4-week change, share of sites above the limit, sea temperature.
