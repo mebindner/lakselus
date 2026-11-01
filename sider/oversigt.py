@@ -492,10 +492,14 @@ st.markdown(kilde(f"Area figures are unweighted means over sites that counted li
 # --- 5. Figurer for et anlæg -----------------------------------------------------------
 if lok_v is not None:
     # 5a. Lusehistorik: anlægget mod lusegrænsen og naboernes snit, de seneste to år
-    sidste_aar = hist.tail(52).dropna(subset=["hunlus"])
-    uger_over = int((sidste_aar["hunlus"] > sidste_aar["graense"]).sum())
+    # Titlen tæller over de samme to år, som grafen viser, og siger hvornår anlægget sidst var over grænsen.
+    talte = hist.dropna(subset=["hunlus"])
+    over_uger = talte[talte["hunlus"] > talte["graense"]]
+    sidst_over = over_uger["uge_start"].max().isocalendar() if len(over_uger) else None
     st.markdown(figur(
-        next(nr), f"{l_navn} was above the lice limit in {uger_over} of the {len(sidste_aar)} weeks it counted in the past year",
+        next(nr), (f"{l_navn} was above the lice limit in {len(over_uger)} of the {len(talte)} weeks it counted in the "
+                   f"past two years – last in week {sidst_over.week}, {sidst_over.year}") if sidst_over else
+                  f"{l_navn} stayed below the lice limit in all {len(talte)} weeks it counted in the past two years",
         f"Adult female lice per fish per week, past two years. Solid line: {l_navn}. Dashed: mean of {nab_tekst}. "
         f"Red step: the lice limit in PO {valgt} (0.2 in the spring weeks). Gaps: weeks without a count.",
     ), unsafe_allow_html=True)
