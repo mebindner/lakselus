@@ -90,7 +90,8 @@ hr { border-color: #E1E6EA; }
         display: inline-block; vertical-align: -0.2em; font-size: 1.15em; -webkit-font-smoothing: antialiased; }
 
 /* Forside / sidehoved */
-.sidehoved { padding: .6rem 0 1.2rem; margin-bottom: 1.6rem; border-bottom: 1px solid #E1E6EA; }
+/* Ingen linje under sidehovedet: nøgletallenes navy linje er afsnittets eneste skillelinje */
+.sidehoved { padding: .6rem 0 .6rem; margin-bottom: 1.4rem; }
 .sidehoved .overlinje { font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #5B6B78; }
 .sidehoved h1 { font-size: clamp(1.7rem, 3.4vw, 2.5rem) !important; line-height: 1.15; margin: .5rem 0 .6rem; padding: 0; max-width: 24em; }
 .sidehoved .under { color: #4A5A66; font-size: 1rem; max-width: 52em; margin: 0; line-height: 1.55; }
@@ -151,7 +152,8 @@ hr { border-color: #E1E6EA; }
 @media (prefers-reduced-motion: reduce) { .valghjaelp, .st-key-omraadevalg .react-aria-ComboBox [role="group"] { animation: none; } }
 
 /* Ugens udsving: klikbare kort under nøgletallene. Hele kortet løfter sig ved hover, knappen er handlingen. */
-.udsving-hoved { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; margin: -.6rem 0 .6rem; }
+.st-key-kortbaand { background: #F3F5F7; border-radius: 14px; padding: 1.1rem 1.2rem 1.2rem; margin: .2rem 0 1rem; gap: .7rem; }
+.udsving-hoved { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; margin: 0; }
 .udsving-hoved b { font-family: 'Source Serif 4', serif; font-size: 1.15rem; color: #0B2230; }
 .udsving-hoved span { font-size: .8rem; color: #6B7A86; }
 [class*="st-key-udsving_"] { background: #FFFFFF; border: 1px solid #E1E6EA; border-radius: 10px; padding: .85rem 1rem .55rem;

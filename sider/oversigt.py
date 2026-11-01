@@ -428,16 +428,18 @@ if lok_v is None:
                                  f"{tal(status.loc[o, 'hunlus'])} now vs. {tal(status.loc[o, 'hunlus_4u_foer'])} in {uger_foer}",
                                  (o, None)))
     if udsving_kort:
-        st.markdown(f'<div class="udsving-hoved"><b>Worth a look this week</b><span>'
-                    f'{"In PO " + str(valgt) + " · " if valgt is not None else ""}click a card to open it</span></div>',
-                    unsafe_allow_html=True)
-        for kol, (noegle, ikon_, etiket, navn_, stort, farve, note, maal) in zip(st.columns(len(udsving_kort)), udsving_kort):
-            with kol, st.container(key=f"udsving_{noegle}"):
-                st.markdown(f'<div class="udsving-kort"><div class="etiket">{ikon(ikon_)} {etiket}</div>'
-                            f'<div class="navn">{navn_}</div><div class="stort" style="color:{farve}">{stort}</div>'
-                            f'<div class="note">{note}</div></div>', unsafe_allow_html=True)
-                st.button("Open area →" if maal[1] is None else "Open site →", key=f"aabn_{noegle}",
-                          on_click=aabn, args=maal, type="tertiary")
+        # Kortene står på et lyst bånd, så de er et tydeligt afsnit mellem nøgletallene og figur 1
+        with st.container(key="kortbaand"):
+            st.markdown(f'<div class="udsving-hoved"><b>Worth a look this week</b><span>'
+                        f'{"In PO " + str(valgt) + " · " if valgt is not None else ""}click a card to open it</span></div>',
+                        unsafe_allow_html=True)
+            for kol, (noegle, ikon_, etiket, navn_, stort, farve, note, maal) in zip(st.columns(len(udsving_kort)), udsving_kort):
+                with kol, st.container(key=f"udsving_{noegle}"):
+                    st.markdown(f'<div class="udsving-kort"><div class="etiket">{ikon(ikon_)} {etiket}</div>'
+                                f'<div class="navn">{navn_}</div><div class="stort" style="color:{farve}">{stort}</div>'
+                                f'<div class="note">{note}</div></div>', unsafe_allow_html=True)
+                    st.button("Open area →" if maal[1] is None else "Open site →", key=f"aabn_{noegle}",
+                              on_click=aabn, args=maal, type="tertiary")
 
 # --- 4. Figur: kort og rangering --------------------------------------------------
 
