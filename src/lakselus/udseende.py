@@ -297,6 +297,23 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .forklaring { display: flex; flex-wrap: wrap; gap: .35rem 1.2rem; font-size: .78rem; color: #5B6B78; margin: .5rem 0 .6rem; }
 .forklaring span { display: inline-flex; align-items: center; gap: .1rem; }
 .metode { font-size: .8rem; color: #4A5A66; line-height: 1.55; background: #F6F8FA; padding: 1rem 1.2rem; border-left: 3px solid #0B2230; margin-top: 2.4rem; }
+/* About: fire korte spalter over fodnoten – hvem, data, metode, kode */
+.om { margin-top: 3rem; padding: 1.4rem 1.5rem 1.2rem; background: #F6F8FA; border-radius: 10px; }
+.om-hoved { font-family: 'Source Serif 4', serif; font-size: 1.15rem; font-weight: 600; color: #0B2230; margin-bottom: .8rem; }
+.om-gitter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem 1.6rem; }
+.om-gitter div { font-size: .8rem; line-height: 1.55; color: #4A5A66; }
+.om-gitter b { display: block; font-size: .68rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: #5B6B78; margin-bottom: .3rem; }
+.om a { color: #55602B; font-weight: 600; }
+@media (max-width: 900px) { .om-gitter { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .om-gitter { grid-template-columns: 1fr; } .om { padding: 1.1rem 1rem; } }
+
+/* Afsnit: deler en side i to dele (fx prognosen for alle og evalueringen for fagfolk) */
+.afsnit { margin: 3.4rem 0 1.2rem; padding-top: 1.4rem; border-top: 2px solid #0B2230; }
+.afsnit .overlinje { font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #5B6B78; }
+.afsnit h2 { font-size: clamp(1.35rem, 2.4vw, 1.75rem) !important; line-height: 1.2; margin: .45rem 0 .5rem; padding: 0; max-width: 30em; }
+.afsnit p { color: #4A5A66; font-size: .95rem; max-width: 52em; margin: 0; line-height: 1.55; }
+
 .fodnote { font-size: .74rem; color: #6B7A86; border-top: 1px solid #E1E6EA; padding-top: .8rem; margin-top: 2rem; }
 .fodnote a { color: #1D4E6B; }
 .fodnote .afsender { font-size: .82rem; color: #1B2B36; margin-bottom: .45rem; }
@@ -321,6 +338,11 @@ def sidehoved(overlinje: str, titel: str, under: str, chips: list[tuple[str, str
         f'<div class="sidehoved"><div class="overlinje">{overlinje}</div><h1>{titel}</h1>'
         f'<p class="under">{under}</p><div class="chips">{chip_html}</div></div>'
     )
+
+
+def afsnit(overlinje: str, titel: str, under: str) -> str:
+    """Overskrift for en ny del af en side – mindre end sidehovedet, med en tyk linje over."""
+    return f'<div class="afsnit"><div class="overlinje">{overlinje}</div><h2>{titel}</h2><p>{under}</p></div>'
 
 
 def resume(punkter: list[tuple]) -> str:

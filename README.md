@@ -19,7 +19,7 @@ design decisions are my own.
 
 ## The app – three pages
 
-### 1. Overview – weekly brief in consulting format
+### 1. Latest week – weekly brief in consulting format
 Structured like a report deliverable:
 
 - **Action titles** that state the conclusion (e.g. *"Lice levels are 24% lower than a year ago – pressure is highest in Karmøy til Sotra"*). Titles and figures are computed from the data and update every week.
@@ -38,7 +38,7 @@ Structured like a report deliverable:
   i.e. the infection pressure from its neighbours. Clicking the map or a bar makes the same choice, and the choice is
   kept in the URL (`?po=3`, `?site=12345`), so a page can be bookmarked and shared.
 
-### 2. Time machine – 3D map week by week
+### 2. History – 3D map week by week
 A 3D map where every site is a column that grows with the lice count. Play the period from 2019 to
 today and watch lice build up in late summer and fall again in winter. Includes a timeline, speed
 control and the ability to rotate and tilt the map.
@@ -46,9 +46,14 @@ control and the ability to rotate and tilt the map.
 Playback runs entirely in the browser: ~1,000 sites × ~400 weeks are packed as one byte per value
 (≈ 0.6 MB) and rendered with deck.gl. The coastline is drawn from Natural Earth, so no map API key is needed.
 
-### 3. Forecast – model selection and honest evaluation
-Same consulting format: a summary of the test result, a 1–4 week forecast with an 80% interval for
-the selected area, a comparison of seven models, the gain by area and the backtest track in the test period.
+### 3. Forecast – what happens next, and how far to trust it
+The page is split in two. First, for everyone: the 1–4 week forecast for the chosen area in plain language
+(it opens on the area picked on the Latest week page), with an 80% range, and how much each treatment type
+lowers lice compared with similar untreated sites. Then, for the technically curious: a comparison of seven
+models, the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
+and the Diebold–Mariano test.
+
+An **About** section at the bottom of every page sums up who built it, the data, the method and the code.
 
 ## Models and evaluation
 
@@ -161,9 +166,9 @@ The code uses Danish identifiers and comments (the author is Danish); the app an
 ```
 app.py                     navigation and shared layout
 sider/
-  oversigt.py              Overview: search, summary, exhibits, method
-  tidsmaskine.py           Time machine: 3D map played week by week
-  prognose.py              Forecast: model comparison and backtest by area
+  oversigt.py              Latest week: search, summary, exhibits, method
+  tidsmaskine.py           History: 3D map played week by week
+  prognose.py              Forecast: forecast and treatment effects, then model evaluation
 src/lakselus/
   barentswatch.py          API client (OAuth2 client credentials)
   hent.py                  fetches raw data into a local cache

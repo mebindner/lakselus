@@ -4,8 +4,8 @@ Indhold
 0. Friske moduler – genindlæs lakselus-pakken, hvis koden er ændret, mens appen kørte
 1. Opsætning   – sidetitel, ordmærke i topbjælken og fælles designsystem (CSS)
 2. Data        – indlæses én gang; uden data vises en vejledning i stedet for siderne
-3. Navigation  – Overview, Time machine og Forecast i topbjælken
-4. Fodnote     – afsender, opdateringsstatus og kildeangivelse (krav i BarentsWatch' vilkår)
+3. Navigation  – Latest week, History og Forecast i topbjælken
+4. Fodnote     – About (hvem, data, metode, kode), opdateringsstatus og kildeangivelse (krav i BarentsWatch' vilkår)
 """
 
 import importlib
@@ -75,8 +75,9 @@ except FileNotFoundError:
 # --- 3. Navigation -------------------------------------------------------------------------
 side = st.navigation(
     [
-        st.Page("sider/oversigt.py", title="Overview", icon=":material/map:", default=True),
-        st.Page("sider/tidsmaskine.py", title="Time machine", icon=":material/view_in_ar:"),
+        # Navnene siger, hvad man får: den seneste færdigindberettede uge, udviklingen siden 2019 og prognosen
+        st.Page("sider/oversigt.py", title="Latest week", icon=":material/map:", default=True),
+        st.Page("sider/tidsmaskine.py", title="History", icon=":material/view_in_ar:"),
         st.Page("sider/prognose.py", title="Forecast", icon=":material/insights:"),
     ],
     position="top",
@@ -84,11 +85,26 @@ side = st.navigation(
 side.run()
 
 # --- 4. Fodnote ----------------------------------------------------------------------------
+# About samler det, en besøgende (fx fra LinkedIn) vil vide: hvem står bag, hvor data kommer fra, metoden og koden.
 st.markdown(
-    '<div class="fodnote"><div class="afsender">Built by '
-    '<a href="https://www.linkedin.com/in/martin-eckberg-bindner-872207422" target="_blank">Martin Eckberg Bindner</a>'
-    ' · Data analyst · <a href="https://github.com/mebindner/lakselus" target="_blank">Code on GitHub</a></div>'
-    f'<div class="opdateret">{appdata.opdatering_tekst(panel)} · new lice counts every Wednesday</div>'
+    '<div class="om" id="about"><div class="om-hoved">About this project</div><div class="om-gitter">'
+    '<div><b>Who</b>An independent spare-time project by '
+    '<a href="https://www.linkedin.com/in/martin-eckberg-bindner-872207422" target="_blank">Martin Eckberg Bindner</a>, '
+    'data analyst. It turns the open weekly lice reports from Norwegian fish farms into a brief anyone can read. '
+    'Not prepared for or by any company.</div>'
+    '<div><b>Data</b>Weekly lice counts, sea temperature and treatments for every site, reported to the Norwegian '
+    'Food Safety Authority (Mattilsynet) and published by BarentsWatch under the NLOD licence. New counts arrive '
+    'every Wednesday; the pages show the latest week that is fully reported.</div>'
+    '<div><b>Method</b>Area figures are plain means over the sites that counted, not weighted by fish. Forecasts are '
+    'tested week by week on seasons the models never saw. Every page ends with its own notes on method and caveats.</div>'
+    '<div><b>Code</b>Python, pandas, scikit-learn, Streamlit, Altair and deck.gl, open source on '
+    '<a href="https://github.com/mebindner/lakselus" target="_blank">GitHub</a>. Developed with AI-assisted coding '
+    '(Claude); problem framing, methodology, model validation and design decisions are my own.</div>'
+    '</div></div>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<div class="fodnote"><div class="opdateret">{appdata.opdatering_tekst(panel)} · new lice counts every Wednesday</div>'
     f'{KILDE_TEKST} Licence: NLOD. '
     '<a href="https://www.barentswatch.no" target="_blank">barentswatch.no</a> · Independent portfolio project.</div>',
     unsafe_allow_html=True,
