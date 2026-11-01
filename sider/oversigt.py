@@ -8,7 +8,7 @@ Indhold
 4. Figur: kort + søjler    – klik på et område viser hvert anlæg i området; klik på et anlæg åbner anlægget
 5. Figurer for et anlæg    – lusehistorik mod lusegrænsen og naboer inden for 20 km (kun med et valgt anlæg)
 6. Figur: statustabel      – det valgte område fremhæves
-7. Figur: små multipler    – i år mod tidligere år pr. område; det valgte område først
+7. Figur: små multipler    – i år mod tidligere år pr. område; klik viser området i stort
 8. Figur: sæsonmønster
 9. Metode og forbehold
 
@@ -232,9 +232,10 @@ if "soeg" not in st.session_state:
 n = st.session_state.kort_n
 
 with st.container(key="soegning"):
-    st.selectbox(":material/search: Find your area or site", list(valg), format_func=valg.get, index=None, key="soeg",
-                 on_change=fra_soeg,
-                 placeholder=f"Search {len(anlaeg)} farms or {len(navne)} areas")
+    # Feltet forklarer sig selv (ikon og tekst i feltet); etiketten er skjult, men læses stadig op af skærmlæsere.
+    st.selectbox("Find your area or fish farm", list(valg), format_func=valg.get, index=None, key="soeg",
+                 on_change=fra_soeg, label_visibility="collapsed",
+                 placeholder=f"Search {len(anlaeg)} fish farms or {len(navne)} areas")
 if st.session_state.pop("rul_op", False):  # kun efter et klik på et kort – kort og søjler bliver hvor de er
     st.html("<script>document.querySelector('[data-testid=\"stMain\"]')?.scrollTo({top: 0, behavior: 'smooth'})</script>",
             unsafe_allow_javascript=True)
@@ -752,39 +753,77 @@ st.markdown(kilde(f"Δ 4 weeks: change vs. the mean of the four preceding weeks;
                   f"shown in lice per fish instead of percent. * Fewer than {MIN_LOK} sites."), unsafe_allow_html=True)
 
 # --- 7. Figur: små multipler --------------------------------------------------------
+# Et klik på et panel vælger området (samme valg som søgefeltet og kortet) og viser det i stort over panelerne.
 foerste, i_aar = int(profil["foerste_aar"].iloc[0]), int(profil["aar"].iloc[0])
+st.markdown('<div id="smaa-multipler"></div>', unsafe_allow_html=True)
 st.markdown(figur(
     next(nr), f"{over_snit} of {len(uge_nu)} areas are above the normal level for the time of year",
-    f"Adult female lice per fish per week. Line: {i_aar}. Dashed: mean {foerste}–{i_aar - 1}. Band: lowest–highest level in the same period."
-    + (f" PO {valgt} is shown first." if valgt is not None else ""),
+    f"Adult female lice per fish per week. Line: {i_aar}. Dashed: mean {foerste}–{i_aar - 1}. Band: lowest–highest level in the same period. "
+    + (f"PO {valgt} is shown large; click another area to switch." if valgt is not None else "Click an area to see it large."),
 ), unsafe_allow_html=True)
 
 sm = profil.assign(titel=lambda d: "PO " + d["omraade"].astype(str) + " · " + d["omraade"].map(navne))
+sm["er_sidste"] = sm["uge"] == sm.dropna(subset=["i_aar"])["uge"].max()
 orden = [f"PO {o} · {navne[o]}" for o in sorted(navne)]
 orden_sm = sorted(orden, key=lambda t: t != f"PO {valgt} · {navne.get(valgt)}")  # det valgte område først
-basis = alt.Chart().encode(x=alt.X("uge:Q", title=None, scale=alt.Scale(domain=[1, 52]),
-                                   axis=alt.Axis(values=[1, 13, 26, 39, 52], grid=False, labelFontSize=9)))
-baand = basis.mark_area(color=FARVER["taage"], opacity=.35).encode(
-    y=alt.Y("lav:Q", title=None, axis=alt.Axis(values=[0, 0.5, 1], format=".1f", labelFontSize=9)), y2="hoej:Q")
-snit = basis.mark_line(color=FARVER["skifer"], strokeDash=[3, 2], strokeWidth=1).encode(y="snit:Q")
-nu = basis.mark_line(color=FARVER["serie"], strokeWidth=2).encode(y="i_aar:Q")
-# Annotation: seneste uges værdi markeres og skrives direkte i hvert panel.
-sm["er_sidste"] = sm["uge"] == sm.dropna(subset=["i_aar"])["uge"].max()
-nu_pkt = basis.mark_circle(color=FARVER["serie"], size=26, opacity=1).encode(y="i_aar:Q").transform_filter("datum.er_sidste")
-nu_tal = basis.mark_text(align="left", dx=5, fontSize=10, fontWeight=600, color=FARVER["serie"]).encode(
-    y="i_aar:Q", text=alt.Text("i_aar:Q", format=".2f")).transform_filter("datum.er_sidste")
+
+
+def lag(hoejde: int, akse_str: int = 9, x_titel: str | None = None) -> list:
+    """Bånd, snit, i år og seneste værdi – fælles for panelerne og den store udgave."""
+    basis = alt.Chart().encode(x=alt.X("uge:Q", title=x_titel, scale=alt.Scale(domain=[1, 52]),
+                                       axis=alt.Axis(values=[1, 13, 26, 39, 52], grid=False, labelFontSize=akse_str)))
+    return [
+        basis.mark_area(color=FARVER["taage"], opacity=.35).encode(
+            y=alt.Y("lav:Q", title=None, axis=alt.Axis(values=[0, 0.5, 1], format=".1f", labelFontSize=akse_str)), y2="hoej:Q"),
+        basis.mark_line(color=FARVER["skifer"], strokeDash=[3, 2], strokeWidth=1).encode(y="snit:Q"),
+        basis.mark_line(color=FARVER["serie"], strokeWidth=2).encode(y="i_aar:Q"),
+        # Annotation: seneste uges værdi markeres og skrives direkte i panelet.
+        basis.mark_circle(color=FARVER["serie"], size=26, opacity=1).encode(y="i_aar:Q").transform_filter("datum.er_sidste"),
+        basis.mark_text(align="left", dx=5, fontSize=akse_str + 1, fontWeight=600, color=FARVER["serie"]).encode(
+            y="i_aar:Q", text=alt.Text("i_aar:Q", format=".2f")).transform_filter("datum.er_sidste"),
+        # Usynlige søjler over hele panelet, så man kan klikke hvor som helst i det
+        basis.mark_rect(opacity=0.001, cursor="pointer").encode(
+            x2="uge2:Q", y=alt.value(0), y2=alt.value(hoejde),
+            tooltip=[alt.Tooltip("titel:N", title="Click to see it large")],
+        ).transform_calculate(uge2="datum.uge + 1").add_params(alt.selection_point(name="vaelg_po", fields=["omraade"])),
+    ]
+
+
 def smaa_multipler(kolonner: int, bredde: int, hoejde: int) -> alt.FacetChart:
-    return alt.layer(baand, snit, nu, nu_pkt, nu_tal, data=sm).properties(width=bredde, height=hoejde).facet(
+    return alt.layer(*lag(hoejde), data=sm).properties(width=bredde, height=hoejde).facet(
         facet=alt.Facet("titel:N", sort=orden_sm, header=alt.Header(labelFontSize=11, labelPadding=4)), columns=kolonner,
     ).resolve_scale(y="shared")
 
 
+def fra_smaa(noegle: str) -> None:
+    valg_ = st.session_state[noegle].selection.get("vaelg_po", [])
+    if valg_ and int(valg_[0]["omraade"]) != st.session_state.po_valgt:
+        vaelg(int(valg_[0]["omraade"]))
+        st.session_state.rul_til = "smaa-multipler"
+
+
+# Det valgte område i stort: samme lag, plus lusegrænsen
+if valgt is not None:
+    st.markdown(f'<div class="stort-panel-hoved"><b>PO {valgt} · {navne[valgt]}</b><span>{i_aar} against '
+                f'{foerste}–{i_aar - 1}</span></div>', unsafe_allow_html=True)
+    graense_df = pd.DataFrame({"y": [0.5], "uge": [1], "t": ["0.5 lice limit"]})
+    stor_graense = (alt.Chart(graense_df).mark_rule(color="#D64545", strokeDash=[3, 3], opacity=.6).encode(y="y:Q")
+                    + alt.Chart(graense_df).mark_text(align="left", dx=4, dy=-6, fontSize=10, color="#D64545").encode(
+                        x=alt.X("uge:Q", scale=alt.Scale(domain=[1, 52])), y="y:Q", text="t:N"))
+    stor = alt.layer(*lag(240, 11, "ISO week")[:-1], data=sm[sm["omraade"] == valgt]) + stor_graense
+    st.altair_chart(stor.properties(height=240), width="stretch")
+
 # Tre kolonner på brede skærme, én på mobil – CSS i udseende.py viser den ene og skjuler den anden.
 with st.container(key="smaa_bred"):
-    st.altair_chart(smaa_multipler(3, 225, 90), width="content")
+    st.altair_chart(smaa_multipler(3, 225, 90), width="content", on_select=lambda: fra_smaa(f"smaa_b_{n}"),
+                    key=f"smaa_b_{n}")
 with st.container(key="smaa_mobil"):
-    st.altair_chart(smaa_multipler(1, 285, 64), width="content")
+    st.altair_chart(smaa_multipler(1, 285, 64), width="content", on_select=lambda: fra_smaa(f"smaa_m_{n}"),
+                    key=f"smaa_m_{n}")
 st.markdown(kilde(f"Week 53 is omitted. Mean and band are based on {foerste}–{i_aar - 1}."), unsafe_allow_html=True)
+if st.session_state.pop("rul_til", None):  # efter et klik i panelerne: bliv ved figuren, selv om siden ovenover ændrer sig
+    st.html("<script>setTimeout(() => document.getElementById('smaa-multipler')?.scrollIntoView({block: 'start'}), 400)</script>",
+            unsafe_allow_javascript=True)
 
 # --- 8. Figur: sæsonmønster ---------------------------------------------------------
 st.markdown(figur(

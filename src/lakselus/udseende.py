@@ -182,13 +182,16 @@ hr { border-color: #E1E6EA; }
 }
 @media (prefers-reduced-motion: reduce) { [class*="st-key-udsving_"] { transition: none; } [class*="st-key-udsving_"]:hover { transform: none; } }
 
-/* Søgefeltet øverst på Overview: samme tydelige kant som områdevalget; valgt række i tabeller fremhæves */
-.st-key-soegning { max-width: 620px; }
-.st-key-soegning label p { font-weight: 600; color: #0B2230; font-size: .95rem; }
-.st-key-soegning .react-aria-ComboBox [role="group"] { border: 1.5px solid #6F7D3C; background: #FFFFFF; min-height: 2.9rem;
-  border-radius: 10px; box-shadow: 0 4px 14px rgba(111,125,60,.12); transition: box-shadow .15s; }
-.st-key-soegning .react-aria-ComboBox [role="group"]:focus-within { box-shadow: 0 0 0 4px rgba(111,125,60,.18); }
-.st-key-soegning input { font-size: .98rem; }
+/* Søgefeltet øverst på forsiden: rundt felt med lup; grå kant i hvile, grøn ved hover og fokus. Valgt række i tabeller fremhæves */
+.st-key-soegning { max-width: 680px; margin-bottom: .4rem; }
+.st-key-soegning .react-aria-ComboBox [role="group"] { position: relative; border: 1px solid #CBD3D9; border-radius: 999px;
+  background: #FFFFFF; min-height: 3.1rem; padding-left: 2.7rem; box-shadow: 0 2px 10px rgba(11,34,48,.06);
+  transition: border-color .15s, box-shadow .15s; }
+.st-key-soegning .react-aria-ComboBox [role="group"]::before { content: "search"; font-family: 'Material Symbols Outlined';
+  position: absolute; left: 1.05rem; top: 50%; transform: translateY(-50%); font-size: 22px; line-height: 1; color: #6F7D3C; }
+.st-key-soegning .react-aria-ComboBox [role="group"]:hover { border-color: #6F7D3C; }
+.st-key-soegning .react-aria-ComboBox [role="group"]:focus-within { border-color: #6F7D3C; box-shadow: 0 0 0 4px rgba(111,125,60,.18); }
+.st-key-soegning input { font-size: 1rem; }
 .tabel tr.valgt td { background: #EEF1E4; }
 .tabel tr.valgt td:first-child { box-shadow: inset 3px 0 0 #6F7D3C; }
 
@@ -243,6 +246,9 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 /* (tabeller kun på mobil – på brede skærme passer de, og så klippes info-boblerne ikke af rammen) */
 [data-testid="stFullScreenFrame"]:has([data-testid="stVegaLiteChart"]) { overflow-x: auto; }
 .st-key-smaa_mobil, .st-key-effekt_mobil { display: none; }
+.stort-panel-hoved { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; margin: .6rem 0 .1rem; }
+.stort-panel-hoved b { font-family: 'Source Serif 4', serif; font-size: 1.1rem; color: #0B2230; }
+.stort-panel-hoved span { font-size: .8rem; color: #6B7A86; }
 @media (max-width: 640px) {
   [data-testid="stMarkdownContainer"]:has(table.tabel) { overflow-x: auto; }
   .st-key-smaa_bred, .st-key-effekt_bred { display: none; }
