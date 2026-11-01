@@ -58,7 +58,9 @@ from lakselus.config import har_noegle  # noqa: E402
 from lakselus.udseende import CSS  # noqa: E402
 
 # --- 1. Opsætning ---------------------------------------------------------------------------
-st.set_page_config(page_title="Sea lice in Norwegian salmon farming", page_icon="🐟", layout="wide")
+# Fanen i browseren bruger samme mærke som ordmærket; titlen sættes pr. side under navigationen.
+st.set_page_config(page_title="Sea lice Norway", page_icon=str(Path(__file__).parent / "assets" / "favicon.png"),
+                   layout="wide")
 st.markdown(CSS, unsafe_allow_html=True)
 st.logo(str(Path(__file__).parent / "assets" / "logo.svg"), size="large")  # et klik fører til forsiden
 
@@ -82,6 +84,7 @@ side = st.navigation(
     ],
     position="top",
 )
+st.set_page_config(page_title=f"{side.title} · Sea lice Norway")  # fx "Forecast · Sea lice Norway" i fanen
 side.run()
 
 # --- 4. Fodnote ----------------------------------------------------------------------------
