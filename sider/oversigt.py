@@ -394,6 +394,12 @@ else:
          INFO_LYS, lys_prikker()),
     ]), unsafe_allow_html=True)
 
+# 3a. Videre til prognosen for området – Forecast-siden åbner på det valgte område (po_valgt)
+if valgt is not None:
+    with st.container(key="prognoselink"):
+        st.page_link("sider/prognose.py", label=f"See the 4-week lice forecast for PO {valgt} · {s_v.navn} →",
+                     icon=":material/insights:")
+
 # 3b. Værd at se på i denne uge: kort med det højeste lusetal og de største udsving – et klik åbner anlægget.
 # Forskellen måles i lus pr. fisk, så små tal ikke giver store procenter; det højeste anlæg tælles ikke igen.
 if lok_v is None:
@@ -497,22 +503,26 @@ with venstre:
     else:
         i_valgt = (lok["omraade"] == valgt) if valgt else pd.Series(True, index=lok.index)
     lok["farve"] = [rgba(LUS_FARVER[lus_niveau(v)], 235 if v_ else 70) for v, v_ in zip(lok["hunlus"], i_valgt)]
-    lok["tip"] = ("<b>" + lok["lokalitet_navn"] + "</b><br>PO " + lok["omraade"].astype(str) + " · "
-                  + lok["hunlus"].map(tal) + " adult female lice per fish")
+    # Tooltips er ren tekst med linjeskift (deck.gl viser ellers HTML-mærkerne som tekst)
+    lok["tip"] = (lok["lokalitet_navn"] + "\n" + lok["hunlus"].map(tal) + " adult female lice per fish · PO "
+                  + lok["omraade"].astype(str))
     lok = lok[["lon", "lat", "omraade", "lokalitet", "farve", "tip"]]
     po_kort = po.reset_index().join(status[["hunlus", "n_lok"]], on="omraade").assign(
         # Fladen er neutral grå; trafiklyset står kun i kanten, så prikkerne (lusetallet) er det eneste, der lyser op.
         fyld=lambda d: [rgba(FARVER["taage"], 70 if o == valgt else 14 if valgt else 38) for o in d["omraade"]],
         kant=lambda d: [rgba(LYS_FARVER[c][0], 255 if o == valgt else 80 if valgt else 210) for c, o in zip(d["trafiklys"], d["omraade"])],
-        tip=lambda d: "<b>PO " + d["omraade"].astype(str) + " · " + d["navn"] + "</b><br>"
+        tip=lambda d: "PO " + d["omraade"].astype(str) + " · " + d["navn"] + "\n"
                       + d["hunlus"].map(tal) + " adult female lice per fish · " + d["n_lok"].fillna(0).astype(int).astype(str)
-                      + " sites<br>Traffic light: " + d["trafiklys"].map(appdata.TRAFIKLYS)
-                      + " (decided " + d["lys_fra"].dt.strftime("%b %Y") + ")<br><i>Click to see its sites</i>",
-    )[["omraade", "polygon", "fyld", "kant", "tip"]]
+                      + " sites\nTraffic light: " + d["trafiklys"].map(appdata.TRAFIKLYS)
+                      + " (decided " + d["lys_fra"].dt.strftime("%b %Y") + ")\nClick to see its sites",
+    )[["omraade", "polygon", "fyld", "kant", "tip", "trafiklys"]]
+    # Ét lag pr. trafiklysfarve, så fladen under musen tones i områdets egen kantfarve (ikke i en fælles farve)
     lag = [
-        pdk.Layer("PolygonLayer", po_kort, id="omraader", get_polygon="polygon", get_fill_color="fyld",
-                  get_line_color="kant", line_width_min_pixels=1.6, pickable=True, auto_highlight=True,
-                  highlight_color=[111, 125, 60, 70]),
+        pdk.Layer("PolygonLayer", po_kort[po_kort["trafiklys"] == lys].drop(columns="trafiklys"), id=f"omraader_{lys}",
+                  get_polygon="polygon", get_fill_color="fyld", get_line_color="kant", line_width_min_pixels=1.6,
+                  pickable=True, auto_highlight=True, highlight_color=rgba(LYS_FARVER[lys][0], 60))
+        for lys in LYS_FARVER if (po_kort["trafiklys"] == lys).any()
+    ] + [
         pdk.Layer("ScatterplotLayer", lok, id="anlaeg", get_position=["lon", "lat"], get_fill_color="farve",
                   get_radius=2400, radius_min_pixels=2.2 if not valgt else 4, radius_max_pixels=9, stroked=True,
                   get_line_color=[255, 255, 255], line_width_min_pixels=0.4, pickable=True, auto_highlight=True),
@@ -523,8 +533,8 @@ with venstre:
         if markeret.empty:
             markeret = pd.DataFrame({"lon": [a_lok.lon], "lat": [a_lok.lat], "omraade": [valgt], "lokalitet": [lok_v],
                                      "farve": [rgba(FARVER["skifer"], 235)],
-                                     "tip": [f"<b>{l_navn}</b><br>No count in week {iso.week}"]})
-        lag.insert(1, pdk.Layer("ScatterplotLayer", markeret, id="ring", get_position=["lon", "lat"],
+                                     "tip": [f"{l_navn}\nNo count in week {iso.week}"]})
+        lag.insert(-1, pdk.Layer("ScatterplotLayer", markeret, id="ring", get_position=["lon", "lat"],
                                 get_radius=appdata.NABO_KM * 1000, filled=False, stroked=True,
                                 get_line_color=[11, 34, 48, 140], line_width_min_pixels=1.2))
         lag.append(pdk.Layer("ScatterplotLayer", markeret, id="markeret",
@@ -536,8 +546,9 @@ with venstre:
                             else udsnit(po.loc[valgt, "polygon"]) if valgt else pdk.ViewState(latitude=65.0, longitude=14.2, zoom=3.25)),
         views=[pdk.View(type="MapView", controller={"scrollZoom": False, "dragPan": True, "doubleClickZoom": True})],
         map_style=pdk.map_styles.CARTO_LIGHT,
-        tooltip={"html": "{tip}", "style": {"backgroundColor": "#0B2230", "color": "#FFFFFF",
-                                             "fontFamily": "Inter, sans-serif", "fontSize": "12px"}},
+        tooltip={"text": "{tip}", "style": {"backgroundColor": "#0B2230", "color": "#FFFFFF", "whiteSpace": "pre-line",
+                                             "fontFamily": "Inter, sans-serif", "fontSize": "12px", "lineHeight": "1.5",
+                                             "borderRadius": "6px", "padding": "8px 10px"}},
     ), height=440, on_select=fra_kort, selection_mode="single-object", key=f"kort_{n}")
 
 # 4d. Søjler: alle områder – eller hvert anlæg i det valgte område

@@ -8,7 +8,8 @@
 <script src="https://unpkg.com/deck.gl@9.1.14/dist.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <style>
-  :root { --creme: #FFFFFF; --rav: #5E6B30; --laks: #5E6B30; --nat: #0B2230; --daempet: #9FB2C0; }
+  /* Accenten er en lys tanggrøn her: på den mørke baggrund skal den kunne ses (kontrast ≥ 7:1 mod navy) */
+  :root { --creme: #FFFFFF; --rav: #B7C47E; --laks: #B7C47E; --nat: #0B2230; --daempet: #9FB2C0; }
   html, body { margin: 0; height: 100%; background: var(--nat); font-family: 'Inter', sans-serif; color: var(--creme); overflow: hidden; }
   #kort { position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
           background: radial-gradient(ellipse at 55% 25%, #16384C 0%, #0D2635 55%, #081A25 100%); }
@@ -28,7 +29,7 @@
            backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px 16px 12px; }
   #graf { width: 100%; height: 54px; display: block; cursor: pointer; }
   .styring { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
-  button { background: var(--laks); color: white; border: 0; width: 38px; height: 38px; border-radius: 6px;
+  button { background: var(--laks); color: var(--nat); border: 0; width: 38px; height: 38px; border-radius: 6px;
            font-size: 15px; cursor: pointer; flex: none; }
   button:hover { filter: brightness(1.1); }
   input[type=range] { flex: 1; accent-color: var(--laks); }
@@ -40,7 +41,7 @@
   #kontrol { right: 22px; top: 132px; pointer-events: auto; display: flex; flex-direction: column; gap: 6px; }
   #kontrol button { width: 34px; height: 34px; font-size: 16px; font-weight: 600; color: #FFFFFF;
                     background: rgba(8,26,37,.82); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); }
-  #kontrol button:hover { background: rgba(94,107,48,.9); filter: none; }
+  #kontrol button:hover { background: rgba(183,196,126,.28); filter: none; }
   #kontrol #knap3d { font-size: 11px; letter-spacing: .02em; }
   #kontrol #zoomInd, #kontrol #zoomUd { font-size: 20px; font-weight: 500; line-height: 1; }
   #kontrol .skille { height: 6px; }
@@ -59,19 +60,19 @@
   #scrollhint.vis { opacity: 1; }
   kbd { font: 600 12px 'Inter', sans-serif; background: rgba(255,255,255,.14); border-radius: 4px; padding: 1px 6px; }
   /* Hjælpeboble efter kamerasvinget: peger på kortknapperne og forklarer, hvordan man selv navigerer */
-  #hjaelp { right: 70px; top: 128px; width: 236px; pointer-events: auto; background: #5E6B30; color: #FFFFFF;
+  #hjaelp { right: 70px; top: 128px; width: 236px; pointer-events: auto; background: #B7C47E; color: #0B2230;
             border-radius: 8px; padding: 10px 30px 11px 13px; font-size: 12.5px; line-height: 1.5;
             box-shadow: 0 10px 28px rgba(0,0,0,.4); opacity: 0; visibility: hidden; transform: translateX(8px);
             transition: opacity .5s, transform .5s, visibility .5s; }
   #hjaelp.vis { opacity: 1; visibility: visible; transform: none; }
   #hjaelp::after { content: ""; position: absolute; right: -6px; top: 18px; border: 6px solid transparent;
-                   border-right: 0; border-left-color: #5E6B30; }
+                   border-right: 0; border-left-color: #B7C47E; }
   #hjaelp b { display: block; font-size: 13.5px; margin-bottom: 3px; }
   #hjaelp .luk { position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; background: transparent;
                  font-size: 16px; line-height: 1; padding: 0; }
   #kontrol.puls button { animation: puls 1.4s ease-in-out 3; }
-  @keyframes puls { 0%, 100% { box-shadow: 0 0 0 0 rgba(94,107,48,0); }
-                    50% { box-shadow: 0 0 0 4px rgba(94,107,48,.6); border-color: #5E6B30; } }
+  @keyframes puls { 0%, 100% { box-shadow: 0 0 0 0 rgba(183,196,126,0); }
+                    50% { box-shadow: 0 0 0 4px rgba(183,196,126,.6); border-color: #B7C47E; } }
   .touch { display: none; }
   @media (hover: none) { .mus { display: none; } .touch { display: inline; } }
   /* Smal skærm (mobil): forklaringen flyttes ned over tidslinjen, så den ikke dækker ugenummeret */
@@ -305,9 +306,9 @@ function tegnGraf() {
   g.beginPath(); D.national.forEach((v, i) => v != null && (i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v))));
   g.strokeStyle = "#9FB2C0"; g.lineWidth = 1.2; g.stroke();
   g.fillStyle = "rgba(255,255,255,.05)"; g.fillRect(0, 0, x(uge), h);
-  g.beginPath(); g.moveTo(x(uge), 0); g.lineTo(x(uge), h); g.strokeStyle = "#5E6B30"; g.lineWidth = 1.5; g.stroke();
+  g.beginPath(); g.moveTo(x(uge), 0); g.lineTo(x(uge), h); g.strokeStyle = "#B7C47E"; g.lineWidth = 1.5; g.stroke();
   const v = D.national[uge];
-  if (v != null) { g.beginPath(); g.arc(x(uge), y(v), 4.5, 0, 7); g.fillStyle = "#5E6B30"; g.fill(); }
+  if (v != null) { g.beginPath(); g.arc(x(uge), y(v), 4.5, 0, 7); g.fillStyle = "#B7C47E"; g.fill(); }
 }
 graf.addEventListener("click", e => { saetUge(Math.round(e.offsetX / graf.clientWidth * (U - 1))); });
 

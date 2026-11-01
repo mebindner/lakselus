@@ -18,7 +18,7 @@ import streamlit as st
 
 from lakselus import appdata, evaluering as ev
 from lakselus.modelrapport import BASELINES, NAVNE
-from lakselus.udseende import FARVER, figur, ikon, kilde, resume, sidehoved
+from lakselus.udseende import FARVER, figur, ikon, info, kilde, resume, sidehoved
 
 
 # --- 0. Hjælpefunktioner ---------------------------------------------------------------
@@ -45,6 +45,20 @@ valgt = o["valgt"]
 skill_t, p_dm, daek = o["skill_test"][valgt], o["dm_test"][valgt], o["daekning_test"]
 n_sig = int((p_dm < 0.05).sum())
 test_fra = ev.TEST[0][:4]
+mae_t, sk_t, dm = o["mae_test"], o["skill_test"], o["dm_test"]
+
+# Forklaringer til info-boblerne – samme ordlyd i nøgletal og tabel
+INFO_NAIV = ("The <b>naive forecast</b> simply assumes the coming weeks look like the latest week. It is the benchmark "
+             "every model has to beat.")
+INFO_SKILL = (f"<b>Skill</b> compares the model's errors with the naive forecast: 1 − MAE<sub>model</sub> ÷ "
+              f"MAE<sub>naive</sub>. 27% means 27% smaller errors; below 0% the model is worse. {INFO_NAIV}")
+INFO_MAE = ("<b>Mean absolute error</b>: the average distance between forecast and actual lice level, in adult female "
+            "lice per fish. Lower is better.")
+INFO_DM = ("The <b>Diebold–Mariano test</b> checks whether the gap in errors between the model and the naive forecast "
+           "is bigger than chance would give. p < 0.05: less than a 5% chance of a gap this large if the two were "
+           "equally good.")
+INFO_INTERVAL = ("An <b>80% interval</b> should contain the actual lice level 8 times out of 10. More often: the "
+                 "intervals are too wide; less often: too narrow. It is built from the model's own past errors.")
 
 # --- 2. Sidehoved og resumé ------------------------------------------------------------
 st.markdown(sidehoved(
@@ -63,22 +77,28 @@ st.markdown(sidehoved(
 
 st.markdown(resume([
     (f"{abs(skill_t.loc[4]):.0%}", f"{'lower' if skill_t.loc[4] >= 0 else 'higher'} mean absolute error than the "
-                                   f"naive forecast 4 weeks ahead in the test period ({pct(skill_t.loc[1])} skill at 1 week)."),
-    (f"{n_sig} of 4", "horizons where the improvement is statistically significant (Diebold–Mariano, p < 0.05)."),
+                                   f"naive forecast 4 weeks ahead in the test period ({pct(skill_t.loc[1])} skill at 1 week).",
+     f"{INFO_SKILL}<span class='regnestykke'>4 weeks: 1 − {mae_t.loc[4, valgt]:.4f} ÷ {mae_t.loc[4, 'naiv']:.4f} = "
+     f"{pct(skill_t.loc[4])}</span>Test period {test_fra} onwards – data the model was never tuned on."),
+    (f"{n_sig} of 4", "horizons where the improvement is statistically significant (Diebold–Mariano, p < 0.05).",
+     INFO_DM + " Tested separately for 1, 2, 3 and 4 weeks ahead."),
     (f"{daek.mean():.0%}", "of actual outcomes in the test period fell inside the 80% interval – "
                            + ("the intervals are well calibrated." if abs(daek.mean() - 0.8) <= 0.05 else
-                              "the intervals are too narrow." if daek.mean() < 0.8 else "the intervals are too wide.")),
+                              "the intervals are too narrow." if daek.mean() < 0.8 else "the intervals are too wide."),
+     INFO_INTERVAL + " Within 5 points of 80% counts as well calibrated."),
 ]), unsafe_allow_html=True)
 
 # --- 3. Figur 1: prognose for valgt område ------------------------------------------------
 # Områdevalget fremhæves med en hjælpeboble og en pulserende kant, indtil brugeren selv har valgt et område.
+# Har man valgt et område (eller et anlæg) på Overview, åbner prognosen på det område – ellers PO 3.
+fra_oversigt = st.session_state.get("po_valgt") if st.session_state.get("po_valgt") in navne else None
 with st.container(key="omraadevalg"):
-    if not st.session_state.get("omraade_skiftet"):
+    if not st.session_state.get("omraade_skiftet") and fra_oversigt is None:
         st.markdown(
             f'<div class="valghjaelp" role="status"><b>{ikon("touch_app")} Pick a production area</b>'
             f'See the forecast for any of the {len(navne)} areas along the coast.</div>', unsafe_allow_html=True)
     valg = st.selectbox("Production area", options=sorted(navne), format_func=lambda x: f"{x} · {navne[x]}",
-                        index=sorted(navne).index(3), key="omraade",
+                        index=sorted(navne).index(fra_oversigt or 3), key="omraade",
                         on_change=lambda: st.session_state.update(omraade_skiftet=True))
 live = appdata.live_prognose(panel, valgt, res)
 lv = live[live["omraade"] == valg]
@@ -153,24 +173,30 @@ st.markdown(figur(
     "Diebold–Mariano p-value. The model was selected on the 2023–24 validation period.",
 ), unsafe_allow_html=True)
 
-mae_t, sk_t, dm = o["mae_test"], o["skill_test"], o["dm_test"]
 sk_v = o["skill_validering"]
 raekker = []
 for m in mae_t.columns:
-    stil = ' style="font-weight:600;background:#FFF4F0"' if m == valgt else (' style="color:#6B7A86"' if m in BASELINES else "")
+    stil = ' class="valgt" style="font-weight:600"' if m == valgt else (' style="color:#6B7A86"' if m in BASELINES else "")
+    # Parentesen i navnet ("same week last year") skjules på mobil, så navnet ikke fylder fire linjer.
+    navn, _, parentes = NAVNE[m].partition(" (")
+    navn += f'<span class="ekstra"> ({parentes}</span>' if parentes else ""
     celler = "".join(f'<td class="tal{" ekstra" if h in (2, 3) else ""}">{tal(mae_t.loc[h, m])}</td>' for h in (1, 2, 3, 4))
     sk = lambda h: "–" if m == "naiv" else pct(sk_t.loc[h, m])  # noqa: E731
     # En lav p-værdi for en model, der er dårligere end naiv, må ikke kunne læses som en gevinst.
     p4 = "–" if m == "naiv" else "worse" if sk_t.loc[4, m] < 0 else p_tekst(dm.loc[4, m])
     raekker.append(
-        f'<tr{stil}><td class="navn">{NAVNE[m]}{" ★" if m == valgt else ""}</td>{celler}'
+        f'<tr{stil}><td class="navn">{navn}{" ★" if m == valgt else ""}</td>{celler}'
         f'<td class="tal ekstra">{sk(1)}</td><td class="tal">{sk(4)}</td><td class="tal">{p4}</td>'
         f'<td class="tal ekstra">{"–" if m == "naiv" else pct(sk_v.loc[:, m].mean())}</td></tr>'
     )
 st.markdown(
-    '<table class="tabel"><thead><tr><th>Model</th><th class="tal">MAE 1 week</th><th class="tal ekstra">2 weeks</th>'
-    '<th class="tal ekstra">3 weeks</th><th class="tal">4 weeks</th><th class="tal ekstra">Skill 1 week</th><th class="tal">Skill 4 weeks</th>'
-    '<th class="tal">DM p (4 weeks)</th><th class="tal ekstra">Skill validation</th></tr></thead><tbody>'
+    f'<table class="tabel modeller"><thead><tr><th>Model{info("The two naive forecasts (grey) are the benchmarks. The rest are trained models; ★ marks the one selected. " + INFO_NAIV)}</th>'
+    f'<th class="tal">MAE 1 week{info(INFO_MAE, "hoejre")}</th><th class="tal ekstra">2 weeks</th>'
+    f'<th class="tal ekstra">3 weeks</th><th class="tal">4 weeks</th><th class="tal ekstra">Skill 1 week</th>'
+    f'<th class="tal">Skill 4 weeks{info(INFO_SKILL, "hoejre")}</th>'
+    f'<th class="tal">DM p (4 weeks){info(INFO_DM + " <i>worse</i>: the model has larger errors than the naive forecast.", "hoejre")}</th>'
+    f'<th class="tal ekstra">Skill validation{info(f"Skill in 2023–24, the period used to choose the model. The model with the highest mean skill here was selected (★) – before the test period from {test_fra} was looked at.", "hoejre")}</th>'
+    '</tr></thead><tbody>'
     + "".join(raekker) + "</tbody></table>",
     unsafe_allow_html=True,
 )

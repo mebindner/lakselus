@@ -210,10 +210,21 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .tabel th { text-align: left; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7A86;
             border-bottom: 1px solid #0B2230; padding: .45rem .5rem; white-space: nowrap; }
 .tabel td { border-bottom: 1px solid #EDF1F4; padding: .42rem .5rem; color: #1B2B36; vertical-align: middle; }
-.tabel td.tal, .tabel th.tal { text-align: right; white-space: nowrap; }
+.tabel td.tal, .tabel th.tal { text-align: right; }
+.tabel td.tal { white-space: nowrap; }
 .tabel tr:hover td { background: #F6F8FA; }
 .tabel .navn { font-weight: 500; }
 .tabel td.lys { white-space: nowrap; }
+@media (min-width: 641px) { .tabel td.navn { white-space: nowrap; } }  /* navne på én linje, når der er plads */
+/* Kolonneoverskrifter må bryde (med info-ikon bliver de brede); navnet holdes på én linje, undtagen i modeltabellen,
+   der har ni kolonner */
+.tabel th { white-space: normal; vertical-align: bottom; }
+.tabel.modeller td.navn { white-space: normal; }
+@media (min-width: 641px) { .tabel.modeller td.navn { min-width: 10rem; } }
+.tabel.modeller th { letter-spacing: .05em; }
+.st-key-prognoselink { margin: -1.2rem 0 1.6rem; }
+.st-key-prognoselink a { color: #55602B !important; font-weight: 600; padding: 0; }
+.st-key-prognoselink a:hover { text-decoration: underline; }
 /* Navne i tabellerne er links: diskrete i hvile, i accentfarven med pil, når rækken peges på */
 .tabel a.radlink { color: inherit; text-decoration: none; }
 .tabel a.radlink::after { content: " →"; color: #55602B; opacity: 0; transition: opacity .15s; }
