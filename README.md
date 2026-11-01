@@ -30,6 +30,12 @@ Structured like a report deliverable:
   3. Small multiples: the current year against the mean and range of previous years, by area.
   4. Seasonal heatmap: the peak comes later the further north you go.
 - **Method and caveats** at the bottom. Conclusions only use areas with at least 10 sites; smaller areas are shown but flagged.
+- **Find your area or site.** A search box at the top refocuses the brief on one production area or one fish farm
+  (search by name or site number). The headline and key figures follow the choice, the map zooms in, the area is
+  highlighted in the table and shown first in the small multiples. A chosen site also gets its own lice history
+  against the lice limit (0.2 in the spring weeks) and a table of the sites within 20 km and how they are developing,
+  i.e. the infection pressure from its neighbours. Clicking the map or a bar makes the same choice, and the choice is
+  kept in the URL (`?po=3`, `?site=12345`), so a page can be bookmarked and shared.
 
 ### 2. Time machine – 3D map week by week
 A 3D map where every site is a column that grows with the lice count. Play the period from 2019 to
@@ -154,7 +160,7 @@ The code uses Danish identifiers and comments (the author is Danish); the app an
 ```
 app.py                     navigation and shared layout
 sider/
-  oversigt.py              Overview: summary, exhibits 1–4, method
+  oversigt.py              Overview: search, summary, exhibits, method
   tidsmaskine.py           Time machine: 3D map played week by week
   prognose.py              Forecast: model comparison and backtest by area
 src/lakselus/

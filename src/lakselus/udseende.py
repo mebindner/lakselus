@@ -126,13 +126,20 @@ hr { border-color: #E1E6EA; }
 }
 @media (prefers-reduced-motion: reduce) { .valghjaelp, .st-key-omraadevalg .react-aria-ComboBox [role="group"] { animation: none; } }
 
+/* Søgefeltet øverst på Overview: samme tydelige kant som områdevalget; valgt række i tabeller fremhæves */
+.st-key-soegning { max-width: 560px; }
+.st-key-soegning label p { font-weight: 600; color: #0B2230; }
+.st-key-soegning .react-aria-ComboBox [role="group"] { border: 1.5px solid #E8603C; background: #FFFFFF; }
+.tabel tr.valgt td { background: #FDEEE9; }
+.tabel tr.valgt td:first-child { box-shadow: inset 3px 0 0 #E8603C; }
+
 /* Kort og søjler i figur 1 er forbundet: lille hjælpelinje over kortet og et hoved for det valgte område */
 .korthjaelp { display: flex; align-items: center; gap: .35rem; font-size: .8rem; font-weight: 500; color: #C4472A; margin-bottom: .35rem; }
 .omraadehoved { margin: -.3rem 0 .6rem; }
 .omraadehoved b { display: block; font-family: 'Source Serif 4', serif; font-size: 1.1rem; color: #0B2230; }
 .omraadehoved span { font-size: .8rem; color: #5B6B78; }
 .omraadehoved .prik { margin-left: .1rem; }
-.st-key-alle_omraader button { color: #C4472A; font-weight: 600; padding: 0; min-height: 0; }
+.st-key-alle_omraader button, .st-key-hele_omraadet button { color: #C4472A; font-weight: 600; padding: 0; min-height: 0; }
 
 /* Forklaring over behandlingsfiguren: linjer og flade tegnet som i grafen */
 .effektnoegle { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; font-size: .82rem; color: #1B2B36; margin: .3rem 0 .8rem; }

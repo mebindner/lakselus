@@ -7,10 +7,13 @@ Indhold
 4. Nøgletal (Overview)  – status pr. område og sæsonprofil
 5. Modeller (Forecast)  – backtest, opsummering og live-prognose (læses fra disk, når de er friske)
 6. Behandlingseffekt     – hændelsesstudiet til Forecast-siden
+7. Opslag (Overview)     – søg område eller anlæg, valget i URL'en, anlæggets historik og naboer
 """
 
 import ast
+import math
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -181,3 +184,112 @@ def _behandlingseffekt_tabel(version: float) -> pd.DataFrame | None:
         return pd.read_parquet(behandlingseffekt.APP_FIL)
     beh = data.indlaes_behandlinger_raa()
     return behandlingseffekt.effekt_tabel(data.indlaes_raa(), beh) if beh is not None else None
+
+
+
+# --- 7. Opslag (Overview) ------------------------------------------------------------------
+# Overview-siden kan fokusere på ét område eller ét anlæg. Valget skrives i URL'en (?po=3 eller ?site=12345),
+# så det kan bogmærkes og deles. Funktionerne er rene (ingen Streamlit) og testes; kun anlaeg() er cachet.
+
+NABO_KM = 20  # lus spredes mellem anlæg i samme fjordsystem; 20 km er den skala, naboerne vises på
+MIN_NABOER = 5  # ligger færre inden for 20 km, fyldes op med de nærmeste
+
+
+def anlaeg() -> pd.DataFrame:
+    return _anlaeg(data_version())
+
+
+@st.cache_data(max_entries=2)
+def _anlaeg(version: float) -> pd.DataFrame:
+    raa, panel, _ = _indlaes(version)
+    return anlaeg_oversigt(raa, panel["uge_start"].max())
+
+
+def anlaeg_oversigt(raa: pd.DataFrame, seneste: pd.Timestamp, uger: int = 52) -> pd.DataFrame:
+    """Hvert anlæg, der har talt lus det seneste år: navn, område, position og seneste tælleuge (indeks: lokalitet)."""
+    talt = raa[(raa["har_talt"] == "Ja") & (raa["uge_start"] > seneste - pd.Timedelta(weeks=uger)) & raa["omraade"].notna()]
+    sidst = talt.sort_values("uge_start").drop_duplicates("lokalitet", keep="last").set_index("lokalitet")
+    return sidst[["lokalitet_navn", "omraade", "lat", "lon", "uge_start"]].astype({"omraade": int}).rename(
+        columns={"uge_start": "sidst_talt"}).sort_index()
+
+
+def soegevalg(anlaeg: pd.DataFrame, navne: dict[int, str]) -> dict[str, str]:
+    """Valgmuligheder til søgefeltet: nøgle ("po:3" / "site:12345") -> tekst.
+
+    Først områderne, så anlæggene sorteret efter navn. Lokalitetsnummeret står i teksten, så anlæg med
+    samme navn kan skelnes – og man kan søge på nummeret.
+    """
+    valg = {f"po:{o}": f"PO {o} · {n}" for o, n in sorted(navne.items())}
+    lok = anlaeg.reset_index().sort_values(["lokalitet_navn", "lokalitet"],
+                                            key=lambda s: s.str.lower() if s.name == "lokalitet_navn" else s)
+    return valg | {f"site:{r.lokalitet}": f"{r.lokalitet_navn} · PO {r.omraade} · {r.lokalitet}" for r in lok.itertuples()}
+
+
+def fra_url(params: dict, valg: dict[str, str]) -> str | None:
+    """Søgenøglen fra URL'en (?site= vinder over ?po=). Ukendte eller ugyldige værdier giver None."""
+    for navn in ("site", "po"):
+        v = str(params.get(navn, "")).strip()
+        if v.isdigit() and f"{navn}:{int(v)}" in valg:
+            return f"{navn}:{int(v)}"
+    return None
+
+
+def til_url(noegle: str | None) -> dict[str, str]:
+    """Søgenøglen som query-parametre: "site:12345" -> {"site": "12345"}; intet valg -> {}."""
+    if not noegle:
+        return {}
+    navn, nr = noegle.split(":")
+    return {navn: nr}
+
+
+def afstand_km(lat: float, lon: float, lat2, lon2):
+    """Storcirkelafstand (haversine) i km fra ét punkt til ét eller flere punkter."""
+    f1, f2 = math.radians(lat), np.radians(lat2)
+    a = np.sin((f2 - f1) / 2) ** 2 + math.cos(f1) * np.cos(f2) * np.sin(np.radians(np.asarray(lon2) - lon) / 2) ** 2
+    return 2 * 6371.0 * np.arcsin(np.sqrt(a))
+
+
+def graense_tal(s: pd.Series) -> pd.Series:
+    """Lusegrænsen som tal ("0,5" / "0.2"); "Ukjent" og tomme felter bliver NaN."""
+    return pd.to_numeric(s.astype(str).str.replace(",", "."), errors="coerce")
+
+
+def naboer(anlaeg: pd.DataFrame, raa: pd.DataFrame, lokalitet: int, seneste: pd.Timestamp,
+           km: float = NABO_KM, min_antal: int = MIN_NABOER) -> pd.DataFrame:
+    """Anlæg tæt på det valgte, med seneste lusetal og udviklingen mod de 4 uger før – sorteret efter afstand.
+
+    Alle inden for `km` tages med; er der færre end `min_antal`, fyldes op med de nærmeste.
+    hunlus er seneste uge (NaN, hvis anlægget ikke talte); hunlus_4u_foer er snittet af de 4 uger før.
+    """
+    selv = anlaeg.loc[lokalitet]
+    andre = anlaeg.drop(index=lokalitet).dropna(subset=["lat", "lon"])
+    andre = andre.assign(km=afstand_km(float(selv["lat"]), float(selv["lon"]), andre["lat"], andre["lon"])).sort_values("km")
+    andre = andre[(andre["km"] <= km) | (np.arange(len(andre)) < min_antal)]
+    talt = raa[(raa["har_talt"] == "Ja") & raa["lokalitet"].isin(andre.index)
+               & (raa["uge_start"] >= seneste - pd.Timedelta(weeks=4))]
+    nu, foer = talt[talt["uge_start"] == seneste], talt[talt["uge_start"] < seneste]
+    return andre.assign(
+        hunlus=nu.groupby("lokalitet")["hunlus"].mean(),
+        hunlus_4u_foer=foer.groupby("lokalitet")["hunlus"].mean(),
+        over_graense=nu.groupby("lokalitet")["over_graense"].first(),
+    ).rename_axis("lokalitet").reset_index()
+
+
+def lokalitet_historik(raa: pd.DataFrame, lokalitet: int, naboer_: list[int], seneste: pd.Timestamp,
+                       uger: int = 104) -> pd.DataFrame:
+    """Anlæggets hunlus pr. uge, naboernes snit og områdets gældende lusegrænse på et komplet ugegitter.
+
+    Uger uden tælling står som NaN. Grænsen tages fra områdets indberetninger, så den også står i uger,
+    hvor anlægget ikke talte (0,2 i forårsugerne kommer på forskellige uger langs kysten).
+    """
+    fra = seneste - pd.Timedelta(weeks=uger - 1)
+    r = raa[(raa["har_talt"] == "Ja") & (raa["uge_start"] >= fra) & (raa["uge_start"] <= seneste)]
+    selv = r[r["lokalitet"] == lokalitet]
+    omraade = selv["omraade"].dropna().iloc[-1] if len(selv) else None
+    omr = r[r["omraade"] == omraade]
+    gitter = pd.date_range(fra, seneste, freq="W-MON", name="uge_start")
+    return pd.DataFrame({
+        "hunlus": selv.groupby("uge_start")["hunlus"].mean(),
+        "nabo_snit": r[r["lokalitet"].isin(naboer_)].groupby("uge_start")["hunlus"].mean(),
+        "graense": graense_tal(omr["Lusegrense uke"]).groupby(omr["uge_start"]).median() if "Lusegrense uke" in omr else np.nan,
+    }).reindex(gitter).reset_index()
