@@ -6,7 +6,7 @@ nummererede figurer med enhed og kildeangivelse, minimalistiske tabeller og små
 Indhold
 1. Farver og skrifttyper
 2. CSS               – al styling af appen samlet ét sted, opdelt efter komponent
-3. HTML-byggeklodser – sidehoved, resumé, figurtitel, kildeangivelse, nøgletalskort
+3. HTML-byggeklodser – sidehoved, resumé, figurtitel, kildeangivelse, nøgletalskort, info-bobler
 4. Lusetal i tekst   – niveau og trend til tabeller og forklaringer
 5. Altair-tema       – fælles grafstil
 """
@@ -159,9 +159,11 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .tabel .po { color: #6B7A86; width: 2.2rem; }
 .tabel .minibar { display: inline-block; height: 6px; border-radius: 1px; vertical-align: middle; margin-left: .45rem; }
 /* Brede tabeller og små multipler scrolles vandret på mobil i stedet for at blive skåret af */
-[data-testid="stMarkdownContainer"]:has(table.tabel), [data-testid="stFullScreenFrame"]:has([data-testid="stVegaLiteChart"]) { overflow-x: auto; }
+/* (tabeller kun på mobil – på brede skærme passer de, og så klippes info-boblerne ikke af rammen) */
+[data-testid="stFullScreenFrame"]:has([data-testid="stVegaLiteChart"]) { overflow-x: auto; }
 .st-key-smaa_mobil, .st-key-effekt_mobil { display: none; }
 @media (max-width: 640px) {
+  [data-testid="stMarkdownContainer"]:has(table.tabel) { overflow-x: auto; }
   .st-key-smaa_bred, .st-key-effekt_bred { display: none; }
   .st-key-smaa_mobil, .st-key-effekt_mobil { display: block; }
   .tabel .ekstra { display: none; }             /* sekundære kolonner skjules på mobil */
@@ -183,6 +185,34 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .kort .note { font-size: .8rem; color: #6B7A86; margin-top: .15rem; }
 .kort .bar { height: 3px; background: #EDF1F4; margin-top: .55rem; }
 .kort .bar i { display: block; height: 100%; }
+
+/* Info-bobler: et lille i ved nøgletal og kolonner (eller en prikket understregning under et tal).
+   Forklaringen vises ved hover og ved tryk, fordi ikonet kan få fokus. På mobil står boblen fast nederst
+   på skærmen, så den hverken går ud over kanten eller klippes af en tabel, der kan rulles. */
+.info { position: relative; display: inline-flex; align-items: center; cursor: help; outline: none; vertical-align: middle; }
+.info > .ikon { font-size: 15px; color: #8A99A6; margin-left: .2rem; transition: color .15s; }
+.info:hover > .ikon, .info:focus > .ikon { color: #E8603C; }
+.info:focus-visible { box-shadow: 0 0 0 2px rgba(232,96,60,.45); border-radius: 4px; }
+.info.forklar { border-bottom: 1px dotted currentColor; }
+.info-boble { position: absolute; top: calc(100% + 8px); left: -10px; z-index: 60; width: max-content; max-width: 280px;
+  background: #0B2230; color: #E8EEF2; font: 400 .78rem/1.5 Inter, sans-serif; letter-spacing: normal; text-transform: none;
+  text-align: left; white-space: normal; padding: .6rem .8rem; border-radius: 6px; box-shadow: 0 10px 28px rgba(11,34,48,.25);
+  opacity: 0; visibility: hidden; transform: translateY(-4px); pointer-events: none;
+  transition: opacity .15s ease, transform .15s ease, visibility .15s; }
+.info-boble::before { content: ""; position: absolute; top: -5px; left: 14px; border: 5px solid transparent; border-top: 0;
+  border-bottom-color: #0B2230; }
+.info-boble b { color: #FFFFFF; font-weight: 600; }
+.info-boble .regnestykke { display: block; margin-top: .35rem; padding-top: .35rem; border-top: 1px solid rgba(255,255,255,.15);
+  font-variant-numeric: tabular-nums; color: #FFFFFF; }
+.info.hoejre .info-boble { left: auto; right: -10px; }
+.info.hoejre .info-boble::before { left: auto; right: 14px; }
+.info:hover .info-boble, .info:focus .info-boble { opacity: 1; visibility: visible; transform: none; }
+@media (max-width: 640px) {
+  .info-boble, .info.hoejre .info-boble { position: fixed; top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; max-width: none;
+    font-size: .84rem; padding: .8rem 1rem; }
+  .info-boble::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .info-boble { transition: none; } }
 
 .forklaring { display: flex; flex-wrap: wrap; gap: .35rem 1.2rem; font-size: .78rem; color: #5B6B78; margin: .5rem 0 .6rem; }
 .forklaring span { display: inline-flex; align-items: center; gap: .1rem; }
@@ -213,11 +243,13 @@ def sidehoved(overlinje: str, titel: str, under: str, chips: list[tuple[str, str
     )
 
 
-def resume(punkter: list[tuple[str, str]]) -> str:
-    """Executive summary: [(stort tal, forklarende tekst), ...]."""
+def resume(punkter: list[tuple]) -> str:
+    """Executive summary: [(stort tal, forklarende tekst[, info-tekst om beregningen]), ...]."""
+    # Boblen i sidste kolonne åbner mod venstre, så den ikke går ud over sidens højre kant.
     felter = "".join(
-        f'<div><div class="nr">{i:02d}</div><div class="stor">{stor}</div><div class="tekst">{tekst}</div></div>'
-        for i, (stor, tekst) in enumerate(punkter, 1)
+        f'<div><div class="nr">{i:02d}</div><div class="stor">{p[0]}{info(p[2], "hoejre" if i == len(punkter) else "venstre") if len(p) > 2 and p[2] else ""}</div>'
+        f'<div class="tekst">{p[1]}</div></div>'
+        for i, p in enumerate(punkter, 1)
     )
     return f'<div class="resume">{felter}</div>'
 
@@ -225,6 +257,18 @@ def resume(punkter: list[tuple[str, str]]) -> str:
 def figur(nr: int, titel: str, undertitel: str) -> str:
     return (f'<div class="figur"><div class="label">Exhibit {nr}</div>'
             f'<div class="titel">{titel}</div><div class="undertitel">{undertitel}</div></div>')
+
+
+def info(tekst: str, side: str = "venstre") -> str:
+    """Info-ikon med en forklaring i en boble (HTML tilladt). side="hoejre" til højrestillede kolonner."""
+    return (f'<span class="info {side}" tabindex="0" role="button" aria-label="How this is calculated">'
+            f'<span class="ikon" aria-hidden="true">info</span><span class="info-boble" role="tooltip">{tekst}</span></span>')
+
+
+def forklar(vis: str, tekst: str, side: str = "hoejre") -> str:
+    """Et tal med prikket understregning, der forklarer sig selv i en boble (fx hvordan en ændring er regnet)."""
+    return (f'<span class="info forklar {side}" tabindex="0">{vis}'
+            f'<span class="info-boble" role="tooltip">{tekst}</span></span>')
 
 
 def kilde(tekst: str = "") -> str:
