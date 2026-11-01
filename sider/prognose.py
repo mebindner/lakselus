@@ -79,7 +79,7 @@ with st.container(key="omraadevalg"):
         st.markdown(
             f'<div class="valghjaelp" role="status"><b>{ikon("touch_app")} Pick a production area</b>'
             f'See the forecast for any of the {len(navne)} areas along the coast.</div>', unsafe_allow_html=True)
-    valg = st.selectbox("Production area", options=sorted(navne), format_func=lambda x: f"{x} · {navne[x]}",
+    valg = st.selectbox("Find your production area", options=sorted(navne), format_func=lambda x: f"{x} · {navne[x]}",
                         index=sorted(navne).index(fra_oversigt or 3), key="omraade",
                         on_change=lambda: st.session_state.update(omraade_skiftet=True))
 live = appdata.live_prognose(panel, valgt, res)

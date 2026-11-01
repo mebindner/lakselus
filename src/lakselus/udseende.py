@@ -129,12 +129,10 @@ hr { border-color: #E1E6EA; }
 
 /* Områdevalg: tydelig kant og en hjælpeboble i samme stil som tidsmaskinens; boblen bliver, indtil man selv har valgt et område */
 .st-key-omraadevalg { position: relative; }
-.st-key-omraadevalg:has(.valghjaelp) { padding-top: 2rem; }
-.st-key-omraadevalg label p { font-weight: 600; color: #0B2230; }
-.st-key-omraadevalg .react-aria-ComboBox [role="group"] { border: 1.5px solid #6F7D3C; background: #FFFFFF; cursor: pointer; }
+.st-key-omraadevalg:has(.valghjaelp) { padding-top: 3rem; }
 .st-key-omraadevalg:has(.valghjaelp) .react-aria-ComboBox [role="group"] { animation: valgpuls 1.4s ease-in-out .6s 3; }
 @keyframes valgpuls { 0%, 100% { box-shadow: 0 0 0 0 rgba(111,125,60,0); } 50% { box-shadow: 0 0 0 5px rgba(111,125,60,.35); } }
-.st-key-omraadevalg [data-testid="stElementContainer"]:has(.valghjaelp) { position: absolute; right: 0; bottom: calc(2.5rem + 8px);
+.st-key-omraadevalg [data-testid="stElementContainer"]:has(.valghjaelp) { position: absolute; right: 0; bottom: calc(3.2rem + 24px);
   width: auto; z-index: 5; pointer-events: none; }
 .valghjaelp { position: relative; width: 250px; background: #5E6B30; color: #FFFFFF; border-radius: 8px;
   padding: 9px 13px 10px; font-size: .8rem; line-height: 1.45; box-shadow: 0 10px 28px rgba(11,34,48,.22);
@@ -182,16 +180,19 @@ hr { border-color: #E1E6EA; }
 }
 @media (prefers-reduced-motion: reduce) { [class*="st-key-udsving_"] { transition: none; } [class*="st-key-udsving_"]:hover { transform: none; } }
 
-/* Søgefeltet øverst på forsiden: rundt felt med lup; grå kant i hvile, grøn ved hover og fokus. Valgt række i tabeller fremhæves */
-.st-key-soegning { max-width: 680px; margin-bottom: .4rem; }
-.st-key-soegning .react-aria-ComboBox [role="group"] { position: relative; border: 1px solid #CBD3D9; border-radius: 999px;
-  background: #FFFFFF; min-height: 3.1rem; padding-left: 2.7rem; box-shadow: 0 2px 10px rgba(11,34,48,.06);
-  transition: border-color .15s, box-shadow .15s; }
-.st-key-soegning .react-aria-ComboBox [role="group"]::before { content: "search"; font-family: 'Material Symbols Outlined';
-  position: absolute; left: 1.05rem; top: 50%; transform: translateY(-50%); font-size: 22px; line-height: 1; color: #6F7D3C; }
-.st-key-soegning .react-aria-ComboBox [role="group"]:hover { border-color: #6F7D3C; }
-.st-key-soegning .react-aria-ComboBox [role="group"]:focus-within { border-color: #6F7D3C; box-shadow: 0 0 0 4px rgba(111,125,60,.18); }
-.st-key-soegning input { font-size: 1rem; }
+/* Valgfelterne (søgningen på Seneste uge, områdevalget på Prognose) deler ét udtryk: etiket over et rundt, hvidt felt med lup
+   og kelp-kant, så "her vælger du" ser ens ud på begge sider. Valgt række i tabeller fremhæves */
+.st-key-soegning, .st-key-omraadevalg { max-width: 680px; margin-bottom: .4rem; }
+.st-key-soegning label p, .st-key-omraadevalg label p { font-size: .95rem; font-weight: 600; color: #0B2230; }
+.st-key-soegning .react-aria-ComboBox [role="group"], .st-key-omraadevalg .react-aria-ComboBox [role="group"] {
+  position: relative; border: 1.5px solid #6F7D3C; border-radius: 999px; background: #FFFFFF; min-height: 3.1rem;
+  padding-left: 2.7rem; box-shadow: 0 2px 10px rgba(11,34,48,.06); cursor: pointer; transition: box-shadow .15s; }
+.st-key-soegning .react-aria-ComboBox [role="group"]::before, .st-key-omraadevalg .react-aria-ComboBox [role="group"]::before {
+  content: "search"; font-family: 'Material Symbols Outlined'; position: absolute; left: 1.05rem; top: 50%;
+  transform: translateY(-50%); font-size: 22px; line-height: 1; color: #6F7D3C; }
+.st-key-soegning .react-aria-ComboBox [role="group"]:focus-within,
+.st-key-omraadevalg .react-aria-ComboBox [role="group"]:focus-within { box-shadow: 0 0 0 4px rgba(111,125,60,.18); }
+.st-key-soegning input, .st-key-omraadevalg input { font-size: 1rem; }
 .tabel tr.valgt td { background: #EEF1E4; }
 .tabel tr.valgt td:first-child { box-shadow: inset 3px 0 0 #6F7D3C; }
 

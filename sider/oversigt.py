@@ -232,10 +232,10 @@ if "soeg" not in st.session_state:
 n = st.session_state.kort_n
 
 with st.container(key="soegning"):
-    # Feltet forklarer sig selv (ikon og tekst i feltet); etiketten er skjult, men læses stadig op af skærmlæsere.
-    st.selectbox("Find your area or fish farm", list(valg), format_func=valg.get, index=None, key="soeg",
-                 on_change=fra_soeg, label_visibility="collapsed",
-                 placeholder=f"Search {len(anlaeg)} fish farms or {len(navne)} areas")
+    # Etiketten siger, hvad man får ud af feltet; samme udtryk som områdevalget på Prognose.
+    st.selectbox("Find your farm or area", list(valg), format_func=valg.get, index=None, key="soeg",
+                 on_change=fra_soeg,
+                 placeholder=f"Search {len(anlaeg)} farms or {len(navne)} areas")
 if st.session_state.pop("rul_op", False):  # kun efter et klik på et kort – kort og søjler bliver hvor de er
     st.html("<script>document.querySelector('[data-testid=\"stMain\"]')?.scrollTo({top: 0, behavior: 'smooth'})</script>",
             unsafe_allow_javascript=True)
