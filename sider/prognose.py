@@ -105,8 +105,8 @@ x = alt.X("uge_start:T", title=None, scale=alt.Scale(domain=[omr["uge_start"].mi
 historik = alt.Chart(omr).mark_line(color=FARVER["blaek"], strokeWidth=1.6).encode(
     x=x, y=alt.Y("hunlus:Q", title="Adult female lice per fish"),
     tooltip=[alt.Tooltip("uge_start:T", title="Week", format="%d.%m.%Y"), alt.Tooltip("hunlus:Q", format=".3f")])
-baand = alt.Chart(lv_plot).mark_area(color=FARVER["laks"], opacity=.18).encode(x=x, y="lo:Q", y2="hi:Q")
-linje = alt.Chart(lv_plot).mark_line(color=FARVER["laks"], strokeWidth=2.2, point=alt.OverlayMarkDef(size=36, color=FARVER["laks"])).encode(
+baand = alt.Chart(lv_plot).mark_area(color=FARVER["model"], opacity=.18).encode(x=x, y="lo:Q", y2="hi:Q")
+linje = alt.Chart(lv_plot).mark_line(color=FARVER["model"], strokeWidth=2.2, point=alt.OverlayMarkDef(size=36, color=FARVER["model"])).encode(
     x=x, y="pred:Q", tooltip=[alt.Tooltip("uge_start:T", title="Week"), alt.Tooltip("pred:Q", title="Forecast", format=".3f"),
                               alt.Tooltip("lo:Q", title="80% low", format=".3f"), alt.Tooltip("hi:Q", title="80% high", format=".3f")])
 naiv_linje = alt.Chart(naiv_plot).mark_line(color=FARVER["skifer"], strokeDash=[4, 3], strokeWidth=1.2).encode(x=x, y="naiv:Q")
@@ -126,7 +126,7 @@ def note(uge_start, y, tekst, farve, dy):
 top = max(sidst["hunlus"], lv["hi"].max())
 annotation = (note(sidst["uge_start"], top, f"Week {uge_nu}: {tal(sidst['hunlus'], 2)}", FARVER["blaek"], -12)
               + alt.Chart(pd.DataFrame({"uge_start": [slut["uge_start"]], "y": [slut["pred"]], "t": [f"Week {uge_slut}: {tal(slut['pred'], 2)}"]}))
-              .mark_text(align="left", dx=8, fontSize=11, fontWeight=600, color=FARVER["laks_tekst"]).encode(x=x, y="y:Q", text="t:N"))
+              .mark_text(align="left", dx=8, fontSize=11, fontWeight=600, color=FARVER["model_tekst"]).encode(x=x, y="y:Q", text="t:N"))
 graense_tekst = alt.Chart(pd.DataFrame({"uge_start": [omr["uge_start"].min()], "y": [0.5], "t": ["Lice limit 0.5"]})).mark_text(
     align="left", dx=2, dy=-6, fontSize=10, color="#D64545").encode(x=x, y="y:Q", text="t:N")
 st.altair_chart((baand + historik + naiv_linje + linje + graense + graense_tekst + annotation).properties(height=340),
@@ -214,8 +214,8 @@ st.markdown(figur(
 ), unsafe_allow_html=True)
 xb = alt.X("maal:T", title=None, axis=alt.Axis(format="%b %Y", grid=False))
 st.altair_chart((
-    alt.Chart(bt).mark_area(color=FARVER["laks"], opacity=.15).encode(x=xb, y=alt.Y("lo:Q", title="Adult female lice per fish"), y2="hi:Q")
-    + alt.Chart(bt).mark_line(color=FARVER["laks"], strokeWidth=1.6).encode(x=xb, y="pred:Q")
+    alt.Chart(bt).mark_area(color=FARVER["model"], opacity=.15).encode(x=xb, y=alt.Y("lo:Q", title="Adult female lice per fish"), y2="hi:Q")
+    + alt.Chart(bt).mark_line(color=FARVER["model"], strokeWidth=1.6).encode(x=xb, y="pred:Q")
     + alt.Chart(bt).mark_line(color=FARVER["blaek"], strokeWidth=1.4).encode(
         x=xb, y="faktisk:Q", tooltip=[alt.Tooltip("maal:T", title="Week", format="%d.%m.%Y"),
                                       alt.Tooltip("faktisk:Q", title="Actual", format=".3f"), alt.Tooltip("pred:Q", title="Forecast", format=".3f")])
@@ -253,9 +253,9 @@ if effekt is not None and len(effekt):
     har_omr = eff["omr_median"].notna().any()
     st.markdown(
         '<div class="effektnoegle">'
-        f'<span><i class="streg" style="border-color:{FARVER["laks"]}"></i>Treated sites</span>'
+        f'<span><i class="streg" style="border-color:{FARVER["model"]}"></i>Treated sites</span>'
         f'<span><i class="streg stiplet" style="border-color:{FARVER["skifer"]}"></i>Similar untreated sites</span>'
-        f'<span><i class="flade" style="background:{FARVER["laks"]}"></i>Effect of the treatment</span>'
+        f'<span><i class="flade" style="background:{FARVER["model"]}"></i>Effect of the treatment</span>'
         + (f'<span><i class="streg" style="border-color:{FARVER["blaek"]}"></i>Treated sites in {omr_navn}</span>'
            if har_omr else "")
         + "</div>", unsafe_allow_html=True)
@@ -282,12 +282,12 @@ if effekt is not None and len(effekt):
     ey = alt.Y("median:Q", title=None, scale=skala_y,
                axis=alt.Axis(values=[0, 0.5, 1, 1.5], format=".0%", labelFontSize=10))
     # Fladen mellem behandlede og ubehandlede er effekten; den starter i ugen før, hvor begge er 100 %.
-    effekt_flade = alt.Chart().mark_area(color=FARVER["laks"], opacity=.18).encode(
+    effekt_flade = alt.Chart().mark_area(color=FARVER["model"], opacity=.18).encode(
         x=ex, y=alt.Y("median:Q", scale=skala_y), y2="kontrol:Q").transform_filter("datum.k >= -1")
     kontrol_linje = alt.Chart().mark_line(color=FARVER["skifer"], strokeDash=[5, 3], strokeWidth=1.6).encode(
         x=ex, y=alt.Y("kontrol:Q", scale=skala_y))
-    linje = alt.Chart().mark_line(color=FARVER["laks"], strokeWidth=2.6,
-                                  point=alt.OverlayMarkDef(size=18, color=FARVER["laks"])).encode(
+    linje = alt.Chart().mark_line(color=FARVER["model"], strokeWidth=2.6,
+                                  point=alt.OverlayMarkDef(size=18, color=FARVER["model"])).encode(
         x=ex, y=ey, tooltip=[alt.Tooltip("type:N", title="Treatment"), alt.Tooltip("k:Q", title="Week"),
                              alt.Tooltip("median:Q", title="Treated sites (median)", format=".0%"),
                              alt.Tooltip("kontrol:Q", title="Similar untreated sites", format=".0%"),

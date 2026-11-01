@@ -469,7 +469,7 @@ def fra_soejler() -> None:
 
 
 # 4b. Overskrift – konklusionen og den gældende lusegrænse står i titlen
-kort_under = (f"Adult female lice per fish, week {iso.week} {iso.year}. Dots: sites, coloured by lice level. Area colour: the "
+kort_under = (f"Adult female lice per fish, week {iso.week} {iso.year}. Dots: sites, coloured by lice level. Area outline: the "
               "government traffic light, which reflects estimated harm to wild salmon – not this week's counts.")
 if valgt is None:
     over_tekst = "above" if status.loc[top, "hunlus"] > graense else "below"
@@ -501,8 +501,9 @@ with venstre:
                   + lok["hunlus"].map(tal) + " adult female lice per fish")
     lok = lok[["lon", "lat", "omraade", "lokalitet", "farve", "tip"]]
     po_kort = po.reset_index().join(status[["hunlus", "n_lok"]], on="omraade").assign(
-        fyld=lambda d: [rgba(LYS_FARVER[c][0], 55 if o == valgt else 12 if valgt else 30) for c, o in zip(d["trafiklys"], d["omraade"])],
-        kant=lambda d: [rgba(LYS_FARVER[c][0], 255 if o == valgt else 90 if valgt else 170) for c, o in zip(d["trafiklys"], d["omraade"])],
+        # Fladen er neutral grå; trafiklyset står kun i kanten, så prikkerne (lusetallet) er det eneste, der lyser op.
+        fyld=lambda d: [rgba(FARVER["taage"], 70 if o == valgt else 14 if valgt else 38) for o in d["omraade"]],
+        kant=lambda d: [rgba(LYS_FARVER[c][0], 255 if o == valgt else 80 if valgt else 210) for c, o in zip(d["trafiklys"], d["omraade"])],
         tip=lambda d: "<b>PO " + d["omraade"].astype(str) + " · " + d["navn"] + "</b><br>"
                       + d["hunlus"].map(tal) + " adult female lice per fish · " + d["n_lok"].fillna(0).astype(int).astype(str)
                       + " sites<br>Traffic light: " + d["trafiklys"].map(appdata.TRAFIKLYS)
@@ -510,7 +511,7 @@ with venstre:
     )[["omraade", "polygon", "fyld", "kant", "tip"]]
     lag = [
         pdk.Layer("PolygonLayer", po_kort, id="omraader", get_polygon="polygon", get_fill_color="fyld",
-                  get_line_color="kant", line_width_min_pixels=1, pickable=True, auto_highlight=True,
+                  get_line_color="kant", line_width_min_pixels=1.6, pickable=True, auto_highlight=True,
                   highlight_color=[111, 125, 60, 70]),
         pdk.Layer("ScatterplotLayer", lok, id="anlaeg", get_position=["lon", "lat"], get_fill_color="farve",
                   get_radius=2400, radius_min_pixels=2.2 if not valgt else 4, radius_max_pixels=9, stroked=True,
@@ -629,7 +630,7 @@ st.markdown(
     f'<span><i class="prik" style="background:{LUS_FARVER["mellem"]}"></i>0.2–0.5</span>'
     f'<span><i class="prik" style="background:{LUS_FARVER["hoej"]}"></i>Above 0.5</span>'
     f'<span><i class="prik" style="background:{LYS_FARVER["green"][0]}"></i><i class="prik" style="background:{LYS_FARVER["yellow"][0]}"></i>'
-    f'<i class="prik" style="background:{LYS_FARVER["red"][0]}"></i>Traffic light (area colour: government decision on wild-salmon risk)</span></div>',
+    f'<i class="prik" style="background:{LYS_FARVER["red"][0]}"></i>Traffic light (area outline: government decision on wild-salmon risk)</span></div>',
     unsafe_allow_html=True,
 )
 st.markdown(kilde(f"Area figures are unweighted means over sites that counted lice that week. "
@@ -654,7 +655,7 @@ if lok_v is not None:
     h_graense = alt.Chart(hist).mark_line(interpolate="step-after", color="#D64545", strokeDash=[4, 3], strokeWidth=1.2).encode(
         x=hx, y=alt.Y("graense:Q", title="Adult female lice per fish", axis=alt.Axis(format=".1f")))
     h_nabo = alt.Chart(hist).mark_line(color=FARVER["skifer"], strokeDash=[3, 2], strokeWidth=1.2).encode(x=hx, y="nabo_snit:Q")
-    h_selv = alt.Chart(hist).mark_line(color=FARVER["laks"], strokeWidth=2, point=alt.OverlayMarkDef(size=14, color=FARVER["laks"])).encode(
+    h_selv = alt.Chart(hist).mark_line(color=FARVER["serie"], strokeWidth=2, point=alt.OverlayMarkDef(size=14, color=FARVER["serie"])).encode(
         x=hx, y="hunlus:Q",
         tooltip=[alt.Tooltip("uge_start:T", title="Week of", format="%d %b %Y"),
                  alt.Tooltip("hunlus:Q", title=l_navn, format=".2f"),
@@ -716,7 +717,7 @@ for o, s in status.iterrows():
     lys_kant, _, lys_tekst = LYS_FARVER[s.trafiklys]
     raekker.append(
         f'<tr class="{"valgt" if o == valgt else ""}"><td class="po ekstra">{o}</td><td class="navn">{s.navn if o == valgt else radlink(s.navn, f"po:{o}")}{" <span style=\'color:#6B7A86\'>*</span>" if s.n_lok < MIN_LOK else ""}</td>'
-        f'<td><i class="prik" style="background:{lys_kant}"></i><span class="ekstra">{appdata.TRAFIKLYS[s.trafiklys]}</span></td>'
+        f'<td class="lys"><i class="prik" style="background:{lys_kant}"></i>{appdata.TRAFIKLYS[s.trafiklys]}</td>'
         f'<td class="tal">{tal(s.hunlus)}<span class="minibar" style="width:{min(s.hunlus / 0.5, 1) * 60:.0f}px;background:{farve}"></span></td>'
         f'<td class="tal" style="color:{t_farve}"><span class="ekstra">{ikon(t_ikon, t_farve, t_tekst)}</span> {aend_tekst}</td>'
         f'<td class="tal" style="color:{"#D64545" if s.andel_over >= .1 else "inherit"}">{pct(s.andel_over)}</td>'
@@ -753,11 +754,11 @@ basis = alt.Chart().encode(x=alt.X("uge:Q", title=None, scale=alt.Scale(domain=[
 baand = basis.mark_area(color=FARVER["taage"], opacity=.35).encode(
     y=alt.Y("lav:Q", title=None, axis=alt.Axis(values=[0, 0.5, 1], format=".1f", labelFontSize=9)), y2="hoej:Q")
 snit = basis.mark_line(color=FARVER["skifer"], strokeDash=[3, 2], strokeWidth=1).encode(y="snit:Q")
-nu = basis.mark_line(color=FARVER["laks"], strokeWidth=2).encode(y="i_aar:Q")
+nu = basis.mark_line(color=FARVER["serie"], strokeWidth=2).encode(y="i_aar:Q")
 # Annotation: seneste uges værdi markeres og skrives direkte i hvert panel.
 sm["er_sidste"] = sm["uge"] == sm.dropna(subset=["i_aar"])["uge"].max()
-nu_pkt = basis.mark_circle(color=FARVER["laks"], size=26, opacity=1).encode(y="i_aar:Q").transform_filter("datum.er_sidste")
-nu_tal = basis.mark_text(align="left", dx=5, fontSize=10, fontWeight=600, color=FARVER["laks_tekst"]).encode(
+nu_pkt = basis.mark_circle(color=FARVER["serie"], size=26, opacity=1).encode(y="i_aar:Q").transform_filter("datum.er_sidste")
+nu_tal = basis.mark_text(align="left", dx=5, fontSize=10, fontWeight=600, color=FARVER["serie"]).encode(
     y="i_aar:Q", text=alt.Text("i_aar:Q", format=".2f")).transform_filter("datum.er_sidste")
 def smaa_multipler(kolonner: int, bredde: int, hoejde: int) -> alt.FacetChart:
     return alt.layer(baand, snit, nu, nu_pkt, nu_tal, data=sm).properties(width=bredde, height=hoejde).facet(

@@ -1,6 +1,8 @@
 """Designsystem i konsulentstil.
 
-Hvid flade, dyb havblå tekst, én dæmpet tanggrøn accent (nøglen hedder stadig "laks").
+Hvid flade, dyb havblå tekst og én dæmpet tanggrøn accent (nøglen hedder stadig "laks").
+Hver farve har ét job: navy og grå bærer struktur og hoveddataserien, tanggrøn betyder "du kan klikke her",
+teal/rav/rød er forbeholdt lusetal, og trafiklyset vises altid med tekst eller som kant – aldrig som flade.
 Serif-handlingstitler (konklusionen står i titlen), nummererede figurer med enhed og kildeangivelse,
 minimalistiske tabeller og små multipler.
 
@@ -26,8 +28,11 @@ FARVER = {
     "linje": "#E1E6EA",      # kanter og gitter
     "flade": "#FFFFFF",
     "baggrund": "#FFFFFF",
-    "laks": "#6F7D3C",       # eneste accent (tang/mos) – til grafik (linjer, prikker, bånd)
+    "laks": "#6F7D3C",       # accent (tang/mos) – kun til det, man kan klikke på: links, knapper, søgefelt, valg
     "laks_tekst": "#55602B", # samme accent, mørkere til tekst: kontrast ≥ 4,5:1 mod hvid (WCAG AA)
+    "serie": "#0B2230",      # hoveddataserien: i år, det valgte anlæg, de faktiske lusetal
+    "model": "#5B92BA",      # modellens tal (prognose, behandlede anlæg) – lys fjordblå, så den skilles fra navy
+    "model_tekst": "#3E6A86",# samme blå, mørkere til tekst (kontrast ≥ 4,5:1 mod hvid)
     "rav": "#E2A23B",
     # Bagudkompatible navne brugt i graferne
     "fjord": "#1D4E6B",
@@ -86,7 +91,7 @@ hr { border-color: #E1E6EA; }
 
 /* Forside / sidehoved */
 .sidehoved { padding: .6rem 0 1.2rem; margin-bottom: 1.6rem; border-bottom: 1px solid #E1E6EA; }
-.sidehoved .overlinje { font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #55602B; }
+.sidehoved .overlinje { font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #5B6B78; }
 .sidehoved h1 { font-size: clamp(1.7rem, 3.4vw, 2.5rem) !important; line-height: 1.15; margin: .5rem 0 .6rem; padding: 0; max-width: 24em; }
 .sidehoved .under { color: #4A5A66; font-size: 1rem; max-width: 52em; margin: 0; line-height: 1.55; }
 .sidehoved .chips { display: flex; gap: .5rem 1.4rem; flex-wrap: wrap; margin-top: 1rem; }
@@ -100,7 +105,7 @@ hr { border-color: #E1E6EA; }
 .resume { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px solid #0B2230; border-bottom: 1px solid #E1E6EA; margin: .4rem 0 2rem; }
 .resume > div { padding: 1rem 1.2rem 1.1rem 0; }
 .resume > div + div { padding-left: 1.2rem; border-left: 1px solid #E1E6EA; }
-.resume .nr { font-family: 'Source Serif 4', serif; font-size: .9rem; color: #55602B; font-weight: 600; }
+.resume .nr { font-family: 'Source Serif 4', serif; font-size: .9rem; color: #5B6B78; font-weight: 600; }
 .resume .stor { font-family: 'Source Serif 4', serif; font-size: 2.3rem; font-weight: 600; color: #0B2230; line-height: 1.05;
                 margin: .3rem 0 .35rem; font-variant-numeric: tabular-nums; }
 .resume .tekst { font-size: .9rem; color: #2A3A46; line-height: 1.45; }
@@ -116,7 +121,7 @@ hr { border-color: #E1E6EA; }
 
 /* Figurer */
 .figur { margin: 2.2rem 0 .5rem; }
-.figur .label { font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #55602B; }
+.figur .label { font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #5B6B78; }
 .figur .titel { font-family: 'Source Serif 4', serif; font-size: 1.35rem; font-weight: 600; color: #0B2230; line-height: 1.25; margin: .25rem 0 .2rem; }
 .figur .undertitel { font-size: .85rem; color: #5B6B78; }
 .kilde { font-size: .74rem; color: #6B7A86; border-top: 1px solid #E1E6EA; padding-top: .4rem; margin-top: .3rem; }
@@ -208,6 +213,7 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
 .tabel td.tal, .tabel th.tal { text-align: right; white-space: nowrap; }
 .tabel tr:hover td { background: #F6F8FA; }
 .tabel .navn { font-weight: 500; }
+.tabel td.lys { white-space: nowrap; }
 /* Navne i tabellerne er links: diskrete i hvile, i accentfarven med pil, når rækken peges på */
 .tabel a.radlink { color: inherit; text-decoration: none; }
 .tabel a.radlink::after { content: " →"; color: #55602B; opacity: 0; transition: opacity .15s; }
@@ -230,8 +236,9 @@ table.tabel { width: 100%; border-collapse: collapse; font-size: .84rem; font-va
   .st-key-smaa_mobil, .st-key-effekt_mobil { display: block; }
   .tabel .ekstra { display: none; }             /* sekundære kolonner skjules på mobil */
   .tabel th, .tabel th.tal { white-space: normal; letter-spacing: .04em; }
-  .tabel td, .tabel th { padding: .4rem .35rem; }
+  .tabel td, .tabel th { padding: .4rem .3rem; }
   .tabel .minibar { display: none; }
+  .tabel td.lys .prik { display: none; }        /* navnet står der; prikken koster bredde */
 }
 
 /* Streamlits egne knapper (Fork, GitHub, menu) skjules, så appen fremstår som et færdigt produkt.
@@ -361,7 +368,7 @@ def _sti(vaerdier: list[float], x, y) -> str:
 
 def kurve(vaerdier: list[float], sammenlign: list[float] | None = None, graense: float | None = None,
           note: str = "", bredde: int = 180, hoejde: int = 38) -> str:
-    """Lille kurve over de seneste uger: linje i accentfarven, stiplet sammenligning og grænsen som rød prikket linje."""
+    """Lille kurve over de seneste uger: navy linje, stiplet grå sammenligning og grænsen som rød prikket linje."""
     alle = [v for v in [*vaerdier, *(sammenlign or []), graense or 0] if pd.notna(v)]
     top = max(alle + [0.05]) * 1.1
     n = max(len(vaerdier) - 1, 1)
@@ -373,11 +380,11 @@ def kurve(vaerdier: list[float], sammenlign: list[float] | None = None, graense:
                     'stroke-width="1" stroke-dasharray="2 3" opacity=".8"/>')
     if sammenlign:
         dele.append(f'<path d="{_sti(sammenlign, x, y)}" fill="none" stroke="#8A99A6" stroke-width="1.3" stroke-dasharray="3 2"/>')
-    dele.append(f'<path d="{_sti(vaerdier, x, y)}" fill="none" stroke="#6F7D3C" stroke-width="2" stroke-linejoin="round"/>')
+    dele.append(f'<path d="{_sti(vaerdier, x, y)}" fill="none" stroke="#0B2230" stroke-width="1.8" stroke-linejoin="round"/>')
     sidste = [(i, v) for i, v in enumerate(vaerdier) if pd.notna(v)]
     if sidste:
         i, v = sidste[-1]
-        dele.append(f'<circle cx="{x(i):.1f}" cy="{y(v):.1f}" r="3" fill="#6F7D3C" stroke="#FFFFFF" stroke-width="1.2"/>')
+        dele.append(f'<circle cx="{x(i):.1f}" cy="{y(v):.1f}" r="3" fill="#0B2230" stroke="#FFFFFF" stroke-width="1.2"/>')
     return (f'<div class="mini"><svg viewBox="0 0 {bredde} {hoejde}" role="img" '
             f'aria-label="{note}">{"".join(dele)}</svg><div class="mini-note">{note}</div></div>')
 
