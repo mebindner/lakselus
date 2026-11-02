@@ -99,10 +99,12 @@ st.markdown(
     'Food Safety Authority (Mattilsynet) and published by BarentsWatch under the NLOD licence. New counts arrive '
     'every Wednesday; the pages show the latest week that is fully reported.</div>'
     '<div><b>Method</b>Area figures are plain means over the sites that counted, not weighted by fish. Forecasts are '
-    'tested week by week on seasons the models never saw. Every page ends with its own notes on method and caveats.</div>'
+    'tested week by week on seasons the models never saw. Every page ends with its own notes on method and caveats. '
+    'Figures and forecasts are statistical estimates, not advice, and come with no guarantee.</div>'
     '<div><b>Code</b>Python, pandas, scikit-learn, Streamlit, Altair and deck.gl, open source on '
     '<a href="https://github.com/mebindner/lakselus" target="_blank">GitHub</a>. Developed with AI-assisted coding '
-    '(Claude); problem framing, methodology, model validation and design decisions are my own.</div>'
+    '(Claude); problem framing, methodology, model validation and design decisions are my own. Hosted on '
+    'Streamlit Community Cloud; the app itself collects no personal data.</div>'
     '</div></div>',
     unsafe_allow_html=True,
 )

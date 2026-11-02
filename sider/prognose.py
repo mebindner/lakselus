@@ -406,8 +406,9 @@ st.markdown(
        "counts are high, which the lice history already shows. It stays in the weekly backtest, so the model choice "
        "would pick it up if that changes." if valgt != "gbm_beh" else
        "medicinal). On 2023–24 it had the lowest error of all models and is the selected model.")
-    + "<br><br><b>Caveats.</b> Treatments explain some of the abrupt drops but cannot be known "
-    "ahead of time. Data are retrieved as they look today; late corrections were not necessarily known in the "
+    + "<br><br><b>Caveats.</b> The forecasts are statistical estimates, not advice, and come with no guarantee; "
+    "do not use them as the sole basis for operational or regulatory decisions. Treatments explain some of the "
+    "abrupt drops but cannot be known ahead of time. Data are retrieved as they look today; late corrections were not necessarily known in the "
     "forecast week.</div>",
     unsafe_allow_html=True,
 )
