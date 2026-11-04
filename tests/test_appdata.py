@@ -112,3 +112,19 @@ def test_udsving_nu_foer_og_forskel():
     assert u.loc[1, "forskel"] == pytest.approx(0.3)
     assert u.loc[2, "forskel"] == pytest.approx(-0.2)
     assert u.loc[2, "omraade"] == 3
+
+
+# --- Gennemsigtighed om indberetningen -------------------------------------------------------
+
+def test_indberetning_taeller_mod_en_normal_uge_og_viser_omraader_uden_tal():
+    """Ugen tælles mod medianen for de 8 uger før; et område uden en eneste tælling står med n = 0."""
+    from lakselus import appdata
+    uger = pd.date_range("2026-08-31", periods=9, freq="7D")
+    raa = pd.DataFrame([{"uge_start": u, "omraade": o, "lokalitet": f"{o}-{i}", "har_talt": "Ja"}
+                        for u in uger for o, n in [(1, 4), (2, 10)] for i in range(n)
+                        if not (u == uger[-1] and (o == 1 or i >= 8))])
+    panel = pd.DataFrame({"uge_start": list(uger) * 2, "omraade": [1] * 9 + [2] * 9})
+    indb = appdata.indberetning(raa, panel)
+    assert indb.loc[0].tolist() == [8, 14]
+    assert indb.loc[1].tolist() == [0, 4] and indb.loc[2].tolist() == [8, 10]
+    assert appdata.indberetning_tekst(8, 14, 44)[0] == "8 sites reported · 57% of a normal week"

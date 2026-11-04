@@ -87,6 +87,10 @@ lv = live[live["omraade"] == valg]
 # Ét års historik, så prognosen (de sidste 4 uger) får plads – også på en smal mobilskærm.
 omr = panel[(panel["omraade"] == valg) & (panel["uge_start"] >= seneste - pd.Timedelta(weeks=52))]
 sidst = omr.dropna(subset=["hunlus"]).iloc[-1]
+# Gennemsigtighed: hvor mange lokaliteter den seneste uge bygger på, mod en normal uge.
+indb = appdata.indberetning(raa, panel)
+indb_kort, indb_forklaring = appdata.indberetning_tekst(indb.loc[0, "n"], indb.loc[0, "normal"], iso.week)
+indb_kort = "Built on " + indb_kort[0].lower() + indb_kort[1:]
 
 # --- 3. Sidehoved og resumé ------------------------------------------------------------
 # Toppen taler til alle: hvad sker der med lusetallet i området, hvor sikkert er det, og kan man stole på modellen?
@@ -103,6 +107,7 @@ st.markdown(sidehoved(
     f"{NAVNE[valgt].lower()} – the model that did best when tested on past seasons. Further down: how much each "
     "treatment type lowers lice, and how the model was tested.",
     [("live", appdata.opdatering_tekst(panel)), ("location_on", f"PO {valg} · {navne[valg]}"),
+     ("database", indb_kort + info(indb_forklaring, "hoejre")),
      ("model_training", f"Model: {NAVNE[valgt]}"), ("straighten", "80% range")],
 ), unsafe_allow_html=True)
 st.markdown(resume([
@@ -125,7 +130,9 @@ st.markdown(figur(
     next(nr), f"{navne[valg]}: {NAVNE[valgt].lower()} expects {tal(lv['pred'].iloc[-1], 2)} adult female lice per fish in week {uge_til} "
        f"({'rising' if lv['pred'].iloc[-1] > sidst['hunlus'] * 1.05 else 'falling' if lv['pred'].iloc[-1] < sidst['hunlus'] * 0.95 else 'stable'})",
     f"Adult female lice per fish, last 12 months and forecast for weeks {uge_fra}–{uge_til} (1–4 weeks after the latest "
-    "complete week) with 80% interval. Dashed: naive forecast.",
+    "complete week) with 80% interval. Dashed: naive forecast."
+    + (f" No site in the area reported lice counts for week {iso.week}; the latest count is from week {uge_nu}, and "
+       "the forecast is built on the weeks before." if sidst["uge_start"] < seneste else ""),
 ), unsafe_allow_html=True)
 
 forbind = pd.DataFrame([{"uge_start": sidst["uge_start"], "pred": sidst["hunlus"], "lo": sidst["hunlus"], "hi": sidst["hunlus"]}])
@@ -297,19 +304,26 @@ st.markdown(resume([
 ]), unsafe_allow_html=True)
 
 # --- 7. Figur: modelsammenligning -------------------------------------------------------
-def figur2_titel(vindere: pd.Index, bedst_test: str) -> str:
-    """Titlen skal sige, hvilken model der faktisk er bedst i testperioden – også når det ikke er den valgte."""
+def figur2_titel(vindere: pd.Index, skill: pd.Series) -> str:
+    """Titlen skal sige, hvilken model der faktisk er bedst i testperioden – også når det ikke er den valgte.
+
+    skill: gennemsnitlig skill i testperioden pr. model. Under et halvt procentpoint fra den valgte er det uafgjort,
+    for så kan forskellen ikke ses i tabellen.
+    """
+    bedst_test = skill.idxmax()
     if list(vindere) == [valgt]:
         return f"Only {NAVNE[valgt].lower()} beats the naive forecast at all four horizons"
     start = f"{len(vindere)} models beat the naive forecast at all horizons"
     if bedst_test == valgt:
         return f"{start}; {NAVNE[valgt].lower()} is best"
+    if skill[bedst_test] - skill[valgt] < 0.005:
+        return f"{start}; {NAVNE[valgt].lower()} and {NAVNE[bedst_test].lower()} are level in the test period"
     return (f"{start}; {NAVNE[bedst_test].lower()} is marginally ahead in the test period, but "
             f"{NAVNE[valgt].lower()} was chosen on validation")
 
 
 st.markdown(figur(
-    next(nr), figur2_titel(o["skill_test"].columns[(o["skill_test"] > 0).all()], o["skill_test"].mean().drop("naiv").idxmax()),
+    next(nr), figur2_titel(o["skill_test"].columns[(o["skill_test"] > 0).all()], o["skill_test"].mean().drop("naiv")),
     f"Mean absolute error (MAE) in female lice per fish in the test period ({test_fra}→), skill vs. naive and "
     "Diebold–Mariano p-value. The model was selected on the 2023–24 validation period.",
 ), unsafe_allow_html=True)

@@ -180,6 +180,16 @@ elif len(mangler) == 1:
     indberetning = f"week {mangler[0]} is still being reported"
 else:
     indberetning = f"weeks {mangler[0]}–{mangler[-1]} are still being reported"
+# Gennemsigtighed: hvor mange lokaliteter ugens tal bygger på, mod en normal uge – for kysten og pr. område.
+indb = appdata.indberetning(raa, panel)
+uden_tal = [o for o in indb.index if o > 0 and indb.loc[o, "n"] == 0]
+
+
+def indberetning_chip(o: int = 0, hvor: str = "") -> tuple[str, str]:
+    kort, forklaring = appdata.indberetning_tekst(indb.loc[o, "n"], indb.loc[o, "normal"], iso.week, hvor)
+    return "location_on", kort + info(forklaring, "hoejre")
+
+
 # --- 2. Søgning og valg ---------------------------------------------------------------
 # Ét valg for hele siden: søgefeltet, kortet og søjlerne skriver alle til po_valgt/lok_valgt gennem vaelg().
 # Søgefeltets værdi (soeg) holdes i takt med valget, og valget står i URL'en (?po=3 / ?site=12345), så en
@@ -244,6 +254,12 @@ if st.query_params.to_dict() != appdata.til_url(st.session_state.soeg):
 
 valgt = st.session_state.po_valgt if st.session_state.po_valgt in status.index else None
 lok_v = st.session_state.lok_valgt if valgt is not None and st.session_state.lok_valgt in anlaeg.index else None
+# Et område uden tællinger i ugen kan stadig søges frem – sig det i stedet for stille at vise hele kysten.
+if st.session_state.po_valgt in uden_tal:
+    o = st.session_state.po_valgt
+    st.markdown(f'<div class="korthjaelp">{ikon("info")} No site in PO {o} {po.loc[o, "navn"]} reported lice counts for '
+                f'week {iso.week} (usually {indb.loc[o, "normal"]}), so the page shows the whole coast. It returns once '
+                'its farms report.</div>', unsafe_allow_html=True)
 
 # 2b. Nøgletal for det valgte område (bruges også, når et anlæg er valgt – så er det anlæggets område)
 if valgt is not None:
@@ -346,7 +362,7 @@ elif valgt is not None:
         "Norwegian Food Safety Authority, set against the lice limit (lusegrense), the government traffic light "
         "(trafikklyssystemet) and the seasonal pattern of recent years. Clear the search to return to the whole coast.",
         [("live", appdata.opdatering_tekst(panel) + ("" if not mangler else f" · {indberetning}")),
-         ("database", "BarentsWatch / Mattilsynet"), ("location_on", f"{len(a_talt)} sites in this week's figures"),
+         ("database", "BarentsWatch / Mattilsynet"), indberetning_chip(valgt, " in the area"),
          ("verified", "Independent analysis of open data")],
     ), unsafe_allow_html=True)
     st.markdown(resume([
@@ -375,7 +391,7 @@ else:
         "fish farms report to the Norwegian Food Safety Authority. Figures are set against the lice limit (lusegrense), "
         "the government traffic-light system (trafikklyssystemet) and the seasonal pattern of recent years.",
         [("live", appdata.opdatering_tekst(panel) + ("" if not mangler else f" · {indberetning}")), ("database", "BarentsWatch / Mattilsynet"),
-         ("location_on", f"{len(talt)} sites in this week's figures"), ("verified", "Independent analysis of open data")],
+         indberetning_chip(), ("verified", "Independent analysis of open data")],
     ), unsafe_allow_html=True)
 
     st.markdown(resume([
@@ -648,7 +664,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(kilde(f"Area figures are unweighted means over sites that counted lice that week. "
-                  f"* Fewer than {MIN_LOK} sites (faded, at the bottom) – the figure is uncertain and excluded from the conclusions."),
+                  f"* Fewer than {MIN_LOK} sites (faded, at the bottom) – the figure is uncertain and excluded from the conclusions."
+                  + "".join(f" No counts reported in week {iso.week}: PO {o} {po.loc[o, 'navn']}." for o in uden_tal)),
             unsafe_allow_html=True)
 
 # --- 5. Figurer for et anlæg -----------------------------------------------------------
@@ -736,6 +753,16 @@ for o, s in status.iterrows():
         f'<td class="tal" style="color:{t_farve}"><span class="ekstra">{ikon(t_ikon, t_farve, t_tekst)}</span> {aend_tekst}</td>'
         f'<td class="tal" style="color:{"#D64545" if s.andel_over >= .1 else "inherit"}">{pct(s.andel_over)}</td>'
         f'<td class="tal ekstra">{tal(s.temp, 1)} °C</td><td class="tal ekstra">{int(s.n_lok)}</td></tr>'
+    )
+# Områder uden en eneste tælling i ugen forsvinder ikke stille – de står i tabellen med en forklaring.
+for o in uden_tal:
+    raekker.insert(
+        sum(1 for o_ in status.index if o_ < o) + sum(1 for o_ in uden_tal if o_ < o),
+        f'<tr><td class="po ekstra">{o}</td><td class="navn">{po.loc[o, "navn"]}</td>'
+        f'<td class="lys"><i class="prik" style="background:{LYS_FARVER[po.loc[o, "trafiklys"]][0]}"></i>'
+        f'{appdata.TRAFIKLYS[po.loc[o, "trafiklys"]]}</td>'
+        f'<td class="tal" colspan="3" style="color:#6B7A86">No counts reported in week {iso.week} '
+        f'(usually {indb.loc[o, "normal"]} sites)</td><td class="tal ekstra">–</td><td class="tal ekstra">0</td></tr>'
     )
 st.markdown(
     '<table class="tabel"><thead><tr><th class="ekstra">PO</th><th>Production area</th>'

@@ -97,6 +97,35 @@ def opdatering(panel: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp | None]:
     return sidst, (naeste if i_dag <= naeste else None)
 
 
+def indberetning(raa: pd.DataFrame, panel: pd.DataFrame) -> pd.DataFrame:
+    """Hvor mange lokaliteter der har indberettet den viste uge – pr. område og for hele kysten (omraade 0).
+
+    n: lokaliteter, der har talt lus i ugen. normal: medianen for de 8 uger før – samme målestok som reglen,
+    der først viser en uge, når 80 % har indberettet (data.fjern_ufaerdige_uger).
+    """
+    seneste = panel["uge_start"].max()
+    talt = raa[(raa["har_talt"] == "Ja") & (raa["uge_start"] <= seneste)]
+    uger = pd.date_range(seneste - pd.Timedelta(weeks=8), seneste, freq="7D")
+    pr_omr = (talt.groupby(["omraade", "uge_start"])["lokalitet"].nunique().unstack(fill_value=0)
+              .reindex(columns=uger, fill_value=0))
+    pr_omr.index = pr_omr.index.astype(int)
+    pr_omr = pr_omr.reindex(sorted(panel["omraade"].astype(int).unique()), fill_value=0)
+    kyst = talt.groupby("uge_start")["lokalitet"].nunique().reindex(uger, fill_value=0)
+    alle = pd.concat([pd.DataFrame([kyst.values], index=[0], columns=uger), pr_omr])
+    return pd.DataFrame({"n": alle[seneste], "normal": alle[uger[:-1]].median(axis=1)}).astype(int)
+
+
+def indberetning_tekst(n: int, normal: int, uge: int, hvor: str = "") -> tuple[str, str]:
+    """Kort tekst til sidehovedet og en forklaring til info-boblen, fx "569 sites reported · 96% of a normal week"."""
+    andel = n / normal if normal else 1.0
+    kort = f"{n} sites{hvor} reported · " + ("a full week" if andel >= 0.995 else f"{andel:.0%} of a normal week")
+    forklaring = (f"Farms report a week's lice counts during the following week. When the data were fetched, "
+                  f"<b>{n}</b> sites{hvor} had reported week {uge}, against <b>{normal}</b> in a normal week (median of "
+                  "the 8 weeks before). A week is only shown once at least 80% of sites along the coast have reported. "
+                  "Sites that report late are included at the next weekly update.")
+    return kort, forklaring
+
+
 def opdatering_tekst(panel: pd.DataFrame) -> str:
     """Fx "Updated Wed 28 Oct 2026 · next update Wed 4 Nov"."""
     sidst, naeste = opdatering(panel)
