@@ -28,7 +28,7 @@ jobs:
       BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
       BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 20   # nok historik til at se, om dagens opdatering allerede er lavet
 
@@ -46,7 +46,7 @@ jobs:
             echo "klar=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.noegle.outputs.klar == 'true'
         with:
           python-version: "3.12"
