@@ -5,7 +5,12 @@ name: Ugentlig opdatering
 
 on:
   schedule:
-    - cron: "0 5 * * 3"   # onsdag kl. 05 UTC – lusetal for sidste uge er indberettet
+    # Opdrætterne indberetter senest tirsdag; onsdag nat er over 95 % af sidste uge kommet ind.
+    # GitHub kan forsinke planlagte kørsler med timer (især på hele klokkeslæt), så der er tre forsøg
+    # natten til onsdag. Det første, der lykkes, opdaterer; de næste ser det og springer over.
+    - cron: "17 0 * * 3"   # 00:17 UTC = 01:17 dansk vintertid
+    - cron: "47 2 * * 3"   # reserve
+    - cron: "17 4 * * 3"   # reserve
   workflow_dispatch:       # kan også startes manuelt fra fanen Actions
 
 permissions:
@@ -23,18 +28,23 @@ jobs:
       BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
       BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
     steps:
-      - name: Tjek at API-nøglen er sat op
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20   # nok historik til at se, om dagens opdatering allerede er lavet
+
+      - name: Tjek API-nøglen, og om en tidligere kørsel i dag allerede har opdateret
         id: noegle
         run: |
           if [ -z "$BW_CLIENT_ID" ] || [ -z "$BW_CLIENT_SECRET" ]; then
             echo "::notice::BW_CLIENT_ID/BW_CLIENT_SECRET mangler som repository-secrets – springer opdateringen over."
             echo "klar=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "schedule" ] && \
+               git log --since="$(date -u +%Y-%m-%d)T00:00:00Z" --format=%s -- data/app | grep -q "^Weekly update"; then
+            echo "::notice::Dagens opdatering er allerede lavet af en tidligere kørsel – springer over."
+            echo "klar=false" >> "$GITHUB_OUTPUT"
           else
             echo "klar=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - uses: actions/checkout@v4
-        if: steps.noegle.outputs.klar == 'true'
 
       - uses: actions/setup-python@v5
         if: steps.noegle.outputs.klar == 'true'
