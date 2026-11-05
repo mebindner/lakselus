@@ -479,18 +479,28 @@ def lus_niveau(v: float) -> str:
 LAVT_NIVEAU = 0.05  # under dette niveau vises ændringer i lus pr. fisk, ikke i procent
 
 
+def relativ(nu: float, foer: float) -> str:
+    """Relativ ændring som tekst med rigtigt minustegn. Over en tredobling som gange ("30×"), ikke "+2856%"."""
+    if nu / foer >= 3:
+        return f"{nu / foer:.0f}×"
+    return f"{nu / foer - 1:+.0%}".replace("-", "−")
+
+
 def trend(nu: float, foer: float) -> tuple[str, str, str]:
     """Ikon, farve og tekst for udviklingen siden de 4 foregående uger."""
     if pd.isna(foer) or foer == 0:
         return "trending_flat", "#6B7A86", "no comparison"
     if max(nu, foer) < LAVT_NIVEAU:  # procenter af næsten ingenting ser dramatiske ud – vis ikke en alarm
-        return "trending_flat", "#6B7A86", f"low level ({nu - foer:+.2f} lice per fish vs. previous 4 weeks)"
+        d = f"{nu - foer:+.2f}".replace("-", "−")
+        return "trending_flat", "#6B7A86", f"low level ({d} lice per fish vs. previous 4 weeks)"
     rel = nu / foer - 1
     if rel > 0.15:
-        return "trending_up", "#D64545", f"rising ({rel:+.0%} vs. previous 4 weeks)"
+        if nu / foer >= 3:
+            return "trending_up", "#D64545", f"rising ({nu / foer:.0f}× the level of the previous 4 weeks)"
+        return "trending_up", "#D64545", f"rising ({relativ(nu, foer)} vs. previous 4 weeks)"
     if rel < -0.15:
-        return "trending_down", "#1F7A8C", f"falling ({rel:+.0%} vs. previous 4 weeks)"
-    return "trending_flat", "#6B7A86", f"stable ({rel:+.0%} vs. previous 4 weeks)"
+        return "trending_down", "#1F7A8C", f"falling ({relativ(nu, foer)} vs. previous 4 weeks)"
+    return "trending_flat", "#6B7A86", f"stable ({relativ(nu, foer)} vs. previous 4 weeks)"
 
 
 # --- 5. Altair-tema ---------------------------------------------------------------------------

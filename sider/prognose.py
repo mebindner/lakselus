@@ -81,7 +81,7 @@ with st.container(key="omraadevalg"):
         st.markdown(
             f'<div class="valghjaelp" role="status"><b>{ikon("touch_app")} Pick a production area</b>'
             f'See the forecast for any of the {len(navne)} areas along the coast.</div>', unsafe_allow_html=True)
-    valg = st.selectbox("Find your production area", options=sorted(navne), format_func=lambda x: f"{x} · {navne[x]}",
+    valg = st.selectbox("Find your production area", options=sorted(navne), format_func=lambda x: f"PO {x} · {navne[x]}",
                         index=sorted(navne).index(fra_oversigt or 3), key="omraade",
                         on_change=lambda: st.session_state.update(omraade_skiftet=True))
 live = appdata.live_prognose(panel, valgt, res)
@@ -387,12 +387,14 @@ st.markdown(kilde(f"Area{'s' if len(smaa) > 1 else ''} {' and '.join(map(str, sm
                   "noisier." if smaa else ""), unsafe_allow_html=True)
 
 # --- 9. Figur: backtest-forløb ----------------------------------------------------------
+# Titlen afhænger af horisonten, men skal stå over valget: en plads reserveres og fyldes, når valget kendes.
+titel_plads = st.empty()
 h_valg = st.segmented_control("Horizon", options=[1, 2, 3, 4], default=2, format_func=lambda h: f"{h} week{'s' if h > 1 else ''}",
                               key="horisont") or 2
 bt = ev.intervaller(res[res["model"] == valgt].drop(columns="model"))
 bt = ev.periode(bt[(bt["omraade"] == valg) & (bt["h"] == h_valg)], ev.TEST).sort_values("maal")
 daek_omr = ((bt["faktisk"] >= bt["lo"]) & (bt["faktisk"] <= bt["hi"])).mean()
-st.markdown(figur(
+titel_plads.markdown(figur(
     next(nr), f"How the forecast would have performed in {navne[valg]} – {daek_omr:.0%} of outcomes fell inside the interval",
     f"Backtest in the test period: forecast made {h_valg} week{'s' if h_valg > 1 else ''} ahead (line and 80% interval) vs. the actual lice level (black).",
 ), unsafe_allow_html=True)

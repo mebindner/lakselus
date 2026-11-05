@@ -25,7 +25,7 @@ import streamlit as st
 from lakselus import appdata
 from lakselus.udseende import (
     FARVER, LAVT_NIVEAU, LUS_FARVER, LYS_FARVER, SEKVENS, andelsbjaelke, figur, forklar, ikon, info, kilde, kurve,
-    lus_niveau, prikker, resume, sidehoved, strimmel, trend,
+    lus_niveau, prikker, relativ, resume, sidehoved, strimmel, trend,
 )
 
 
@@ -51,7 +51,7 @@ def aendring_tekst(nu: float, foer: float) -> str:
     if max(nu, foer) < LAVT_NIVEAU:
         d = round(nu - foer, 2)
         return "0.00" if d == 0 else f"{d:+.2f}".replace("-", "−")  # ingen "−0.00", når ændringen afrundes til nul
-    return pct(nu / foer - 1, True)
+    return relativ(nu, foer)
 
 
 def radlink(tekst: str, noegle: str) -> str:
@@ -384,7 +384,7 @@ elif valgt is not None:
         (appdata.TRAFIKLYS[s_v.trafiklys], f"traffic light for PO {valgt}. The colour is set by the government "
                                            f"(latest decision {s_v.lys_fra:%b %Y}) from estimated lice mortality in wild "
                                            "salmon – not from this week's counts."
-                                           + (" Red means a cut in production capacity." if s_v.trafiklys == "red" else ""),
+                                           + (" Red usually means a cut in production capacity." if s_v.trafiklys == "red" else ""),
          INFO_LYS, lys_prikker(valgt)),
     ]), unsafe_allow_html=True)
 else:
@@ -411,7 +411,7 @@ else:
         (f"{len(roede)} of 13", f"production areas {'has' if len(roede) == 1 else 'have'} a red traffic light"
                                 + (": " + ", ".join(roede["navn"]) if len(roede) else "")
                                 + f". The colour is set by the government (latest decision {lys_fra:%b %Y}) from estimated lice "
-                                "mortality in wild salmon – not from this week's counts. Red means a cut in production capacity.",
+                                "mortality in wild salmon – not from this week's counts. Red usually means a cut in production capacity.",
          INFO_LYS, lys_prikker()),
     ]), unsafe_allow_html=True)
 
