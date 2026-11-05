@@ -339,3 +339,21 @@ def udsving(raa: pd.DataFrame, seneste: pd.Timestamp, uger: int = 4) -> pd.DataF
         lokalitet_navn=("lokalitet_navn", "first"), omraade=("omraade", "first"), nu=("hunlus", "mean"))
     foer = talt[talt["uge_start"] < seneste].groupby("lokalitet")["hunlus"].mean()
     return nu.assign(omraade=nu["omraade"].astype(int), foer=foer, forskel=lambda d: d["nu"] - d["foer"]).reset_index()
+
+
+def topuger(uger: pd.Series, smalt: int = 8) -> tuple[int, int, int, bool]:
+    """Spænd og median for årenes topuger: (fra, til, median, smal). fra > til betyder, at spændet går over nytår.
+
+    Ugerne er en cirkel: i nord topper lusene omkring årsskiftet, så toppene falder i både uge 47–52 og uge 1–12.
+    Ligger toppene på begge sider af nytår, lægges 52 til de tidlige uger, før spænd og median regnes; bagefter
+    føres ugerne tilbage til 1–52. Uden det giver medianen af fx uge 49 og uge 2 en top i uge 11.
+    smal: toppene ligger inden for `smalt` uger, så hele spændet er konklusionen; ellers er spændet kvartilerne.
+    """
+    u = uger.astype(int)
+    over_nytaar = (u >= 40).any() and (u <= 12).any()
+    forskudt = u.where(~(over_nytaar & (u <= 26)), u + 52)
+    tilbage = lambda x: (int(round(x)) - 1) % 52 + 1  # noqa: E731
+    smal = bool(forskudt.max() - forskudt.min() <= smalt)
+    fra, til = ((tilbage(forskudt.min()), tilbage(forskudt.max())) if smal else
+                tuple(tilbage(x) for x in forskudt.quantile([0.25, 0.75])))
+    return fra, til, tilbage(forskudt.median()), smal

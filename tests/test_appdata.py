@@ -128,3 +128,11 @@ def test_indberetning_taeller_mod_en_normal_uge_og_viser_omraader_uden_tal():
     assert indb.loc[0].tolist() == [8, 14]
     assert indb.loc[1].tolist() == [0, 4] and indb.loc[2].tolist() == [8, 10]
     assert appdata.indberetning_tekst(8, 14, 44)[0] == "8 farms reported · 57% of a normal week"
+
+
+def test_topuger_regner_over_nytaar_som_en_cirkel():
+    """Toppe i uge 49 og uge 2 ligger tæt (over nytår); medianen må ikke blive en uge midt i året."""
+    from lakselus import appdata
+    fra, til, median, smal = appdata.topuger(pd.Series([49, 3, 2, 47, 11, 49, 1]))
+    assert median == 1 and fra > til and not smal       # spændet går over nytår
+    assert appdata.topuger(pd.Series([40, 38, 42, 38, 42, 37, 41])) == (37, 42, 40, True)

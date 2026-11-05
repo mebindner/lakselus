@@ -40,12 +40,8 @@ seneste = i_aar.iloc[-1]
 foerste = int(toppe["aar"].min())
 # Ligger toppene tæt, er de ugers spænd konklusionen. Spreder de sig (fx i små nordlige områder), siger "uge 1–49"
 # intet; så vises den typiske top (medianen) og båndet om den midterste halvdel af toppene.
-smal = toppe["uge"].max() - toppe["uge"].min() <= 8
-if smal:
-    fra, til = int(toppe["uge"].min()), int(toppe["uge"].max())
-else:
-    fra, til = (int(round(q)) for q in toppe["uge"].quantile([0.25, 0.75]))
-median_uge = int(round(toppe["uge"].median()))
+fra, til, median_uge, smal = appdata.topuger(toppe["uge"])
+uger_tekst = f"weeks {fra}–{til}" if fra <= til else f"week {fra} to week {til}"  # "uge 49–2" læses dårligt
 # Områder med under 10 anlæg (samme regel som forsiden) får ingen konklusion: én enkelt tælling flytter kurven.
 lille = valg != KYST and panel.loc[panel["omraade"] == valg, "n_lok"].tail(52).median() < 10
 
@@ -53,8 +49,10 @@ lille = valg != KYST and panel.loc[panel["omraade"] == valg, "n_lok"].tail(52).m
 st.markdown(sidehoved(
     f"History · {foerste} to today",
     (f"{navne[valg]} has fewer than 10 farms, so its yearly lice pattern is uncertain" if lille else
-     f"Every year since {foerste}, lice {hvor} peaked between weeks {fra} and {til}" if smal else
-     f"Lice {hvor} usually peak around week {median_uge}, but the timing varies a lot from year to year"),
+     f"Every year since {foerste}, lice {hvor} peaked in {uger_tekst}" if smal else
+     f"Lice {hvor} usually peak "
+     + ("around the turn of the year" if median_uge >= 49 or median_uge <= 3 else f"around week {median_uge}")
+     + f" – half of the yearly peaks fell in {uger_tekst}"),
     f"So far in {nu}, the average {hvor} has reached {top_nu['v']:.2f} adult female lice per fish (week "
     f"{int(top_nu['uge'])}), against a peak of {sidste['v']:.2f} in {int(sidste['aar'])}. Below: every year since "
     f"{foerste} on one chart, and a map that plays every farm week by week.",
@@ -66,22 +64,23 @@ st.markdown(sidehoved(
 # Titlen siger det mest interessante, data viser: står i år højere end sidste års top, eller stiger det stadig,
 # efter at toppen plejer at være passeret?
 over_sidste = top_nu["v"] > sidste["v"]
-stiger_sent = int(top_nu["uge"]) == int(seneste["uge"]) and int(seneste["uge"]) > til
+stiger_sent = int(top_nu["uge"]) == int(seneste["uge"]) and fra <= til and int(seneste["uge"]) > til
 if lille:
     f_titel = f"{nu} so far against every year since {foerste} – fewer than 10 farms, so the curves are noisy"
 elif over_sidste:
-    f_titel = f"{nu} is already above the {int(sidste['aar'])} peak ({top_nu['v']:.2f} in week {int(top_nu['uge'])})"
+    f_titel = (f"{nu} has already been above the {int(sidste['aar'])} peak ({top_nu['v']:.2f} in week "
+               f"{int(top_nu['uge'])}); in week {int(seneste['uge'])} it is {seneste['v']:.2f}")
 elif stiger_sent:
     f_titel = (f"{nu} is still rising in week {int(seneste['uge'])} ({seneste['v']:.2f}) – later than the "
-               f"{'usual' if smal else 'typical'} peak in weeks {fra}–{til}, but below the {int(sidste['aar'])} peak of {sidste['v']:.2f}")
+               f"{'usual' if smal else 'typical'} peak in {uger_tekst}, but below the {int(sidste['aar'])} peak of {sidste['v']:.2f}")
 else:
     f_titel = (f"{nu} so far against every year since {foerste}: {seneste['v']:.2f} in week {int(seneste['uge'])}, "
                f"below the {int(sidste['aar'])} peak of {sidste['v']:.2f}")
 st.markdown(figur(
     next(nr), f_titel,
     f"Adult female lice per fish {hvor}, by ISO week. Grey: {foerste}–{nu - 1}. Navy: {nu}. "
-    + (f"Shaded: weeks {fra}–{til}, where the peak fell in every complete year." if smal else
-       f"Shaded: weeks {fra}–{til}, where the middle half of the yearly peaks fell."),
+    + (f"Shaded: {uger_tekst}, where the peak fell in every complete year." if smal else
+       f"Shaded: {uger_tekst}, where the middle half of the yearly peaks fell."),
 ), unsafe_allow_html=True)
 
 x = alt.X("uge:Q", title="ISO week", scale=alt.Scale(domain=[1, 52], nice=False),
@@ -89,7 +88,10 @@ x = alt.X("uge:Q", title="ISO week", scale=alt.Scale(domain=[1, 52], nice=False)
 y = alt.Y("v:Q", title="Adult female lice per fish")
 tip = [alt.Tooltip("aar:O", title="Year"), alt.Tooltip("uge:Q", title="Week"),
        alt.Tooltip("v:Q", title="Female lice / fish", format=".2f")]
-baand = alt.Chart(pd.DataFrame({"a": [fra], "b": [til]})).mark_rect(color=FARVER["model"], opacity=.12).encode(x="a:Q", x2="b:Q")
+# Går båndet over nytår (fx uge 49 til uge 2), tegnes det som to stykker: 49–52 og 1–2.
+stykker = [(fra, til)] if fra <= til else [(fra, 52), (1, til)]
+baand = alt.Chart(pd.DataFrame(stykker, columns=["a", "b"])).mark_rect(color=FARVER["model"], opacity=.12).encode(
+    x="a:Q", x2="b:Q")
 tidligere = alt.Chart(aar[aar["aar"] < nu]).mark_line(strokeWidth=1.1, color="#9AA7B1", opacity=.75).encode(
     x=x, y=y, detail="aar:O", tooltip=tip)
 i_aar_linje = alt.Chart(i_aar).mark_line(strokeWidth=2.8, color=FARVER["blaek"]).encode(x=x, y=y, tooltip=tip)
