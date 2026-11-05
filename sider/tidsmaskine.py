@@ -15,7 +15,7 @@ st.markdown(sidehoved(
 ), unsafe_allow_html=True)
 
 
-@st.cache_data(show_spinner="Packing seven years of lice counts …", max_entries=2)
+@st.cache_data(show_spinner="Packing lice counts since 2019 …", max_entries=2)
 def side_html(skabelon_aendret: float, data_version: float) -> str:
     # Argumenterne gør, at cachen fornyes, når HTML-skabelonen eller data ændres.
     raa, _, _ = appdata.indlaes()

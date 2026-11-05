@@ -62,8 +62,10 @@ INFO_NAIV = ("The <b>naive forecast</b> simply assumes the coming weeks look lik
              "every model has to beat.")
 INFO_SKILL = (f"<b>Skill</b> compares the model's errors with the naive forecast: 1 − MAE<sub>model</sub> ÷ "
               f"MAE<sub>naive</sub>. 27% means 27% smaller errors; below 0% the model is worse. {INFO_NAIV}")
+# MAE sat i forhold til lusegrænsen, så 0,03 betyder noget for en læser uden for faget.
 INFO_MAE = ("<b>Mean absolute error</b>: the average distance between forecast and actual lice level, in adult female "
-            "lice per fish. Lower is better.")
+            f"lice per fish. Lower is better. For scale: {mae_t.loc[4, valgt]:.3f} four weeks ahead is "
+            f"{mae_t.loc[4, valgt] / 0.5:.0%} of the lice limit of 0.5.")
 INFO_DM = ("The <b>Diebold–Mariano test</b> checks whether the gap in errors between the model and the naive forecast "
            "is bigger than chance would give. p < 0.05: less than a 5% chance of a gap this large if the two were "
            "equally good.")

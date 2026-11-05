@@ -177,7 +177,13 @@ st.markdown(kilde("MAE in adult female lice per fish. The figures move slightly 
             unsafe_allow_html=True)
 
 andre = [m for m in sk_v.columns if m not in BASELINES and m != valgt]
+# Fejlen sat i forhold til noget, man kender: lusegrænsen og det typiske niveau i testperioden.
+niveau = ev.periode(panel.rename(columns={"uge_start": "origin"}), ev.TEST)["hunlus"].mean()
+mae4 = mae_t.loc[4, valgt]
 tekst(
+    f"<p><b>What the error means.</b> Four weeks ahead the forecast is off by {mae4:.3f} adult female lice per fish "
+    f"on average. That is {mae4 / 0.5:.0%} of the lice limit of 0.5, and {mae4 / niveau:.0%} of the typical area "
+    f"level in the test period ({niveau:.2f} lice per fish).</p>"
     "<p><b>Reading the results.</b> One week ahead the naive forecast is hard to beat: lice levels change slowly. The "
     "gain grows with the horizon, because the model picks up the seasonal rhythm and momentum that matter more "
     f"further out. On validation, {NAVNE[valgt].lower()} had a mean skill of {sk_v[valgt].mean():.1%}, against "

@@ -7,7 +7,7 @@
 How many adult female sea lice (*lakselus*) are on the salmon in Norway's fish farms, how does that
 change through the year, and can the level be forecast 1–4 weeks ahead better than a simple rule of thumb?
 
-The project pulls weekly lice counts from more than 1,200 sites (2019 → today), aggregates them by
+The project pulls weekly lice counts from about 1,050 sites (2019 → today), aggregates them by
 production area (*produksjonsområde*) and presents them in a Streamlit app built like a weekly
 consulting report. The forecasts are evaluated honestly against naive baselines.
 
@@ -49,8 +49,8 @@ Playback runs entirely in the browser: ~1,000 sites × ~400 weeks are packed as 
 ### 3. Forecast – what happens next, and how far to trust it
 The page is split in two. First, for everyone: the 1–4 week forecast for the chosen area in plain language
 (it opens on the area picked on the Latest week page), with an 80% range, and how much each treatment type
-lowers lice compared with similar untreated sites. Then, for the technically curious: a comparison of seven
-models, the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
+lowers lice compared with similar untreated sites. Then, for the technically curious: a comparison of eight
+models (two naive benchmarks and six candidates), the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
 and the Diebold–Mariano test.
 
 ### 4. About – data, methods and changes
