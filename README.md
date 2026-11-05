@@ -2,7 +2,7 @@
 
 **Live app: [lakselus.streamlit.app](https://lakselus.streamlit.app)** – updated automatically every week.
 
-[![Time machine: adult female lice per fish at every Norwegian fish farm, week 42 2026](docs/social-preview.png)](https://lakselus.streamlit.app)
+[![Adult female lice per fish at every Norwegian fish farm, week 42 2026](docs/social-preview.png)](https://lakselus.streamlit.app)
 
 How many adult female sea lice (*lakselus*) are on the salmon in Norway's fish farms, how does that
 change through the year, and can the level be forecast 1–4 weeks ahead better than a simple rule of thumb?
@@ -45,13 +45,15 @@ lowers lice compared with similar untreated sites. Then, for the technically cur
 models (two naive benchmarks and six candidates), the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
 and the Diebold–Mariano test.
 
-### 3. History – 3D map week by week
-A 3D map where every site is a column that grows with the lice count. Play the period from 2019 to
-today and watch lice build up in late summer and fall again in winter. Includes a timeline, speed
-control and the ability to rotate and tilt the map.
+### 3. History – is this year worse than usual?
+One line per year for the coast-wide lice level (or one production area), with this year highlighted and the weeks
+where the peak usually falls shaded. The headline is computed from the data, e.g. "Every year since 2019, lice along
+the coast peaked between weeks 37 and 42", and the chart title says where this year stands against last year's peak.
+Areas with fewer than 10 farms get no conclusion.
 
-Playback runs entirely in the browser: ~1,000 sites × ~400 weeks are packed as one byte per value
-(≈ 0.6 MB) and rendered with deck.gl. The coastline is drawn from Natural Earth, so no map API key is needed.
+Below it, a flat map plays every farm as a dot, week by week from 2019 to today. Playback runs entirely in the
+browser: ~1,000 farms × ~400 weeks are packed as one byte per value (≈ 0.6 MB) and rendered with deck.gl. The
+coastline is drawn from Natural Earth, so no map API key is needed.
 
 ### 4. Currents – how the water moved in the same week
 Sea lice larvae drift with the water for days before they can attach to a fish. This page animates the daily mean
@@ -197,7 +199,7 @@ The code uses Danish identifiers and comments (the author is Danish); the app an
 app.py                     navigation and shared layout
 sider/
   oversigt.py              Latest week: search, summary, exhibits, method
-  tidsmaskine.py           History: 3D map played week by week
+  tidsmaskine.py           History: year-by-year chart and a dot map played week by week
   prognose.py              Forecast: forecast and treatment effects, then model evaluation
   havstroem.py             Currents: animated surface currents with the week's lice counts
   om.py                    About: data, methods, limitations and changelog

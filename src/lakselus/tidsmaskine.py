@@ -1,4 +1,4 @@
-"""Tidsmaskinen: pakker ugentlige lusetal pr. lokalitet kompakt til et 3D-kort, der afspilles i browseren.
+"""Tidsmaskinen: pakker ugentlige lusetal pr. lokalitet kompakt til et fladt kort, der afspilles i browseren.
 
 Indhold
 1. Pakning   – én byte pr. (uge, lokalitet), base64-kodet
