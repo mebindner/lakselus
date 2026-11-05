@@ -1,10 +1,10 @@
-"""Streamlit-app med tre sider (engelsk UI). Start med:  streamlit run app.py
+"""Streamlit-app med fire sider (engelsk UI). Start med:  streamlit run app.py
 
 Indhold
 0. Friske moduler – genindlæs lakselus-pakken, hvis koden er ændret, mens appen kørte
 1. Opsætning   – sidetitel, ordmærke i topbjælken og fælles designsystem (CSS)
 2. Data        – indlæses én gang; uden data vises en vejledning i stedet for siderne
-3. Navigation  – Latest week, History og Forecast i topbjælken
+3. Navigation  – Latest week, History, Forecast og About i topbjælken
 4. Fodnote     – About (hvem, data, metode, kode), opdateringsstatus og kildeangivelse (krav i BarentsWatch' vilkår)
 """
 
@@ -81,6 +81,7 @@ side = st.navigation(
         st.Page("sider/oversigt.py", title="Latest week", icon=":material/map:", default=True),
         st.Page("sider/tidsmaskine.py", title="History", icon=":material/view_in_ar:"),
         st.Page("sider/prognose.py", title="Forecast", icon=":material/insights:"),
+        st.Page("sider/om.py", title="About", icon=":material/info:", url_path="about"),
     ],
     position="top",
 )
@@ -99,7 +100,7 @@ st.markdown(
     'Food Safety Authority (Mattilsynet) and published by BarentsWatch under the NLOD licence. New counts arrive '
     'every Wednesday; the pages show the latest week that is fully reported.</div>'
     '<div><b>Method</b>Area figures are plain means over the sites that counted, not weighted by fish. Forecasts are '
-    'tested week by week on seasons the models never saw. Every page ends with its own notes on method and caveats. '
+    'tested week by week on seasons the models never saw. The About page explains data, models, limitations and changes. '
     'Figures and forecasts are statistical estimates, not advice, and come with no guarantee.</div>'
     '<div><b>Code</b>Python, pandas, scikit-learn, Streamlit, Altair and deck.gl, open source on '
     '<a href="https://github.com/mebindner/lakselus" target="_blank">GitHub</a>. Developed with AI-assisted coding '

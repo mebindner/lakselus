@@ -17,7 +17,7 @@ project – analysis of open data, not prepared for or by any company.
 Developed with AI-assisted coding (Claude). Problem framing, methodology, model validation and all
 design decisions are my own.
 
-## The app – three pages
+## The app – four pages
 
 ### 1. Latest week – weekly brief in consulting format
 Structured like a report deliverable:
@@ -52,6 +52,12 @@ The page is split in two. First, for everyone: the 1–4 week forecast for the c
 lowers lice compared with similar untreated sites. Then, for the technically curious: a comparison of seven
 models, the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
 and the Diebold–Mariano test.
+
+### 4. About – data, methods and changes
+One place for everything a critical reader wants to know: where the data come from and how they are processed,
+how the forecast is built and tested (with the current test figures computed from the backtest), how the
+treatment-effect study works, what the figures cannot tell you, and a changelog of every change that affects the
+figures.
 
 An **About** section at the bottom of every page sums up who built it, the data, the method and the code.
 
@@ -179,6 +185,7 @@ sider/
   oversigt.py              Latest week: search, summary, exhibits, method
   tidsmaskine.py           History: 3D map played week by week
   prognose.py              Forecast: forecast and treatment effects, then model evaluation
+  om.py                    About: data, methods, limitations and changelog
 src/lakselus/
   barentswatch.py          API client (OAuth2 client credentials)
   hent.py                  fetches raw data into a local cache
