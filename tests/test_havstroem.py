@@ -78,3 +78,11 @@ def test_publicerede_stroemme_passer_til_kortet():
     assert p["u"].shape == p["v"].shape and p["u"].shape[0] == 7
     assert not h.kvalitetstjek({"u": np.where(p["u"] == -128, np.nan, p["u"] * p["skala"]),
                                 "v": np.where(p["v"] == -128, np.nan, p["v"] * p["skala"])})
+
+
+def test_fart_ved_anlaeg_regner_km_pr_doegn_og_udelader_fjordanlaeg():
+    p = h.pak(h.til_mercator(syntetisk_model()), pd.Timestamp("2026-10-26"))
+    anlaeg = pd.DataFrame({"lat": [60.5, 61.0], "lon": [4.5, 10.0]})  # i havet · langt inde i landet
+    ud = h.fart_ved_anlaeg(p, anlaeg)
+    assert ud["km_dag"].iloc[0] == pytest.approx(0.2 * 86.4)  # 0,2 m/s ≈ 17 km pr. døgn
+    assert pd.isna(ud["km_dag"].iloc[1])

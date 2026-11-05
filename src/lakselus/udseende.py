@@ -79,6 +79,12 @@ header[data-testid="stHeader"] button, header[data-testid="stHeader"] [data-test
 header[data-testid="stHeader"] [data-testid="stTopNavLink"][aria-current="page"] [data-testid="stIconMaterial"] {
   color: #B7C47E !important; }
 [data-testid="stTopNavLink"]:focus-visible { outline: 2px solid #A3B26A; outline-offset: 2px; }
+/* Efter menuens øvrige regler, så den vinder. Mellemstore skærme: uden ikoner er der plads til alle fem menupunkter, så About ikke gemmes under "1 more" */
+@media (max-width: 1180px) {
+  [data-testid="stTopNavLink"] [data-testid="stIconMaterial"] { display: none; }
+  [data-testid="stTopNavLink"] { padding-left: .55rem !important; padding-right: .55rem !important; }
+  [data-testid="stHeaderLogo"], [data-testid="stLogo"] { margin-right: .6rem; }
+}
 /* På mobil foldes siderne sammen bag en knap – giv den en tydelig "Pages"-etiket */
 [data-testid="stExpandSidebarButton"] { width: auto !important; gap: .35rem; padding: 0 .7rem !important;
   border: 1px solid rgba(255,255,255,.35) !important; border-radius: 6px; color: #FFFFFF !important; }

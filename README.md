@@ -38,20 +38,20 @@ Structured like a report deliverable:
   i.e. the infection pressure from its neighbours. Clicking the map or a bar makes the same choice, and the choice is
   kept in the URL (`?po=3`, `?site=12345`), so a page can be bookmarked and shared.
 
-### 2. History – 3D map week by week
+### 2. Forecast – what happens next, and how far to trust it
+The page is split in two. First, for everyone: the 1–4 week forecast for the chosen area in plain language
+(it opens on the area picked on the Latest week page), with an 80% range, and how much each treatment type
+lowers lice compared with similar untreated sites. Then, for the technically curious: a comparison of eight
+models (two naive benchmarks and six candidates), the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
+and the Diebold–Mariano test.
+
+### 3. History – 3D map week by week
 A 3D map where every site is a column that grows with the lice count. Play the period from 2019 to
 today and watch lice build up in late summer and fall again in winter. Includes a timeline, speed
 control and the ability to rotate and tilt the map.
 
 Playback runs entirely in the browser: ~1,000 sites × ~400 weeks are packed as one byte per value
 (≈ 0.6 MB) and rendered with deck.gl. The coastline is drawn from Natural Earth, so no map API key is needed.
-
-### 3. Forecast – what happens next, and how far to trust it
-The page is split in two. First, for everyone: the 1–4 week forecast for the chosen area in plain language
-(it opens on the area picked on the Latest week page), with an 80% range, and how much each treatment type
-lowers lice compared with similar untreated sites. Then, for the technically curious: a comparison of eight
-models (two naive benchmarks and six candidates), the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
-and the Diebold–Mariano test.
 
 ### 4. Currents – how the water moved in the same week
 Sea lice larvae drift with the water for days before they can attach to a fish. This page animates the daily mean

@@ -5,8 +5,8 @@ sig – partiklerne er vand, ikke lus. Strømmen kommer fra MET Norways havmodel
 kørsel (python -m lakselus.havstroem); anlæggene farves efter ugens lusetal.
 
 Indhold
-1. Data         – strømfeltet og ugens lusetal pr. lokalitet
-2. Sidehoved
+1. Data         – strømfeltet, ugens lusetal pr. lokalitet og vandets fart ved anlæggene (km pr. døgn)
+2. Sidehoved og resumé – konklusionen i ét tal, forskellen mellem områderne og hvor mange anlæg tallet bygger på
 3. Kortet       – partikelanimation i browseren (havstroem.html)
 4. Metode og forbehold
 """
@@ -15,11 +15,11 @@ import pandas as pd
 import streamlit as st
 
 from lakselus import appdata, havstroem
-from lakselus.udseende import sidehoved
+from lakselus.udseende import resume, sidehoved
 
 # --- 1. Data --------------------------------------------------------------------------------
 pakke = havstroem.indlaes()
-raa, panel, _ = appdata.indlaes()
+raa, panel, navne = appdata.indlaes()
 if pakke is None:
     st.info("No current data yet. Run `python -m lakselus.havstroem`.")
     st.stop()
@@ -27,16 +27,40 @@ uge_start = pd.Timestamp(pakke["uge_start"])
 iso = uge_start.isocalendar()
 anlaeg = havstroem.anlaeg_i_ugen(raa, uge_start)
 
-# --- 2. Sidehoved ---------------------------------------------------------------------------
+# Hvor hurtigt flyttede vandet sig ved anlæggene? Et tal alle kan forholde sig til: km pr. døgn.
+ugens = raa[(raa["har_talt"] == "Ja") & (raa["uge_start"] == uge_start)].dropna(subset=["lat", "lon", "omraade"])
+fart = havstroem.fart_ved_anlaeg(pakke, ugens)
+maalt = fart.dropna(subset=["km_dag"])
+km_dag = maalt["km_dag"].median()
+# Områder med færre end 10 målte anlæg bruges ikke i konklusionen (samme regel som på forsiden).
+pr_omr = maalt.groupby(maalt["omraade"].astype(int))["km_dag"].agg(["median", "size"]).query("size >= 10")
+hurtig, langsom = pr_omr["median"].idxmax(), pr_omr["median"].idxmin()
+
+# --- 2. Sidehoved og resumé -------------------------------------------------------------------
 st.markdown(sidehoved(
     f"Currents · week {iso.week}, {iso.year}",
-    "Sea lice larvae drift with the water – this is how the surface moved along the coast",
-    "Lice larvae spend their first days drifting before they can attach to a fish, so the current decides where "
-    "they end up. The particles show the daily mean surface current from MET Norway's ocean model; the dots are the "
-    f"farms, coloured by their lice count in the same week. Week {iso.week} is the latest week with complete lice counts.",
+    f"Near the farms, the surface water moved about {km_dag:.0f} km a day in week {iso.week} – "
+    f"fastest in {navne[hurtig]}",
+    "Sea lice larvae drift with the water for days before they can attach to a fish, so the current carries lice "
+    "from one farm to its neighbours and to wild salmon. The map shows how the surface water moved, day by day, with "
+    "every farm coloured by its lice count in the same week.",
     [("live", appdata.opdatering_tekst(panel)), ("waves", "Daily mean surface current, 7 days"),
      ("location_on", f"{len(anlaeg):,} farms that counted lice")],
 ), unsafe_allow_html=True)
+INFO_KM = ("The daily mean surface current at the model cell nearest each farm, times one day; the median over farms "
+           "and the seven days. The cell is often just outside the farm, in the open water in front of it, because the "
+           "map's grid is about 3 km.")
+st.markdown(resume([
+    (f"{km_dag:.0f} km", f"a day: how far the surface water moved near a typical farm in week {iso.week}. "
+                         "A larva drifting for several days can end up well beyond the neighbouring farm.", INFO_KM),
+    (f"{pr_omr.loc[hurtig, 'median']:.0f} vs {pr_omr.loc[langsom, 'median']:.0f} km",
+     f"a day in {navne[hurtig]} against {navne[langsom]} – the fastest and slowest of the "
+     f"{len(pr_omr)} areas with at least 10 farms measured.",
+     "Median over the area's farms. Areas with fewer than 10 farms are left out, as one farm can decide the figure."),
+    (f"{len(maalt):,}", f"of the {len(fart):,} farms that counted lice are in the figures. The other "
+                        f"{len(fart) - len(maalt)} lie deep in fjords narrower than the map's grid.",
+     f"A farm counts if a model cell with water lies within {havstroem.MAKS_ANLAEG_KM:.0f} km."),
+]), unsafe_allow_html=True)
 
 
 # --- 3. Kortet ------------------------------------------------------------------------------

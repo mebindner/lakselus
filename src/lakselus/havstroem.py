@@ -226,6 +226,27 @@ def anlaeg_i_ugen(raa: pd.DataFrame, uge_start: pd.Timestamp) -> list[list]:
             for r in u.itertuples()]
 
 
+MAKS_ANLAEG_KM = 3.0  # anlæg længere fra nærmeste havcelle end dette ligger i en fjord, gitteret ikke viser
+
+
+def fart_ved_anlaeg(pakke: dict, anlaeg: pd.DataFrame) -> pd.DataFrame:
+    """Hvor langt overfladevandet flyttede sig pr. døgn ved hvert anlæg (km/døgn), som snit over ugens dage.
+
+    Døgnmiddelstrømmen i nærmeste havcelle gange ét døgn. Cellen ligger ofte lidt ude i det åbne vand foran
+    anlægget (gitteret er ca. 3 km), så tallet beskriver vandet, der passerer anlæggenes område. Anlæg mere end
+    MAKS_ANLAEG_KM fra en havcelle får NaN.
+    """
+    lons, lats = maalgitter()
+    r, c = np.nonzero(pakke["u"][0] != -128)
+    traer = cKDTree(_enhedsvektor(lats[r], lons[c]))
+    afstand, i = traer.query(_enhedsvektor(anlaeg["lat"].to_numpy(float), anlaeg["lon"].to_numpy(float)))
+    u = pakke["u"][:, r[i], c[i]] * float(pakke["skala"])
+    v = pakke["v"][:, r[i], c[i]] * float(pakke["skala"])
+    km_dag = np.hypot(u, v).mean(axis=0) * 86.4  # m/s → km pr. døgn
+    afstand_km = afstand * JORD_KM
+    return anlaeg.assign(afstand_km=afstand_km, km_dag=np.where(afstand_km <= MAKS_ANLAEG_KM, km_dag, np.nan))
+
+
 # --- 7. Kommandolinje -------------------------------------------------------------------------
 
 def main() -> None:
