@@ -325,7 +325,8 @@ def figur2_titel(vindere: pd.Index, skill: pd.Series) -> str:
 
 
 st.markdown(figur(
-    next(nr), figur2_titel(o["skill_test"].columns[(o["skill_test"] > 0).all()], o["skill_test"].mean().drop("naiv")),
+    # En model "slår" den naive prognose, når forbedringen kan ses i tabellen (mindst +1 %) på alle fire horisonter.
+    next(nr), figur2_titel(o["skill_test"].columns[(o["skill_test"] > 0.005).all()], o["skill_test"].mean().drop("naiv")),
     f"Mean absolute error (MAE) in female lice per fish in the test period ({test_fra}→), skill vs. naive and "
     "Diebold–Mariano p-value. The model was selected on the 2023–24 validation period.",
 ), unsafe_allow_html=True)

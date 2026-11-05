@@ -235,7 +235,7 @@ tekst(
 # Kun ændringer, der påvirker tal, metode eller hvad siderne viser – ikke design og drift.
 # Tallene er fra commit-beskeden på den pågældende dag og kan afvige lidt fra dagens tal ovenfor.
 st.markdown(afsnit("5 · Changelog", "Changes to data, methods and models",
-                   "Changes that affect the figures. Design-only and technical changes are left out; the full history "
+                   "Changes to the data, methods and pages. Design-only and technical changes are left out; the full history "
                    "is on GitHub."), unsafe_allow_html=True)
 LOG = [
     ("2026-11-05", "<b>Currents page added.</b> An animated map of the daily mean surface current from MET Norway's "

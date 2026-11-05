@@ -75,15 +75,15 @@ st.iframe(side_html(havstroem.SKABELON.stat().st_mtime, havstroem.APP_FIL.stat()
 
 # --- 4. Metode og forbehold -------------------------------------------------------------------
 st.markdown(
-    '<div class="metode"><b>What the map shows.</b> Each particle follows the daily mean current in the top metre of '
-    "the sea, from MET Norway's NorKyst v3 ocean model (800 m grid, shown here on a grid of about 3 km). The daily "
+    '<div class="metode"><b>What the map shows.</b> Each particle follows the daily mean current at the sea surface '
+    "(the model's top level), from MET Norway's NorKyst v3 ocean model (800 m grid, shown here on a grid of about 3 km). The daily "
     "mean is taken over every third hour, which smooths out the tide and leaves the current that actually moves "
     "water along the coast over days. Brighter and longer streaks mean faster water. The animation is sped up "
     "many thousand times, so it shows direction and relative speed, not how fast a particle really travels."
     "<br><br><b>What it does not show.</b> The particles are water, not lice. Where larvae from a farm end up also "
     "depends on how many lice and fish the farm has, how long larvae survive at the sea temperature, and how they "
     "move up and down in the water. The Institute of Marine Research (Havforskningsinstituttet) models this in its "
-    "official infection-pressure map, which the traffic-light system builds on. Narrow fjords and sounds are "
+    "official infection-pressure map, which the traffic-light assessment draws on. Narrow fjords and sounds are "
     "smoothed at 3 km, so currents close to many farms are only roughly shown."
     "<br><br><b>Source.</b> Surface currents: NorKyst v3, Norwegian Meteorological Institute (MET Norway), "
     "CC BY 4.0. Lice counts: BarentsWatch / Mattilsynet, NLOD. Coastline: Natural Earth.</div>",

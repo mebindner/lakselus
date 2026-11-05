@@ -49,7 +49,8 @@ def aendring_tekst(nu: float, foer: float) -> str:
     if pd.isna(nu) or pd.isna(foer) or not foer:
         return "–"
     if max(nu, foer) < LAVT_NIVEAU:
-        return f"{nu - foer:+.2f}".replace("-", "−")
+        d = round(nu - foer, 2)
+        return "0.00" if d == 0 else f"{d:+.2f}".replace("-", "−")  # ingen "−0.00", når ændringen afrundes til nul
     return pct(nu / foer - 1, True)
 
 
@@ -881,8 +882,8 @@ st.markdown(
     '<div class="metode"><b>Method and caveats.</b> Data are weekly lice counts per site from BarentsWatch '
     "(reported to the Norwegian Food Safety Authority). Area figures are unweighted means over sites that counted "
     "lice that week; the number of fish per site is not included. Farms report a week's counts during the following "
-    "week, so the brief usually trails the calendar by 1–2 weeks: the latest week is only included once at least "
-    "80% of sites have reported. The lice limit is 0.5 adult female lice per fish (0.2 during the spring weeks). "
+    "week, so the brief usually trails the calendar by 1–2 weeks: the latest week is only included once the number of "
+    "sites that have counted reaches 80% of the median of the eight weeks before. The lice limit is 0.5 adult female lice per fish (0.2 during the spring weeks). "
     "The traffic light is the colour the government had set for each production area in the week shown. It is decided "
     "every second year from estimated lice-induced mortality in wild salmon, so an area can be red even when its farms "
     "are below the lice limit. The analysis is independent "
