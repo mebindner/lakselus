@@ -577,11 +577,11 @@ with venstre:
 # 4d. Søjler: alle områder – eller hvert anlæg i det valgte område
 # Grænselinjer: 0,2 i forårsugerne og den almindelige grænse på 0,5. Teksterne står på hver sin linje.
 graenser = pd.DataFrame({"x": [0.2, 0.5], "t": ["0.2 spring weeks", "0.5 lice limit"]})
-linjer = alt.Chart(graenser).mark_rule(strokeDash=[3, 3], color="#D64545", opacity=.7).encode(x="x:Q")
+linjer = alt.Chart(graenser).mark_rule(strokeDash=[3, 3], color="#D64545", opacity=.7, tooltip=None).encode(x="x:Q")
 linjetekst = (
-    alt.Chart(graenser.iloc[[0]]).mark_text(align="left", dx=3, fontSize=10, color="#D64545")
+    alt.Chart(graenser.iloc[[0]]).mark_text(tooltip=None, align="left", dx=3, fontSize=10, color="#D64545")
     .encode(x="x:Q", y=alt.value(-16), text="t:N")
-    + alt.Chart(graenser.iloc[[1]]).mark_text(align="right", dx=-3, fontSize=10, color="#D64545")
+    + alt.Chart(graenser.iloc[[1]]).mark_text(tooltip=None, align="right", dx=-3, fontSize=10, color="#D64545")
     .encode(x="x:Q", y=alt.value(-4), text="t:N")
 )
 farveskala = alt.Scale(domain=["lav", "mellem", "hoej"], range=[LUS_FARVER["lav"], LUS_FARVER["mellem"], LUS_FARVER["hoej"]])
@@ -606,7 +606,7 @@ with hoejre:
             tooltip=[alt.Tooltip("etiket:N", title="Area"), alt.Tooltip("hunlus:Q", title="Female lice", format=".3f"),
                      alt.Tooltip("n_lok:Q", title="Farms")],
         ).add_params(alt.selection_point(name="vaelg", fields=["omraade"]))
-        tekster = alt.Chart(rang).mark_text(align="left", dx=4, fontSize=11, color="#1B2B36").encode(
+        tekster = alt.Chart(rang).mark_text(tooltip=None, align="left", dx=4, fontSize=11, color="#1B2B36").encode(
             x="hunlus:Q", y=y, text="tekst:N")
         st.altair_chart((soejler + tekster + linjer + linjetekst).properties(height=440), width="stretch",
                         on_select=fra_soejler, key=f"rang_{n}")
@@ -646,10 +646,10 @@ with hoejre:
             tooltip=[alt.Tooltip("lokalitet_navn:N", title="Farm"), alt.Tooltip("hunlus:Q", title="Female lice", format=".2f"),
                      alt.Tooltip("temp:Q", title="Sea temp. °C", format=".1f")],
         ).add_params(alt.selection_point(name="vaelg", fields=["lokalitet"]))
-        tekster = alt.Chart(omr_anlaeg).mark_text(align="left", dx=4, fontSize=10, color="#1B2B36").encode(
+        tekster = alt.Chart(omr_anlaeg).mark_text(tooltip=None, align="left", dx=4, fontSize=10, color="#1B2B36").encode(
             x="x_vis:Q", y=y, text="tekst_vis:N")
-        snit_linje = alt.Chart(pd.DataFrame({"x": [s.hunlus]})).mark_rule(color=FARVER["blaek"], strokeWidth=1.2).encode(x="x:Q")
-        omr_graenser = alt.Chart(graenser).mark_rule(strokeDash=[4, 3], color="#D64545", strokeWidth=1.2).encode(x="x:Q")
+        snit_linje = alt.Chart(pd.DataFrame({"x": [s.hunlus]})).mark_rule(color=FARVER["blaek"], strokeWidth=1.2, tooltip=None).encode(x="x:Q")
+        omr_graenser = alt.Chart(graenser).mark_rule(strokeDash=[4, 3], color="#D64545", strokeWidth=1.2, tooltip=None).encode(x="x:Q")
         graf = soejler + tekster + snit_linje + omr_graenser
         # Lange områder rulles i en ramme med samme højde som kortet.
         with st.container(height=360, border=False):
@@ -804,13 +804,13 @@ def lag(hoejde: int, akse_str: int = 9, x_titel: str | None = None) -> list:
     basis = alt.Chart().encode(x=alt.X("uge:Q", title=x_titel, scale=alt.Scale(domain=[1, 52]),
                                        axis=alt.Axis(values=[1, 13, 26, 39, 52], grid=False, labelFontSize=akse_str)))
     return [
-        basis.mark_area(color=FARVER["taage"], opacity=.35).encode(
+        basis.mark_area(color=FARVER["taage"], opacity=.35, tooltip=None).encode(
             y=alt.Y("lav:Q", title=None, axis=alt.Axis(values=[0, 0.5, 1], format=".1f", labelFontSize=akse_str)), y2="hoej:Q"),
         basis.mark_line(color=FARVER["skifer"], strokeDash=[3, 2], strokeWidth=1).encode(y="snit:Q"),
         basis.mark_line(color=FARVER["serie"], strokeWidth=2).encode(y="i_aar:Q"),
         # Annotation: seneste uges værdi markeres og skrives direkte i panelet.
         basis.mark_circle(color=FARVER["serie"], size=26, opacity=1).encode(y="i_aar:Q").transform_filter("datum.er_sidste"),
-        basis.mark_text(align="left", dx=5, fontSize=akse_str + 1, fontWeight=600, color=FARVER["serie"]).encode(
+        basis.mark_text(tooltip=None, align="left", dx=5, fontSize=akse_str + 1, fontWeight=600, color=FARVER["serie"]).encode(
             y="i_aar:Q", text=alt.Text("i_aar:Q", format=".2f")).transform_filter("datum.er_sidste"),
         # Usynlige søjler over hele panelet, så man kan klikke hvor som helst i det
         basis.mark_rect(opacity=0.001, cursor="pointer").encode(
@@ -838,8 +838,8 @@ if valgt is not None:
     st.markdown(f'<div class="stort-panel-hoved"><b>PO {valgt} · {navne[valgt]}</b><span>{i_aar} against '
                 f'{foerste}–{i_aar - 1}</span></div>', unsafe_allow_html=True)
     graense_df = pd.DataFrame({"y": [0.5], "uge": [1], "t": ["0.5 lice limit"]})
-    stor_graense = (alt.Chart(graense_df).mark_rule(color="#D64545", strokeDash=[3, 3], opacity=.6).encode(y="y:Q")
-                    + alt.Chart(graense_df).mark_text(align="left", dx=4, dy=-6, fontSize=10, color="#D64545").encode(
+    stor_graense = (alt.Chart(graense_df).mark_rule(color="#D64545", strokeDash=[3, 3], opacity=.6, tooltip=None).encode(y="y:Q")
+                    + alt.Chart(graense_df).mark_text(tooltip=None, align="left", dx=4, dy=-6, fontSize=10, color="#D64545").encode(
                         x=alt.X("uge:Q", scale=alt.Scale(domain=[1, 52])), y="y:Q", text="t:N"))
     stor = alt.layer(*lag(240, 11, "ISO week")[:-1], data=sm[sm["omraade"] == valgt]) + stor_graense
     st.altair_chart(stor.properties(height=240), width="stretch")

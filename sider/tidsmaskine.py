@@ -90,18 +90,18 @@ tip = [alt.Tooltip("aar:O", title="Year"), alt.Tooltip("uge:Q", title="Week"),
        alt.Tooltip("v:Q", title="Female lice / fish", format=".2f")]
 # Går båndet over nytår (fx uge 49 til uge 2), tegnes det som to stykker: 49–52 og 1–2.
 stykker = [(fra, til)] if fra <= til else [(fra, 52), (1, til)]
-baand = alt.Chart(pd.DataFrame(stykker, columns=["a", "b"])).mark_rect(color=FARVER["model"], opacity=.12).encode(
+baand = alt.Chart(pd.DataFrame(stykker, columns=["a", "b"])).mark_rect(color=FARVER["model"], opacity=.12, tooltip=None).encode(
     x="a:Q", x2="b:Q")
 tidligere = alt.Chart(aar[aar["aar"] < nu]).mark_line(strokeWidth=1.1, color="#9AA7B1", opacity=.75).encode(
     x=x, y=y, detail="aar:O", tooltip=tip)
 i_aar_linje = alt.Chart(i_aar).mark_line(strokeWidth=2.8, color=FARVER["blaek"]).encode(x=x, y=y, tooltip=tip)
 punkt = alt.Chart(i_aar.tail(1)).mark_point(filled=True, size=60, color=FARVER["blaek"]).encode(x=x, y=y, tooltip=tip)
 # Direkte etiketter i stedet for en forklaring: i år ved seneste punkt, sidste år ved sin top.
-etiket_nu = alt.Chart(i_aar.tail(1).assign(t=f"{nu}: {seneste['v']:.2f}")).mark_text(
+etiket_nu = alt.Chart(i_aar.tail(1).assign(t=f"{nu}: {seneste['v']:.2f}")).mark_text(tooltip=None, 
     align="right", dx=-6, dy=-12, fontSize=12, fontWeight=600, color=FARVER["blaek"]).encode(x=x, y=y, text="t:N")
-etiket_sidst = alt.Chart(toppe.tail(1).assign(t=f"{int(sidste['aar'])} peak")).mark_text(
+etiket_sidst = alt.Chart(toppe.tail(1).assign(t=f"{int(sidste['aar'])} peak")).mark_text(tooltip=None, 
     align="left", dx=6, dy=-6, fontSize=11, color="#5B6B78").encode(x=x, y=y, text="t:N")
-baand_tekst = alt.Chart(pd.DataFrame({"x": [fra], "t": ["usual peak" if smal else "typical peak"]})).mark_text(
+baand_tekst = alt.Chart(pd.DataFrame({"x": [fra], "t": ["usual peak" if smal else "typical peak"]})).mark_text(tooltip=None, 
     align="left", baseline="top", dx=4, dy=4, fontSize=10, color=FARVER["model"]).encode(
     x="x:Q", y=alt.value(0), text="t:N")
 st.altair_chart((baand + tidligere + i_aar_linje + punkt + etiket_nu + etiket_sidst + baand_tekst).properties(height=340),

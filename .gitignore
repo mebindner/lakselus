@@ -30,3 +30,4 @@ venv/
 # Byggeartefakter
 build/
 dist/
+video-venv/
