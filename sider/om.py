@@ -66,7 +66,7 @@ st.markdown(sidehoved(
     "Where the data come from, how they are processed, how the forecast is built and tested, what the analysis "
     "cannot tell you, and what has changed along the way. Figures on this page are computed from the same "
     "backtest the Forecast page uses, so they update every week.",
-    [("live", appdata.opdatering_tekst(panel)), ("database", f"{n_lok:,} sites · {fra_aar}→"),
+    [("live", appdata.opdatering_tekst(panel)), ("database", f"{n_lok:,} farms · {fra_aar}→"),
      ("model_training", f"Selected model: {NAVNE[valgt]}")],
 ), unsafe_allow_html=True)
 
@@ -76,21 +76,21 @@ st.markdown(afsnit("1 · Data", "Weekly lice counts from every Norwegian salmon 
             unsafe_allow_html=True)
 tekst(
     "<p><b>Source.</b> Every marine salmon and trout farm in Norway must count sea lice and report weekly to the "
-    "Norwegian Food Safety Authority (Mattilsynet). BarentsWatch publishes the reports per site: adult female lice, "
+    "Norwegian Food Safety Authority (Mattilsynet). BarentsWatch publishes the reports per farm: adult female lice, "
     "mobile and attached lice per fish, sea temperature and lice treatments, plus the production-area boundaries and "
-    f"the government traffic lights. The app uses all {n_lok:,} sites that have reported counts since {fra_aar}, "
+    f"the government traffic lights. The app uses all {n_lok:,} farms (farm sites, <i>lokaliteter</i>) that have reported counts since {fra_aar}, "
     "under the Norwegian Licence for Open Government Data (NLOD).</p>"
     "<p><b>Processing.</b></p><ul>"
-    "<li><b>Area figures are unweighted means</b> over the sites that counted lice that week. The number of fish "
-    "per site is not in the open data, so a small site weighs as much as a large one. The figures describe the "
-    "typical site in an area, not the total number of lice in the water.</li>"
-    "<li><b>Only counted weeks are used.</b> Weeks where a site reports no count (fallow sites, or low "
+    "<li><b>Area figures are unweighted means</b> over the farms that counted lice that week. The number of fish "
+    "per farm is not in the open data, so a small farm weighs as much as a large one. The figures describe the "
+    "typical farm in an area, not the total number of lice in the water.</li>"
+    "<li><b>Only counted weeks are used.</b> Weeks where a farm reports no count (fallow farms, or low "
     "temperatures, when counting is required less often) are left out rather than set to zero.</li>"
     "<li><b>The latest week waits for complete reporting.</b> Farms report a week's counts during the following "
-    "week. A week is included once the number of sites that have counted reaches 80% of the median of the eight "
+    "week. A week is included once the number of farms that have counted reaches 80% of the median of the eight "
     "weeks before, so the app usually trails the calendar by 1–2 weeks.</li>"
-    "<li><b>Areas with fewer than 10 sites</b> are shown but flagged and are not used for headline conclusions, as a "
-    "single site can move the mean a lot.</li></ul>"
+    "<li><b>Areas with fewer than 10 farms</b> are shown but flagged and are not used for headline conclusions, as a "
+    "single farm can move the mean a lot.</li></ul>"
     "<p><b>Lice limit and traffic light.</b> The lice limit is 0.5 adult female lice per fish, and 0.2 during the "
     "spring weeks, when wild salmon smolts migrate out to sea. The traffic light (<i>trafikklyssystemet</i>) is set "
     "for each of the 13 production areas every second year, from estimated lice-related mortality in wild salmon. "
@@ -122,7 +122,7 @@ IDEER = {
     "saeson_justeret": "Latest level plus the area's typical change at this time of year in other years.",
     "ridge": "Linear regression on the change, one model per horizon.",
     "gbm": "Gradient boosting (non-linear), trained on all areas together with an absolute-error loss.",
-    "gbm_beh": "As gradient boosting, plus the share of the area's sites treated against lice in recent weeks.",
+    "gbm_beh": "As gradient boosting, plus the share of the area's farms treated against lice in recent weeks.",
     "gbm_stadier": "As gradient boosting, plus the younger lice stages (attached and mobile lice), which become adult "
                    "females over the following weeks.",
     "ensemble": "Mean of the seasonal model, ridge and gradient boosting.",
@@ -135,7 +135,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(kilde("★ = the selected model. Inputs for the learning models: level and changes over 1–8 weeks, rolling "
-                  "mean and spread, sea temperature, time of year, the area's seasonal profile, number of sites and "
+                  "mean and spread, sea temperature, time of year, the area's seasonal profile, number of farms and "
                   "the coast-wide level and change."), unsafe_allow_html=True)
 
 tekst(
@@ -193,23 +193,23 @@ tekst(
     f"{max(sk_v[m].mean() for m in andre):.1%} for the best of the other candidates.</p>"
     "<p><b>What was tried and not kept.</b> Lice treatments as an input did not improve the forecast on validation. "
     "Farms treat when lice counts are already high, and the model already sees the lice history. Sea temperature "
-    "summed over 4–8 weeks (degree-days), neighbouring areas' lice levels and how far sites are into their production "
+    "summed over 4–8 weeks (degree-days), neighbouring areas' lice levels and how far farms are into their production "
     "cycle were tested the same way and gave no reliable gain. Rejected candidates that still run in the weekly "
     "backtest are shown on the Forecast page, so it is visible if that changes.</p>"
 )
 
 # --- 5. Behandlingseffekt ---------------------------------------------------------------
-st.markdown(afsnit("3 · Treatments", "How much a treatment lowers lice, compared with similar sites",
+st.markdown(afsnit("3 · Treatments", "How much a treatment lowers lice, compared with similar farms",
                    "An event study with a matched comparison group, not a controlled trial."),
             unsafe_allow_html=True)
 tekst(
     "<p>The Forecast page shows how lice counts develop in the weeks around a treatment, by treatment type. Only "
-    "<b>isolated, whole-site treatments</b> are used: one treatment type for the whole site, and no other treatment "
+    "<b>isolated, whole-farm treatments</b> are used: one treatment type for the whole farm, and no other treatment "
     "from three weeks before to six weeks after, so the effects of several treatments are not mixed.</p>"
-    "<p>Farms treat when lice counts are high, and high counts often fall somewhat on their own. The treated sites "
-    "are therefore compared with <b>untreated site-weeks weighted to have the same lice level the week before and the "
+    "<p>Farms treat when lice counts are high, and high counts often fall somewhat on their own. The treated farms "
+    "are therefore compared with <b>untreated farm-weeks weighted to have the same lice level the week before and the "
     "same month</b>. The effect is the gap between the two, as a median.</p>"
-    "<p>This removes the most obvious bias, but not all of it: sites that treat may differ from sites that do not in "
+    "<p>This removes the most obvious bias, but not all of it: farms that treat may differ from farms that do not in "
     "ways the data do not show. Read the figures as well-founded estimates, not as the result of a trial.</p>"
 )
 
@@ -218,15 +218,15 @@ st.markdown(afsnit("4 · Limitations", "What the figures cannot tell you",
                    "Worth knowing before you use a number from the app."), unsafe_allow_html=True)
 tekst(
     "<ul>"
-    "<li><b>Not weighted by fish.</b> Area figures describe the typical site, not the total lice pressure.</li>"
+    "<li><b>Not weighted by fish.</b> Area figures describe the typical farm, not the total lice pressure.</li>"
     "<li><b>Self-reported counts.</b> The data are the farms' own counts as reported to the authorities. The app does "
     "not correct or audit them.</li>"
     "<li><b>Data as they look today.</b> Late corrections are included in the history, so the backtest may have known "
     "a slightly more accurate value than a forecaster would have had in that week.</li>"
     "<li><b>Treatments cannot be foreseen.</b> A treatment can make the lice level fall sharply in a week the forecast "
     "did not expect. This is the main source of large errors.</li>"
-    "<li><b>Areas, not sites.</b> The forecast is for production areas. The site view on Latest week shows history "
-    "and neighbours, but no site-level forecast.</li>"
+    "<li><b>Areas, not farms.</b> The forecast is for production areas. The farm view on Latest week shows history "
+    "and neighbours, but no farm-level forecast.</li>"
     "<li><b>Not advice.</b> The figures and forecasts are statistical estimates with no guarantee. Do not use them as "
     "the sole basis for operational or regulatory decisions.</li></ul>"
 )
@@ -244,7 +244,7 @@ LOG = [
     ("2026-11-05", "<b>Younger lice stages added; new selected model.</b> Gradient boosting with attached and mobile "
                    "lice had the best skill on validation and replaced gradient boosting without them. In the test "
                    "period, skill one week ahead rose from 8% to 12% and four weeks ahead from 27% to 29%."),
-    ("2026-11-04", "<b>Reporting made visible.</b> Pages show how many sites reported in the latest week compared with "
+    ("2026-11-04", "<b>Reporting made visible.</b> Pages show how many farms reported in the latest week compared with "
                    "a normal week. Areas without counts in that week stay visible instead of disappearing."),
     ("2026-10-31", "<b>Lice treatments added.</b> Treatment data from BarentsWatch, a forecast candidate that uses "
                    "them (not selected: no gain on validation), and the treatment-effect event study."),

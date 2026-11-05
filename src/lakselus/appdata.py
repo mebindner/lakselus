@@ -116,13 +116,13 @@ def indberetning(raa: pd.DataFrame, panel: pd.DataFrame) -> pd.DataFrame:
 
 
 def indberetning_tekst(n: int, normal: int, uge: int, hvor: str = "") -> tuple[str, str]:
-    """Kort tekst til sidehovedet og en forklaring til info-boblen, fx "569 sites reported · 96% of a normal week"."""
+    """Kort tekst til sidehovedet og en forklaring til info-boblen, fx "569 farms reported · 96% of a normal week"."""
     andel = n / normal if normal else 1.0
-    kort = f"{n} sites{hvor} reported · " + ("a full week" if andel >= 0.995 else f"{andel:.0%} of a normal week")
+    kort = f"{n} farms{hvor} reported · " + ("a full week" if andel >= 0.995 else f"{andel:.0%} of a normal week")
     forklaring = (f"Farms report a week's lice counts during the following week. When the data were fetched, "
-                  f"<b>{n}</b> sites{hvor} had reported week {uge}, against <b>{normal}</b> in a normal week (median of "
-                  "the 8 weeks before). A week is only shown once at least 80% of sites along the coast have reported. "
-                  "Sites that report late are included at the next weekly update.")
+                  f"<b>{n}</b> farms{hvor} had reported week {uge}, against <b>{normal}</b> in a normal week (median of "
+                  "the 8 weeks before). A week is only shown once the number of farms that have reported reaches 80% of that median. "
+                  "Farms that report late are included at the next weekly update.")
     return kort, forklaring
 
 

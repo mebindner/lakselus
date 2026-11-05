@@ -160,13 +160,13 @@ retning = "lower" if aendring < 0 else "higher"
 # Forklaringer til info-boblerne – samme ordlyd i nøgletal og tabeller
 uger_foer = (f"weeks {(seneste - pd.Timedelta(weeks=4)).isocalendar().week}–"
              f"{(seneste - pd.Timedelta(weeks=1)).isocalendar().week}")
-INFO_GRAENSE = ("A site is above the lice limit when its count is higher than the limit that week: <b>0.5</b> adult female "
+INFO_GRAENSE = ("A farm is above the lice limit when its count is higher than the limit that week: <b>0.5</b> adult female "
                 "lice per fish, or <b>0.2</b> in the spring weeks when young wild salmon migrate to sea (the weeks differ "
                 "along the coast). The flag comes from the farm's own report.")
 INFO_LYS = ("The government sets a colour for each production area every second year, from modelled lice-induced "
             "mortality in wild salmon. <b>Green</b>: farms may grow. <b>Yellow</b>: unchanged. <b>Red</b>: production "
             "capacity is cut. The colour does not follow this week's counts.")
-INFO_SNIT = "Every site counts the same, whatever its number of fish (unweighted mean)."
+INFO_SNIT = "Every farm counts the same, whatever its number of fish (unweighted mean)."
 INFO_AENDRING = (f"This week compared with the mean of the four weeks before ({uger_foer}). Rising or falling means a "
                  f"change of more than 15%. Below {LAVT_NIVEAU} lice per fish the change is shown in lice per fish, "
                  "because percentages of almost nothing look dramatic. Hover a value to see the calculation.")
@@ -246,7 +246,10 @@ with st.container(key="soegning"):
     # Etiketten siger, hvad man får ud af feltet; samme udtryk som områdevalget på Prognose.
     st.selectbox("Find your farm or area", list(valg), format_func=valg.get, index=None, key="soeg",
                  on_change=fra_soeg,
-                 placeholder=f"Search {len(anlaeg)} farms or {len(navne)} areas")
+                 placeholder=f"Search {len(anlaeg)} farms or {len(navne)} areas",
+                 # Tallet afviger fra ugens antal; boblen siger hvorfor, så de to tal ikke ser modstridende ud.
+                 help=f"The {len(anlaeg)} farms that have counted lice at least once in the past 12 months. Each week "
+                      "fewer report, because farms between production cycles have no fish in the sea.")
 if st.session_state.pop("rul_op", False):  # kun efter et klik på et kort – kort og søjler bliver hvor de er
     st.html("<script>document.querySelector('[data-testid=\"stMain\"]')?.scrollTo({top: 0, behavior: 'smooth'})</script>",
             unsafe_allow_javascript=True)
@@ -258,7 +261,7 @@ lok_v = st.session_state.lok_valgt if valgt is not None and st.session_state.lok
 # Et område uden tællinger i ugen kan stadig søges frem – sig det i stedet for stille at vise hele kysten.
 if st.session_state.po_valgt in uden_tal:
     o = st.session_state.po_valgt
-    st.markdown(f'<div class="korthjaelp">{ikon("info")} No site in PO {o} {po.loc[o, "navn"]} reported lice counts for '
+    st.markdown(f'<div class="korthjaelp">{ikon("info")} No farm in PO {o} {po.loc[o, "navn"]} reported lice counts for '
                 f'week {iso.week} (usually {indb.loc[o, "normal"]}), so the page shows the whole coast. It returns once '
                 'its farms report.</div>', unsafe_allow_html=True)
 
@@ -290,8 +293,8 @@ if lok_v is not None:
     nabo_nu, nabo_foer = hist["nabo_snit"].iloc[-1], hist["nabo_snit"].iloc[-5:-1].mean()
     nabo_ord = retning_ord(nabo_nu, nabo_foer)
     n_inden = int((nab["km"] <= appdata.NABO_KM).sum())
-    nab_tekst = (f"the {len(nab)} sites within {appdata.NABO_KM} km" if n_inden == len(nab)
-                 else f"the {len(nab)} nearest sites (up to {nab['km'].max():.0f} km away)")
+    nab_tekst = (f"the {len(nab)} farms within {appdata.NABO_KM} km" if n_inden == len(nab)
+                 else f"the {len(nab)} nearest farms (up to {nab['km'].max():.0f} km away)")
 
 # 2d. Minigrafer til nøgletallene
 KURVE_NOTE = "26 weeks · dashed: a year earlier"
@@ -299,57 +302,57 @@ if lok_v is not None:
     l_kurve = kurve(hist["hunlus"].tail(26).tolist(), hist["nabo_snit"].tail(26).tolist(), l_graense,
                     "26 weeks · dashed: neighbours · red: limit")
     l_strimmel = strimmel(a_talt["hunlus"].dropna().tolist(), l_nu if len(l_rad) else None, a_graense,
-                          f"Each dot a site in PO {valgt}" + (f" · ringed: {l_navn}" if len(l_rad) else ""))
+                          f"Each dot a farm in PO {valgt}" + (f" · ringed: {l_navn}" if len(l_rad) else ""))
     l_prikker = prikker([(LUS_FARVER[lus_niveau(r.hunlus)] if pd.notna(r.hunlus) else "#D5DDE3",
                           f"{r.lokalitet_navn}, {r.km:.1f} km: " + (tal(r.hunlus) if pd.notna(r.hunlus) else "not counted"),
                           False) for r in nab.itertuples()], "Neighbours, nearest first · grey: not counted")
 elif valgt is not None:
     a_kurve = kurve(*ugeserie(raa[raa["omraade"] == valgt]), note=KURVE_NOTE)
     a_strimmel = strimmel(a_talt["hunlus"].dropna().tolist(), None, a_graense,
-                          f"Each dot a site in PO {valgt} · red line: limit")
+                          f"Each dot a farm in PO {valgt} · red line: limit")
 
 # --- 3. Sidehoved og resumé ------------------------------------------------------------
 if lok_v is not None:
     if len(l_rad):
         l_titel = (f"{l_navn} is {'above' if l_over else 'below'} the {tal(l_graense, 1)} lice limit at {tal(l_nu)}"
-                   + (f" – neighbouring sites average {tal(nabo_nu)}" + (f" and are {nabo_ord}" if nabo_ord else "")
+                   + (f" – neighbouring farms average {tal(nabo_nu)}" + (f" and are {nabo_ord}" if nabo_ord else "")
                       if pd.notna(nabo_nu) else ""))
     else:
         l_titel = (f"{l_navn} did not count lice in week {iso.week} – its last count was {tal(l_sidst.hunlus)} "
                    f"in week {l_sidst_iso.week}")
     st.markdown(sidehoved(
-        f"Site brief · {l_navn} · site no. {lok_v} · PO {valgt} {s_v.navn} · Week {iso.week}, {iso.year}",
+        f"Farm brief · {l_navn} · farm no. {lok_v} · PO {valgt} {s_v.navn} · Week {iso.week}, {iso.year}",
         l_titel,
         f"Lice counts for one fish farm, set against the lice limit (lusegrense), the rest of production area {valgt} "
-        "and the sites around it. Neighbours matter because lice drift between farms in the same fjord system. "
+        "and the farms around it. Neighbours matter because lice drift between farms in the same fjord system. "
         "Clear the search to return to the whole coast.",
         [("live", appdata.opdatering_tekst(panel) + ("" if not mangler else f" · {indberetning}")),
-         ("database", "BarentsWatch / Mattilsynet"), ("location_on", f"{len(nab)} neighbouring sites"),
+         ("database", "BarentsWatch / Mattilsynet"), ("location_on", f"{len(nab)} neighbouring farms"),
          ("verified", "Independent analysis of open data")],
     ), unsafe_allow_html=True)
     l_trend = trend(l_nu, l_foer)[2]
     st.markdown(resume([
         (tal(l_nu), f"adult female lice per fish at {l_navn} in week {iso.week}; the limit this week is "
                     f"{tal(l_graense, 1)}. The level is {l_trend}.",
-         f"The count {l_navn} reported for week {iso.week}. The trend compares it with the site's mean in {uger_foer}"
+         f"The count {l_navn} reported for week {iso.week}. The trend compares it with the farm's mean in {uger_foer}"
          + (f" (<b>{praecis(l_foer)}</b>)" if pd.notna(l_foer) else "") + ": rising or falling means a change of more than 15%."
          + f"<br><br>{INFO_GRAENSE}", l_kurve) if len(l_rad) else
         (tal(l_sidst.hunlus), f"adult female lice per fish at the last count, week {l_sidst_iso.week} "
-                              f"{l_sidst_iso.year}. The site did not count lice in week {iso.week}.",
-         "Sites report lice counts for the weeks they have fish in the sea. A site with no count may be between "
+                              f"{l_sidst_iso.year}. The farm did not count lice in week {iso.week}.",
+         "Farms report lice counts for the weeks they have fish in the sea. A farm with no count may be between "
          "production cycles.", l_kurve),
         (f"{int((a_talt['hunlus'] > l_nu).sum()) + 1} of {len(a_talt)}",
-         f"sites in PO {valgt} ranked by lice level (1 = highest). The area mean is {tal(s_v.hunlus)}.",
-         f"The {len(a_talt)} sites in PO {valgt} that counted lice in week {iso.week}, sorted from the highest count. "
-         f"Sites with the same count share a rank. The area mean is over the same sites. {INFO_SNIT}", l_strimmel) if len(l_rad) else
+         f"farms in PO {valgt} ranked by lice level (1 = highest). The area mean is {tal(s_v.hunlus)}.",
+         f"The {len(a_talt)} farms in PO {valgt} that counted lice in week {iso.week}, sorted from the highest count. "
+         f"Farms with the same count share a rank. The area mean is over the same farms. {INFO_SNIT}", l_strimmel) if len(l_rad) else
         (tal(s_v.hunlus), f"adult female lice per fish on average in PO {valgt} in week {iso.week}, "
-                          f"across {len(a_talt)} sites.", INFO_SNIT, l_strimmel),
-        (f"{nab_over} of {len(nab_talt)}", f"neighbouring sites above the limit this week ({len(nab_talt)} of "
+                          f"across {len(a_talt)} farms.", INFO_SNIT, l_strimmel),
+        (f"{nab_over} of {len(nab_talt)}", f"neighbouring farms above the limit this week ({len(nab_talt)} of "
                                            f"{nab_tekst} counted lice). Their mean is {tal(nabo_nu)}"
                                            + (f", {trend(nabo_nu, nabo_foer)[2]}." if nabo_ord else "."),
-         f"Neighbours are sites within <b>{appdata.NABO_KM} km</b> in a straight line from {l_navn} that have counted lice in "
+         f"Neighbours are farms within <b>{appdata.NABO_KM} km</b> in a straight line from {l_navn} that have counted lice in "
          f"the past year (if fewer than {appdata.MIN_NABOER}, the nearest {appdata.MIN_NABOER}). Lice larvae drift with the "
-         f"currents, so high counts nearby raise the pressure on the site. Their mean is over the neighbours that counted "
+         f"currents, so high counts nearby raise the pressure on the farm. Their mean is over the neighbours that counted "
          f"in week {iso.week}; the trend compares it with their mean in {uger_foer}"
          + (f" (<b>{praecis(nabo_foer)}</b>)" if pd.notna(nabo_foer) else "") + ".", l_prikker)
         if len(nab_talt) else ("–", f"None of {nab_tekst} counted lice in week {iso.week}."),
@@ -357,7 +360,7 @@ if lok_v is not None:
 elif valgt is not None:
     st.markdown(sidehoved(
         f"Area brief · PO {valgt} {s_v.navn} · Week {iso.week}, {iso.year} · latest complete week",
-        f"{s_v.navn}: {len(a_over)} of {len(a_talt)} sites are above the {tal(a_graense, 1)} lice limit – "
+        f"{s_v.navn}: {len(a_over)} of {len(a_talt)} farms are above the {tal(a_graense, 1)} lice limit – "
         f"lice levels are {mod_sidste_aar(s_v.hunlus, a_sidst)}",
         f"Weekly status for production area {valgt}, {s_v.navn}, based on the lice counts its fish farms report to the "
         "Norwegian Food Safety Authority, set against the lice limit (lusegrense), the government traffic light "
@@ -370,11 +373,11 @@ elif valgt is not None:
         (tal(s_v.hunlus), f"adult female lice per fish on average in PO {valgt} in week {iso.week} – "
                           f"{mod_sidste_aar(s_v.hunlus, a_sidst)}" + (f" ({tal(a_sidst)})" if pd.notna(a_sidst) else "")
                           + f". Rank {a_rang} of {len(status)} areas.",
-         f"Mean over the {len(a_talt)} sites in PO {valgt} that counted lice in week {iso.week}. {INFO_SNIT}"
+         f"Mean over the {len(a_talt)} farms in PO {valgt} that counted lice in week {iso.week}. {INFO_SNIT}"
          + (f"<span class='regnestykke'>vs. the same week a year earlier: {praecis(s_v.hunlus)} ÷ {praecis(a_sidst)} − 1 "
             f"= {pct(s_v.hunlus / a_sidst - 1, True)}</span>" if pd.notna(a_sidst) and a_sidst else "")
          + f"<br>The rank compares the means of all {len(status)} areas; 1 is the highest.", a_kurve),
-        (f"{len(a_over)} of {len(a_talt)}", f"sites ({pct(len(a_over) / len(a_talt))}) were above the "
+        (f"{len(a_over)} of {len(a_talt)}", f"farms ({pct(len(a_over) / len(a_talt))}) were above the "
                                             f"{tal(a_graense, 1)} lice limit"
                                             + (f"; the highest was {a_top.iloc[0].lokalitet_navn} ({tal(a_top.iloc[0].hunlus)})"
                                                if len(a_top) else "") + ".", INFO_GRAENSE, a_strimmel),
@@ -398,13 +401,13 @@ else:
     st.markdown(resume([
         (tal(gns), f"adult female lice per fish on average along the coast in week {iso.week} – {abs(aendring):.0%} "
                    f"{retning} than the same week last year ({tal(gns_sidst)}).",
-         f"Mean over the {len(talt)} sites that counted lice in week {iso.week}. {INFO_SNIT}"
-         f"<span class='regnestykke'>vs. the same week a year earlier ({len(aar_siden)} sites): "
+         f"Mean over the {len(talt)} farms that counted lice in week {iso.week}. {INFO_SNIT}"
+         f"<span class='regnestykke'>vs. the same week a year earlier ({len(aar_siden)} farms): "
          f"{praecis(gns)} ÷ {praecis(gns_sidst)} − 1 = {pct(aendring, True)}</span>",
          kurve(*ugeserie(raa), note=KURVE_NOTE)),
-        (f"{len(over)} of {len(talt)}", f"sites ({pct(len(over) / len(talt))}) were above the {tal(graense, 1)} lice limit"
+        (f"{len(over)} of {len(talt)}", f"farms ({pct(len(over) / len(talt))}) were above the {tal(graense, 1)} lice limit"
                                         + ("; most in " + " and ".join(f"PO {o}" for o in over_pr_omr.index[:2]) if len(over) else "") + ".",
-         INFO_GRAENSE, andelsbjaelke(len(over) / len(talt), f"Red: the {len(over)} sites above the limit")),
+         INFO_GRAENSE, andelsbjaelke(len(over) / len(talt), f"Red: the {len(over)} farms above the limit")),
         (f"{len(roede)} of 13", f"production areas {'has' if len(roede) == 1 else 'have'} a red traffic light"
                                 + (": " + ", ".join(roede["navn"]) if len(roede) else "")
                                 + f". The colour is set by the government (latest decision {lys_fra:%b %Y}) from estimated lice "
@@ -456,7 +459,7 @@ if lok_v is None:
                     st.markdown(f'<div class="udsving-kort"><div class="etiket">{ikon(ikon_)} {etiket}</div>'
                                 f'<div class="navn">{navn_}</div><div class="stort" style="color:{farve}">{stort}</div>'
                                 f'<div class="note">{note}</div></div>', unsafe_allow_html=True)
-                    st.button("Open area →" if maal[1] is None else "Open site →", key=f"aabn_{noegle}",
+                    st.button("Open area →" if maal[1] is None else "Open farm →", key=f"aabn_{noegle}",
                               on_click=aabn, args=maal, type="tertiary")
 
 # --- 4. Figur: kort og rangering --------------------------------------------------
@@ -495,7 +498,7 @@ def fra_soejler() -> None:
 
 
 # 4b. Overskrift – konklusionen og den gældende lusegrænse står i titlen
-kort_under = (f"Adult female lice per fish, week {iso.week} {iso.year}. Dots: sites, coloured by lice level. Area outline: the "
+kort_under = (f"Adult female lice per fish, week {iso.week} {iso.year}. Dots: farms, coloured by lice level. Area outline: the "
               "government traffic light, which reflects estimated harm to wild salmon – not this week's counts.")
 if valgt is None:
     over_tekst = "above" if status.loc[top, "hunlus"] > graense else "below"
@@ -506,7 +509,7 @@ if valgt is None:
     ), unsafe_allow_html=True)
 else:
     st.markdown(figur(
-        next(nr), f"{len(a_over)} of {len(a_talt)} sites in {s_v.navn} are above the {tal(a_graense, 1)} lice limit"
+        next(nr), f"{len(a_over)} of {len(a_talt)} farms in {s_v.navn} are above the {tal(a_graense, 1)} lice limit"
                   + (f" – the highest is {a_top.iloc[0].lokalitet_navn} ({tal(a_top.iloc[0].hunlus)})" if len(a_top) else ""),
         kort_under + (f" Ring: {appdata.NABO_KM} km around {l_navn}." if lok_v is not None else ""),
     ), unsafe_allow_html=True)
@@ -514,7 +517,7 @@ else:
 venstre, hoejre = st.columns([1, 1.15], gap="large")
 # 4c. Kort: områder farvet efter trafiklys, anlæg farvet efter lusetal
 with venstre:
-    st.markdown(f'<div class="korthjaelp">{ikon("touch_app")} Click an area on the map or a bar to see every site in it</div>',
+    st.markdown(f'<div class="korthjaelp">{ikon("touch_app")} Click an area on the map or a bar to see every farm in it</div>',
                 unsafe_allow_html=True)
     lok = talt.dropna(subset=["lat", "lon", "hunlus"]).assign(omraade=lambda d: d["omraade"].astype(int))
     # Med et valgt anlæg står naboerne i fuld farve; med et valgt område hele området.
@@ -533,8 +536,8 @@ with venstre:
         kant=lambda d: [rgba(LYS_FARVER[c][0], 255 if o == valgt else 80 if valgt else 210) for c, o in zip(d["trafiklys"], d["omraade"])],
         tip=lambda d: "PO " + d["omraade"].astype(str) + " · " + d["navn"] + "\n"
                       + d["hunlus"].map(tal) + " adult female lice per fish · " + d["n_lok"].fillna(0).astype(int).astype(str)
-                      + " sites\nTraffic light: " + d["trafiklys"].map(appdata.TRAFIKLYS)
-                      + " (decided " + d["lys_fra"].dt.strftime("%b %Y") + ")\nClick to see its sites",
+                      + " farms\nTraffic light: " + d["trafiklys"].map(appdata.TRAFIKLYS)
+                      + " (decided " + d["lys_fra"].dt.strftime("%b %Y") + ")\nClick to see its farms",
     )[["omraade", "polygon", "fyld", "kant", "tip", "trafiklys"]]
     # Ét lag pr. trafiklysfarve, så fladen under musen tones i områdets egen kantfarve (ikke i en fælles farve)
     lag = [
@@ -601,7 +604,7 @@ with hoejre:
             color=alt.Color("niveau:N", legend=None, scale=farveskala),
             opacity=alt.condition("datum.lille", alt.value(0.35), alt.value(1.0)),
             tooltip=[alt.Tooltip("etiket:N", title="Area"), alt.Tooltip("hunlus:Q", title="Female lice", format=".3f"),
-                     alt.Tooltip("n_lok:Q", title="Sites")],
+                     alt.Tooltip("n_lok:Q", title="Farms")],
         ).add_params(alt.selection_point(name="vaelg", fields=["omraade"]))
         tekster = alt.Chart(rang).mark_text(align="left", dx=4, fontSize=11, color="#1B2B36").encode(
             x="hunlus:Q", y=y, text="tekst:N")
@@ -629,7 +632,7 @@ with hoejre:
                 st.button(f"← All of PO {valgt}", on_click=vaelg, args=(valgt,), key="hele_omraadet", type="tertiary")
         st.markdown(
             f'<div class="omraadehoved"><b>PO {valgt} · {s.navn}</b>'
-            f'<span>{len(omr_anlaeg)} sites · mean {tal(s.hunlus)} · {n_over} above the limit · '
+            f'<span>{len(omr_anlaeg)} farms · mean {tal(s.hunlus)} · {n_over} above the limit · '
             f'<i class="prik" style="background:{lys_kant}"></i>{appdata.TRAFIKLYS[s.trafiklys]} traffic light</span></div>',
             unsafe_allow_html=True)
         y = alt.Y("etiket:N", sort=list(omr_anlaeg["etiket"]), title=None,
@@ -640,7 +643,7 @@ with hoejre:
             y=y,
             color=alt.Color("niveau:N", legend=None, scale=farveskala),
             strokeWidth=alt.condition("datum.markeret", alt.value(2), alt.value(0)),
-            tooltip=[alt.Tooltip("lokalitet_navn:N", title="Site"), alt.Tooltip("hunlus:Q", title="Female lice", format=".2f"),
+            tooltip=[alt.Tooltip("lokalitet_navn:N", title="Farm"), alt.Tooltip("hunlus:Q", title="Female lice", format=".2f"),
                      alt.Tooltip("temp:Q", title="Sea temp. °C", format=".1f")],
         ).add_params(alt.selection_point(name="vaelg", fields=["lokalitet"]))
         tekster = alt.Chart(omr_anlaeg).mark_text(align="left", dx=4, fontSize=10, color="#1B2B36").encode(
@@ -652,8 +655,8 @@ with hoejre:
         with st.container(height=360, border=False):
             st.altair_chart(graf.properties(height=max(120, 17 * len(omr_anlaeg))), width="stretch",
                             on_select=fra_soejler, key=f"rang_{n}")
-        st.markdown(f'<div class="kilde">Bars: each site that counted lice in week {iso.week}. Solid line: area mean. '
-                    f'Dashed: 0.2 and 0.5 limits. Click a bar to open that site.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kilde">Bars: each farm that counted lice in week {iso.week}. Solid line: area mean. '
+                    f'Dashed: 0.2 and 0.5 limits. Click a bar to open that farm.</div>', unsafe_allow_html=True)
 
 st.markdown(
     '<div class="forklaring">'
@@ -664,8 +667,8 @@ st.markdown(
     f'<i class="prik" style="background:{LYS_FARVER["red"][0]}"></i>Traffic light (area outline: government decision on wild-salmon risk)</span></div>',
     unsafe_allow_html=True,
 )
-st.markdown(kilde(f"Area figures are unweighted means over sites that counted lice that week. "
-                  f"* Fewer than {MIN_LOK} sites (faded, at the bottom) – the figure is uncertain and excluded from the conclusions."
+st.markdown(kilde(f"Area figures are unweighted means over farms that counted lice that week. "
+                  f"* Fewer than {MIN_LOK} farms (faded, at the bottom) – the figure is uncertain and excluded from the conclusions."
                   + "".join(f" No counts reported in week {iso.week}: PO {o} {po.loc[o, 'navn']}." for o in uden_tal)),
             unsafe_allow_html=True)
 
@@ -694,14 +697,14 @@ if lok_v is not None:
                  alt.Tooltip("nabo_snit:Q", title="Neighbours' mean", format=".2f"),
                  alt.Tooltip("graense:Q", title="Lice limit", format=".1f")])
     st.altair_chart((h_graense + h_nabo + h_selv).properties(height=260), width="stretch")
-    st.markdown(kilde(f"{l_navn} (site no. {lok_v}). The limit is the one most sites in PO {valgt} reported that week."),
+    st.markdown(kilde(f"{l_navn} (farm no. {lok_v}). The limit is the one most farms in PO {valgt} reported that week."),
                 unsafe_allow_html=True)
 
     # 5b. Naboerne: smittepresset omkring anlægget – hvem er over grænsen, og hvor går det hen?
     st.markdown(figur(
-        next(nr), (f"{nab_over} of {len(nab_talt)} neighbouring sites {'is' if nab_over == 1 else 'are'} above the limit this week"
+        next(nr), (f"{nab_over} of {len(nab_talt)} neighbouring farms {'is' if nab_over == 1 else 'are'} above the limit this week"
                    + (f" – lice pressure around {l_navn} is {nabo_ord}" if nabo_ord else "")) if len(nab_talt) else
-                  f"None of the neighbouring sites counted lice in week {iso.week}",
+                  f"None of the neighbouring farms counted lice in week {iso.week}",
         f"{nab_tekst[0].upper() + nab_tekst[1:]}, nearest first: adult female lice per fish in week {iso.week} and the change "
         "vs. the previous 4 weeks.",
     ), unsafe_allow_html=True)
@@ -722,23 +725,23 @@ if lok_v is not None:
     nabo_raekker += [nabo_raekke(radlink(r.lokalitet_navn, f"site:{r.lokalitet}"), f"{r.km:.1f} km", r.omraade, r.hunlus, r.hunlus_4u_foer,
                                  r.over_graense if isinstance(r.over_graense, str) else "") for r in nab.itertuples()]
     st.markdown(
-        '<table class="tabel"><thead><tr><th>Site</th>'
+        '<table class="tabel"><thead><tr><th>Farm</th>'
         f'<th class="tal">Distance{info(f"Straight-line distance from the position {l_navn} reports. The way by sea can be longer.", "hoejre")}</th>'
         '<th class="ekstra">PO</th>'
-        f'<th class="tal">Female lice / fish{info(f"The count each site reported for week {iso.week}. Red: above the lice limit. <i>Not counted</i>: no count that week, for example between production cycles.", "hoejre")}</th>'
+        f'<th class="tal">Female lice / fish{info(f"The count each farm reported for week {iso.week}. Red: above the lice limit. <i>Not counted</i>: no count that week, for example between production cycles.", "hoejre")}</th>'
         f'<th class="tal">Δ 4 weeks{info(INFO_AENDRING, "hoejre")}</th>'
         f'<th class="tal ekstra">Above limit{info(INFO_GRAENSE, "hoejre")}</th></tr></thead><tbody>'
         + "".join(nabo_raekker) + "</tbody></table>",
         unsafe_allow_html=True,
     )
-    st.markdown(kilde(f"Neighbours: sites that counted lice in the past year, by straight-line distance from the reported "
+    st.markdown(kilde(f"Neighbours: farms that counted lice in the past year, by straight-line distance from the reported "
                       f"position (sea routes can be longer). Within {appdata.NABO_KM} km, or the {appdata.MIN_NABOER} nearest "
                       "if fewer are that close. Red figure: above the lice limit. Δ 4 weeks as in the status table below."), unsafe_allow_html=True)
 
 # --- 6. Figur: statustabel ----------------------------------------------------------
 st.markdown(figur(
     next(nr), "Status by production area",
-    "Lice level, change vs. the previous 4 weeks, share of sites above the limit and sea temperature.",
+    "Lice level, change vs. the previous 4 weeks, share of farms above the limit and sea temperature.",
 ), unsafe_allow_html=True)
 
 raekker = []
@@ -763,22 +766,22 @@ for o in uden_tal:
         f'<td class="lys"><i class="prik" style="background:{LYS_FARVER[po.loc[o, "trafiklys"]][0]}"></i>'
         f'{appdata.TRAFIKLYS[po.loc[o, "trafiklys"]]}</td>'
         f'<td class="tal" colspan="3" style="color:#6B7A86">No counts reported in week {iso.week} '
-        f'(usually {indb.loc[o, "normal"]} sites)</td><td class="tal ekstra">–</td><td class="tal ekstra">0</td></tr>'
+        f'(usually {indb.loc[o, "normal"]} farms)</td><td class="tal ekstra">–</td><td class="tal ekstra">0</td></tr>'
     )
 st.markdown(
     '<table class="tabel"><thead><tr><th class="ekstra">PO</th><th>Production area</th>'
     f'<th>Traffic<span class="ekstra"> light</span>{info(INFO_LYS)}</th>'
-    f'<th class="tal">Female lice / fish{info(f"Mean adult female lice per fish over the sites in the area that counted in week {iso.week}. {INFO_SNIT}", "hoejre")}</th>'
+    f'<th class="tal">Female lice / fish{info(f"Mean adult female lice per fish over the farms in the area that counted in week {iso.week}. {INFO_SNIT}", "hoejre")}</th>'
     f'<th class="tal">Δ 4 weeks{info(INFO_AENDRING, "hoejre")}</th>'
-    f'<th class="tal">Above limit{info(f"Share of the sites in the area that counted in week {iso.week} with a count above the limit. Red from 10%.<br><br>{INFO_GRAENSE}", "hoejre")}</th>'
-    f'<th class="tal ekstra">Sea temp.{info("Mean sea temperature reported by the sites in the area. Lice develop faster in warm water, so temperature drives the season.", "hoejre")}</th>'
-    f'<th class="tal ekstra">Sites{info(f"Sites that counted lice in week {iso.week}. Fewer than {MIN_LOK} (*): the area figures are uncertain.", "hoejre")}</th>'
+    f'<th class="tal">Above limit{info(f"Share of the farms in the area that counted in week {iso.week} with a count above the limit. Red from 10%.<br><br>{INFO_GRAENSE}", "hoejre")}</th>'
+    f'<th class="tal ekstra">Sea temp.{info("Mean sea temperature reported by the farms in the area. Lice develop faster in warm water, so temperature drives the season.", "hoejre")}</th>'
+    f'<th class="tal ekstra">Farms{info(f"Farms that counted lice in week {iso.week}. Fewer than {MIN_LOK} (*): the area figures are uncertain.", "hoejre")}</th>'
     '</tr></thead><tbody>'
     + "".join(raekker) + "</tbody></table>",
     unsafe_allow_html=True,
 )
 st.markdown(kilde(f"Δ 4 weeks: change vs. the mean of the four preceding weeks; below {LAVT_NIVEAU} lice per fish "
-                  f"shown in lice per fish instead of percent. * Fewer than {MIN_LOK} sites."), unsafe_allow_html=True)
+                  f"shown in lice per fish instead of percent. * Fewer than {MIN_LOK} farms."), unsafe_allow_html=True)
 
 # --- 7. Figur: små multipler --------------------------------------------------------
 # Et klik på et panel vælger området (samme valg som søgefeltet og kortet) og viser det i stort over panelerne.
@@ -879,11 +882,11 @@ st.markdown(kilde("○ = the area's peak week (highest mean)."), unsafe_allow_ht
 
 # --- 9. Metode og forbehold -----------------------------------------------------------
 st.markdown(
-    '<div class="metode"><b>Method and caveats.</b> Data are weekly lice counts per site from BarentsWatch '
-    "(reported to the Norwegian Food Safety Authority). Area figures are unweighted means over sites that counted "
-    "lice that week; the number of fish per site is not included. Farms report a week's counts during the following "
+    '<div class="metode"><b>Method and caveats.</b> Data are weekly lice counts per farm from BarentsWatch '
+    "(reported to the Norwegian Food Safety Authority). Area figures are unweighted means over farms that counted "
+    "lice that week; the number of fish per farm is not included. Farms report a week's counts during the following "
     "week, so the brief usually trails the calendar by 1–2 weeks: the latest week is only included once the number of "
-    "sites that have counted reaches 80% of the median of the eight weeks before. The lice limit is 0.5 adult female lice per fish (0.2 during the spring weeks). "
+    "farms that have counted reaches 80% of the median of the eight weeks before. The lice limit is 0.5 adult female lice per fish (0.2 during the spring weeks). "
     "The traffic light is the colour the government had set for each production area in the week shown. It is decided "
     "every second year from estimated lice-induced mortality in wild salmon, so an area can be red even when its farms "
     "are below the lice limit. The analysis is independent "

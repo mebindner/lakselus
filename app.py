@@ -80,8 +80,8 @@ side = st.navigation(
         # Rækkefølgen følger den besøgendes spørgsmål: hvordan står det til nu, hvad sker der så, hvordan har det
         # udviklet sig, hvorfor spreder lusene sig, og hvordan er tallene lavet.
         st.Page("sider/oversigt.py", title="Latest week", icon=":material/map:", default=True),
-        st.Page("sider/prognose.py", title="Forecast", icon=":material/insights:"),
-        st.Page("sider/tidsmaskine.py", title="History", icon=":material/view_in_ar:"),
+        st.Page("sider/prognose.py", title="Forecast", icon=":material/insights:", url_path="forecast"),
+        st.Page("sider/tidsmaskine.py", title="History", icon=":material/view_in_ar:", url_path="history"),
         st.Page("sider/havstroem.py", title="Currents", icon=":material/waves:", url_path="currents"),
         st.Page("sider/om.py", title="About", icon=":material/info:", url_path="about"),
     ],
@@ -98,11 +98,11 @@ st.markdown(
     '<a href="https://www.linkedin.com/in/martin-eckberg-bindner-872207422" target="_blank">Martin Eckberg Bindner</a>, '
     'data analyst. It turns the open weekly lice reports from Norwegian fish farms into a brief anyone can read. '
     'Not prepared for or by any company.</div>'
-    '<div><b>Data</b>Weekly lice counts, sea temperature and treatments for every site, reported to the Norwegian '
+    '<div><b>Data</b>Weekly lice counts, sea temperature and treatments for every farm, reported to the Norwegian '
     'Food Safety Authority (Mattilsynet) and published by BarentsWatch under the NLOD licence. New counts arrive '
     'every Wednesday; the pages show the latest week that is fully reported. Ocean currents: NorKyst v3 from the '
     'Norwegian Meteorological Institute (MET Norway), CC BY 4.0.</div>'
-    '<div><b>Method</b>Area figures are plain means over the sites that counted, not weighted by fish. Forecasts are '
+    '<div><b>Method</b>Area figures are plain means over the farms that counted, not weighted by fish. Forecasts are '
     'tested week by week on seasons the models never saw. The About page explains data, models, limitations and changes. '
     'Figures and forecasts are statistical estimates, not advice, and come with no guarantee.</div>'
     '<div><b>Code</b>Python, pandas, scikit-learn, Streamlit, Altair and deck.gl, open source on '

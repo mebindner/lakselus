@@ -354,7 +354,9 @@ skyder.addEventListener("input", () => { pause(); saetUge(+skyder.value); });
 document.getElementById("fart").addEventListener("change", () => { if (spiller) start(); });
 window.addEventListener("resize", tegnGraf);
 
-saetUge(0);
+// Afspilningen starter for et år siden og stopper ved seneste uge, så det første indtryk er nutiden.
+// Et nyt tryk på afspil efter sidste uge starter fra 2019.
+saetUge(Math.max(0, U - 53));
 start();
 </script>
 </body>

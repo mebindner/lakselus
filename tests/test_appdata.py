@@ -127,4 +127,4 @@ def test_indberetning_taeller_mod_en_normal_uge_og_viser_omraader_uden_tal():
     indb = appdata.indberetning(raa, panel)
     assert indb.loc[0].tolist() == [8, 14]
     assert indb.loc[1].tolist() == [0, 4] and indb.loc[2].tolist() == [8, 10]
-    assert appdata.indberetning_tekst(8, 14, 44)[0] == "8 sites reported · 57% of a normal week"
+    assert appdata.indberetning_tekst(8, 14, 44)[0] == "8 farms reported · 57% of a normal week"

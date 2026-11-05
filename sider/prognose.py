@@ -116,7 +116,7 @@ st.markdown(resume([
     (tal(slut["pred"], 2), f"expected adult female lice per fish in PO {valg} in week {uge_til}, "
                            f"from {tal(sidst['hunlus'], 2)} in week {uge_nu}.",
      f"The forecast for each of the next four weeks comes from its own model, trained on lice counts, sea temperature "
-     f"and season since 2019. The area figure is the unweighted mean over its sites."),
+     f"and season since 2019. The area figure is the unweighted mean over its farms."),
     (f"{tal(slut['lo'], 2)}–{tal(slut['hi'], 2)}",
      f"likely range for week {uge_til}. In tests on past seasons, the actual level landed inside such a range "
      f"{daek.mean():.0%} of the time.", INFO_INTERVAL),
@@ -133,7 +133,7 @@ st.markdown(figur(
        f"({'rising' if lv['pred'].iloc[-1] > sidst['hunlus'] * 1.05 else 'falling' if lv['pred'].iloc[-1] < sidst['hunlus'] * 0.95 else 'stable'})",
     f"Adult female lice per fish, last 12 months and forecast for weeks {uge_fra}–{uge_til} (1–4 weeks after the latest "
     "complete week) with 80% interval. Dashed: naive forecast."
-    + (f" No site in the area reported lice counts for week {iso.week}; the latest count is from week {uge_nu}, and "
+    + (f" No farm in the area reported lice counts for week {iso.week}; the latest count is from week {uge_nu}, and "
        "the forecast is built on the weeks before." if sidst["uge_start"] < seneste else ""),
 ), unsafe_allow_html=True)
 
@@ -196,21 +196,21 @@ if effekt is not None and len(effekt):
     orden = sorted(netto.xs(0, level="k").sort_values(ascending=False).index, key=lambda t: t == "Other")
     bedst = orden[0]
     st.markdown(figur(
-        next(nr), f"{bedst} treatment leaves {netto[(bedst, 0)]:.0%} fewer lice than at similar untreated sites within a "
+        next(nr), f"{bedst} treatment leaves {netto[(bedst, 0)]:.0%} fewer lice than at similar untreated farms within a "
            f"week – six weeks later the gap {'has shrunk to' if netto[(bedst, 6)] < netto[(bedst, 0)] else 'is'} "
            f"{netto[(bedst, 6)]:.0%}",
-        "How lice numbers develop around a treatment, compared with similar sites that were not treated. "
-        "100% = the site's lice level in the week before treatment.",
+        "How lice numbers develop around a treatment, compared with similar farms that were not treated. "
+        "100% = the farm's lice level in the week before treatment.",
     ), unsafe_allow_html=True)
 
     # Forklaring over grafen: hvad hver linje og flade betyder, med samme farver som i grafen.
     har_omr = eff["omr_median"].notna().any()
     st.markdown(
         '<div class="effektnoegle">'
-        f'<span><i class="streg" style="border-color:{FARVER["model"]}"></i>Treated sites</span>'
-        f'<span><i class="streg stiplet" style="border-color:{FARVER["skifer"]}"></i>Similar untreated sites</span>'
+        f'<span><i class="streg" style="border-color:{FARVER["model"]}"></i>Treated farms</span>'
+        f'<span><i class="streg stiplet" style="border-color:{FARVER["skifer"]}"></i>Similar untreated farms</span>'
         f'<span><i class="flade" style="background:{FARVER["model"]}"></i>Effect of the treatment</span>'
-        + (f'<span><i class="streg" style="border-color:{FARVER["blaek"]}"></i>Treated sites in {omr_navn}</span>'
+        + (f'<span><i class="streg" style="border-color:{FARVER["blaek"]}"></i>Treated farms in {omr_navn}</span>'
            if har_omr else "")
         + "</div>", unsafe_allow_html=True)
 
@@ -243,8 +243,8 @@ if effekt is not None and len(effekt):
     linje = alt.Chart().mark_line(color=FARVER["model"], strokeWidth=2.6,
                                   point=alt.OverlayMarkDef(size=18, color=FARVER["model"])).encode(
         x=ex, y=ey, tooltip=[alt.Tooltip("type:N", title="Treatment"), alt.Tooltip("k:Q", title="Week"),
-                             alt.Tooltip("median:Q", title="Treated sites (median)", format=".0%"),
-                             alt.Tooltip("kontrol:Q", title="Similar untreated sites", format=".0%"),
+                             alt.Tooltip("median:Q", title="Treated farms (median)", format=".0%"),
+                             alt.Tooltip("kontrol:Q", title="Similar untreated farms", format=".0%"),
                              alt.Tooltip("q25:Q", title="Treated, 25th percentile", format=".0%"),
                              alt.Tooltip("q75:Q", title="Treated, 75th percentile", format=".0%")])
     omr_linje = alt.Chart().mark_line(color=FARVER["blaek"], strokeWidth=1.8, clip=True,
@@ -274,11 +274,11 @@ if effekt is not None and len(effekt):
                    if (foder, 0) in netto and netto[(foder, 0)] < 0.2 and netto[(foder, 6)] > netto[(foder, 0)] + 0.1
                    else "")
     st.markdown(kilde(
-        f"Isolated treatments: one treatment type for the whole site and no other treatment from 3 weeks before to "
+        f"Isolated treatments: one treatment type for the whole farm and no other treatment from 3 weeks before to "
         f"6 weeks after; the week before had at least 0.05 lice per fish. Types with fewer than 30 such treatments are "
-        f"left out. Observational data: sites choose when and how to treat, so the comparison with untreated sites "
-        f"removes the natural drop after a peak but cannot rule out every difference. {foder_tekst}Treated sites: "
-        f"median of the sites; the middle half is shown on hover."), unsafe_allow_html=True)
+        f"left out. Observational data: farms choose when and how to treat, so the comparison with untreated farms "
+        f"removes the natural drop after a peak but cannot rule out every difference. {foder_tekst}Treated farms: "
+        f"median of the farms; the middle half is shown on hover."), unsafe_allow_html=True)
 
 # --- 6. Afsnit for fagfolk: hvor god er prognosen? ------------------------------------------
 st.markdown(afsnit(
@@ -383,7 +383,7 @@ nul = alt.Chart(pd.DataFrame({"x": [0]})).mark_rule(color=FARVER["skifer"]).enco
 st.altair_chart((bar + nul).properties(height=13 * 26), width="stretch")
 smaa = panel.loc[panel["uge_start"] == seneste].query("n_lok < 10")["omraade"].astype(int).tolist()
 st.markdown(kilde(f"Area{'s' if len(smaa) > 1 else ''} {' and '.join(map(str, smaa))} "
-                  f"{'have' if len(smaa) > 1 else 'has'} fewer than 10 sites and {'are' if len(smaa) > 1 else 'is'} "
+                  f"{'have' if len(smaa) > 1 else 'has'} fewer than 10 farms and {'are' if len(smaa) > 1 else 'is'} "
                   "noisier." if smaa else ""), unsafe_allow_html=True)
 
 # --- 9. Figur: backtest-forløb ----------------------------------------------------------
@@ -411,14 +411,14 @@ st.markdown(
     '<div class="metode"><b>Method.</b> The models predict the <i>change</i> in an area\'s lice level 1–4 weeks ahead '
     "(direct multi-horizon, one model per horizon), so the naive forecast is the starting point. Features: level and "
     "changes over 1–8 weeks, rolling mean and spread, sea temperature and its change, ISO week (sine/cosine), "
-    "the area's typical seasonal change in other years, number of sites, and the coast-wide level and change. Gradient boosting is "
+    "the area's typical seasonal change in other years, number of farms, and the coast-wide level and change. Gradient boosting is "
     "trained with an MAE loss, pooled across areas. Models are retrained every quarter in the backtest and only see "
     "data up to the forecast week – this is tested automatically by corrupting all future data and checking that "
     "the forecasts are unchanged.<br><br><b>Evaluation.</b> Model choice and settings were decided on 2023–24; the "
     f"figures above are from {test_fra} onwards, which was not used for any choice. The Diebold–Mariano test compares "
     "errors week by week against the naive forecast. Prediction intervals are causal empirical quantiles of the "
     "model's own past errors by area and horizon.<br><br><b>Lice treatments.</b> One candidate also uses the share of "
-    "an area's sites treated against lice that week and over the past four weeks (mechanical, thermal, freshwater and "
+    "an area's farms treated against lice that week and over the past four weeks (mechanical, thermal, freshwater and "
     + ("medicinal). On 2023–24 it did not improve on gradient boosting without treatments: farms treat when lice "
        "counts are high, which the lice history already shows. It stays in the weekly backtest, so the comparison "
        "shows if that changes." if valgt != "gbm_beh" else
