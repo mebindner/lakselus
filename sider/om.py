@@ -96,8 +96,11 @@ tekst(
     "for each of the 13 production areas every second year, from estimated lice-related mortality in wild salmon. "
     "An area can therefore be red although its farms are below the lice limit. The app shows the colour in force in "
     "the week displayed.</p>"
+    "<p><b>Ocean currents.</b> The Currents page shows the daily mean surface current for the same week as the lice "
+    "counts, from MET Norway's NorKyst v3 ocean model (800 m grid, CC BY 4.0). It is shown on a grid of about 3 km, "
+    "so narrow fjords are smoothed. The particles show how the water moved; they are not a model of lice larvae.</p>"
     "<p><b>Update.</b> A scheduled job runs early every Wednesday morning (with two backup attempts). It fetches new "
-    "counts and treatments, re-runs the whole backtest, runs the test suite as a quality gate and only then "
+    "counts, treatments and ocean currents, re-runs the whole backtest, runs the test suite as a quality gate and only then "
     "publishes the data.</p>"
 )
 
@@ -235,6 +238,9 @@ st.markdown(afsnit("5 · Changelog", "Changes to data, methods and models",
                    "Changes that affect the figures. Design-only and technical changes are left out; the full history "
                    "is on GitHub."), unsafe_allow_html=True)
 LOG = [
+    ("2026-11-05", "<b>Currents page added.</b> An animated map of the daily mean surface current from MET Norway's "
+                   "NorKyst v3 ocean model for the week of the lice counts, with the farms coloured by lice level. It "
+                   "shows how the water moves, not where lice larvae end up, and does not change any other figure."),
     ("2026-11-05", "<b>Younger lice stages added; new selected model.</b> Gradient boosting with attached and mobile "
                    "lice had the best skill on validation and replaced gradient boosting without them. In the test "
                    "period, skill one week ahead rose from 8% to 12% and four weeks ahead from 27% to 29%."),

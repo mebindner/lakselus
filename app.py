@@ -1,10 +1,10 @@
-"""Streamlit-app med fire sider (engelsk UI). Start med:  streamlit run app.py
+"""Streamlit-app med fem sider (engelsk UI). Start med:  streamlit run app.py
 
 Indhold
 0. Friske moduler – genindlæs lakselus-pakken, hvis koden er ændret, mens appen kørte
 1. Opsætning   – sidetitel, ordmærke i topbjælken og fælles designsystem (CSS)
 2. Data        – indlæses én gang; uden data vises en vejledning i stedet for siderne
-3. Navigation  – Latest week, History, Forecast og About i topbjælken
+3. Navigation  – Latest week, History, Forecast, Currents og About i topbjælken
 4. Fodnote     – About (hvem, data, metode, kode), opdateringsstatus og kildeangivelse (krav i BarentsWatch' vilkår)
 """
 
@@ -23,7 +23,7 @@ import streamlit as st
 # så kontrollen også holder, hvor Python ikke skriver .pyc-filer. Rækkefølgen følger afhængighederne,
 # så et modul altid genindlæses efter dem, det importerer.
 MODULER = ["config", "data", "udseende", "barentswatch", "evaluering", "modeller", "modelrapport",
-           "behandlingseffekt", "tidsmaskine", "appdata"]
+           "behandlingseffekt", "tidsmaskine", "havstroem", "appdata"]
 
 
 def _kilde_mtime(modul) -> int:
@@ -81,6 +81,7 @@ side = st.navigation(
         st.Page("sider/oversigt.py", title="Latest week", icon=":material/map:", default=True),
         st.Page("sider/tidsmaskine.py", title="History", icon=":material/view_in_ar:"),
         st.Page("sider/prognose.py", title="Forecast", icon=":material/insights:"),
+        st.Page("sider/havstroem.py", title="Currents", icon=":material/waves:", url_path="currents"),
         st.Page("sider/om.py", title="About", icon=":material/info:", url_path="about"),
     ],
     position="top",

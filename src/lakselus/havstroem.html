@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/deck.gl@9.1.14/dist.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<style>
+  /* Samme mørke kortstil som tidsmaskinen; accenten er den lyse tanggrønne (kontrast ≥ 7:1 mod navy) */
+  :root { --creme: #FFFFFF; --laks: #B7C47E; --nat: #0B2230; --daempet: #9FB2C0; }
+  html, body { margin: 0; height: 100%; background: var(--nat); font-family: 'Inter', sans-serif; color: var(--creme); overflow: hidden; }
+  #kort { position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
+          background: radial-gradient(ellipse at 55% 25%, #16384C 0%, #0D2635 55%, #081A25 100%); }
+  /* Fast CSS-størrelse: et lærred strækkes ikke af inset alene, og på en Retina-skærm er det dobbelt så stort */
+  #partikler { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; border-radius: 10px; }
+  .lag { position: absolute; pointer-events: none; }
+  #titel { left: 24px; top: 20px; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+  #dag { font-weight: 700; font-size: 34px; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  #uge { font-size: 12px; font-weight: 600; color: var(--laks); margin-top: 8px; text-transform: uppercase; letter-spacing: .16em; }
+  #forklaring { right: 22px; top: 22px; width: 210px; background: rgba(8,26,37,.8); backdrop-filter: blur(6px);
+                border: 1px solid rgba(255,255,255,.08); padding: 10px 14px; border-radius: 8px; color: var(--daempet);
+                font-size: 12px; line-height: 1.5; }
+  #forklaring b { color: #FFFFFF; }
+  .skala { height: 9px; border-radius: 5px; margin: 6px 0 3px; }
+  .skala.fart { background: linear-gradient(90deg, rgba(110,170,190,.35), rgba(170,215,225,.75) 40%, #FFFFFF); }
+  .skala.lus { background: linear-gradient(90deg, #1F7A8C, #5FA8A0 20%, #E2A23B 40%, #F26B4F 70%, #D64545); }
+  .ticks { display: flex; justify-content: space-between; opacity: .75; }
+  .afsnit { margin-top: 9px; }
+  #panel { left: 18px; right: 18px; bottom: 18px; pointer-events: auto; background: rgba(8,26,37,.85);
+           backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px 16px 12px; }
+  .styring { display: flex; align-items: center; gap: 12px; }
+  button { background: var(--laks); color: var(--nat); border: 0; width: 38px; height: 38px; border-radius: 6px;
+           font-size: 15px; cursor: pointer; flex: none; }
+  button:hover { filter: brightness(1.1); }
+  input[type=range] { flex: 1; accent-color: var(--laks); }
+  .dage { display: flex; justify-content: space-between; font-size: 11px; opacity: .6; margin: 4px 50px 0 50px; }
+  #kilde { right: 22px; bottom: 96px; font-size: 10px; opacity: .6; text-align: right; }
+  .deck-tooltip { font-family: 'Inter', sans-serif !important; border-radius: 8px; }
+  #kontrol { right: 22px; top: 210px; pointer-events: auto; display: flex; flex-direction: column; gap: 6px; }
+  #kontrol button { width: 34px; height: 34px; font-size: 20px; font-weight: 500; line-height: 1; color: #FFFFFF;
+                    background: rgba(8,26,37,.82); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); }
+  #kontrol button:hover { background: rgba(183,196,126,.28); filter: none; }
+  #kontrol #nulstil { font-size: 16px; }
+  #scrollhint { left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(8,26,37,.88);
+                backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+                padding: 10px 16px; font-size: 14px; font-weight: 500; opacity: 0; transition: opacity .25s; }
+  #scrollhint.vis { opacity: 1; }
+  kbd { font: 600 12px 'Inter', sans-serif; background: rgba(255,255,255,.14); border-radius: 4px; padding: 1px 6px; }
+  .touch { display: none; }
+  @media (hover: none) { .mus { display: none; } .touch { display: inline; } }
+  /* Smal skærm: forklaringen bliver mindre og flytter ned over panelet, så den ikke dækker kysten */
+  @media (max-width: 600px) {
+    #titel { left: 16px; top: 14px; }
+    #dag { font-size: 26px; }
+    #uge .lang { display: none; }  /* ellers løber teksten ind under zoomknapperne */
+    #forklaring { right: auto; left: 16px; top: auto; bottom: 92px; width: 170px; padding: 7px 10px; font-size: 11px; }
+    #forklaring .hjaelpetekst { display: none; }
+    #kilde { display: none; }
+    #kontrol { right: 12px; top: 14px; }
+    #panel { left: 10px; right: 10px; bottom: 10px; padding: 8px 10px 10px; }
+    .dage { margin: 4px 0 0 50px; }
+  }
+</style>
+</head>
+<body>
+<div id="kort"></div>
+<canvas id="partikler"></canvas>
+
+<div id="titel" class="lag">
+  <div id="dag">–</div>
+  <div id="uge"></div>
+</div>
+
+<div id="forklaring" class="lag">
+  <b>Surface current</b>
+  <div class="skala fart"></div>
+  <div class="ticks"><span>slow</span><span>0.5 m/s+</span></div>
+  <div class="afsnit"><b>Farms: adult female lice per fish</b></div>
+  <div class="skala lus"></div>
+  <div class="ticks"><span>0</span><span>0.2</span><span>0.5</span><span>1+</span></div>
+  <div class="afsnit hjaelpetekst"><span class="mus">Drag to move · <kbd class="zoomtast">Ctrl</kbd> + scroll to zoom</span><span class="touch">Drag to move · pinch to zoom</span></div>
+</div>
+
+<div id="kilde" class="lag">Currents: NorKyst v3, MET Norway (CC BY 4.0)<br>Lice: BarentsWatch / Mattilsynet · Coastline: Natural Earth</div>
+
+<div id="kontrol" class="lag">
+  <button id="zoomInd" aria-label="Zoom in" title="Zoom in">+</button>
+  <button id="zoomUd" aria-label="Zoom out" title="Zoom out">−</button>
+  <button id="nulstil" aria-label="Reset view" title="Reset view">⌂</button>
+</div>
+
+<div id="scrollhint" class="lag"><span class="mus">Use <kbd class="zoomtast">Ctrl</kbd> + scroll to zoom the map</span><span class="touch">Pinch with two fingers to zoom</span></div>
+
+<div id="panel" class="lag">
+  <div class="styring">
+    <button id="spil" title="Play / pause" aria-label="Play or pause">❚❚</button>
+    <input id="skyder" type="range" min="0" max="6.99" value="0" step="0.01" aria-label="Day of the week">
+  </div>
+  <div class="dage" id="dage"></div>
+</div>
+
+<script>
+const D = __DATA__;
+const R = D.rader, C = D.kolonner, CELLER = R * C, LAND = -128;
+const RAD = Math.PI / 180, mercY = lat => Math.log(Math.tan(Math.PI / 4 + lat * RAD / 2));
+const Y0 = mercY(D.lat0), TRIN = D.grad * RAD;
+const ANDEL_HAV = D.havceller / CELLER;
+
+// Farveskala for lusetal – samme som tidsmaskinen og forsiden
+const STOP = [[0, [31,122,140]], [0.1, [95,168,160]], [0.2, [226,162,59]], [0.5, [242,107,79]], [1.0, [214,69,69]]];
+function farve(v) {
+  if (v >= STOP[STOP.length - 1][0]) return STOP[STOP.length - 1][1];
+  for (let k = 1; k < STOP.length; k++) {
+    const [x1, c1] = STOP[k], [x0, c0] = STOP[k - 1];
+    if (v <= x1) { const t = (v - x0) / (x1 - x0); return c0.map((c, j) => Math.round(c + t * (c1[j] - c))); }
+  }
+}
+
+// --- Strømfeltet: int8 i trin af D.skala m/s, pakket med zlib; først u for alle dage, så v ----------
+let S = null;
+async function pakUd(b64) {
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const strøm = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate"));
+  return new Int8Array(await new Response(strøm).arrayBuffer());
+}
+
+// Strøm (m/s øst, nord) i en position og et tidspunkt t (dage, 0–7), bilineært i rummet og lineært i tid.
+// null = land eller uden for modellen.
+function stroem(lon, lat, t) {
+  const c = (lon - D.lon0) / D.grad, r = (mercY(lat) - Y0) / TRIN;
+  const c0 = Math.floor(c), r0 = Math.floor(r);
+  if (c0 < 0 || r0 < 0 || c0 >= C - 1 || r0 >= R - 1) return null;
+  const fc = c - c0, fr = r - r0;
+  const d0 = Math.min(Math.floor(t), 6), d1 = Math.min(d0 + 1, 6), ft = Math.min(t - d0, 1);
+  const i = r0 * C + c0, hjoerner = [i, i + 1, i + C, i + C + 1], w = [(1-fc)*(1-fr), fc*(1-fr), (1-fc)*fr, fc*fr];
+  let u = 0, v = 0;
+  for (let k = 0; k < 4; k++) {
+    const a = d0 * CELLER + hjoerner[k], b = d1 * CELLER + hjoerner[k];
+    if (S[a] === LAND) return null;
+    u += w[k] * ((1 - ft) * S[a] + ft * S[b]);
+    v += w[k] * ((1 - ft) * S[a + 7 * CELLER] + ft * S[b + 7 * CELLER]);
+  }
+  return [u * D.skala, v * D.skala];
+}
+
+// --- Kortet ---------------------------------------------------------------------------------------
+const ZOOM = [3.2, 9];
+const START = innerWidth < 600
+  ? { longitude: 11.8, latitude: 65.6, zoom: 3.55, pitch: 0, bearing: 0, minZoom: ZOOM[0], maxZoom: ZOOM[1] }
+  : { longitude: 15.0, latitude: 65.2, zoom: 3.95, pitch: 0, bearing: 0, minZoom: ZOOM[0], maxZoom: ZOOM[1] };
+let visning = START;
+
+let land = null;
+const anlaeg = D.anlaeg.map(a => ({ pos: [a[0], a[1]], navn: a[2], lus: a[3] }));
+function lag() {
+  return [land, new deck.ScatterplotLayer({
+    id: "anlaeg", data: anlaeg, pickable: true, getPosition: d => d.pos,
+    radiusUnits: "pixels", getRadius: d => 2.6 + Math.min(d.lus, 1) * 2.4,
+    getFillColor: d => [...farve(d.lus), 240], stroked: true, getLineColor: [8, 26, 37, 200], lineWidthMinPixels: 0.8,
+  })];
+}
+const kort = new deck.Deck({
+  parent: document.getElementById("kort"),
+  initialViewState: START,
+  controller: { scrollZoom: false, dragRotate: false, touchRotate: false, keyboard: true },
+  onViewStateChange: ({ viewState }) => { visning = viewState; nulstilSpor(); },
+  layers: lag(),
+  getTooltip: ({ object }) => object && {
+    html: `<b>${object.navn}</b><br>${object.lus.toFixed(2)} adult female lice per fish`,
+    style: { background: "#0B2230", color: "#FFFFFF", fontSize: "12px", padding: "8px 10px", border: "1px solid rgba(255,255,255,.12)" },
+  },
+});
+fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json").then(r => r.json()).then(topo => {
+  land = new deck.GeoJsonLayer({
+    id: "land",
+    data: topojson.feature(topo, topo.objects.countries).features
+      .filter(f => ["Norway", "Sweden", "Finland", "Denmark", "Estonia", "Latvia", "Iceland", "United Kingdom", "Germany"].includes(f.properties.name)),
+    filled: true, stroked: true, getFillColor: [22, 52, 70], getLineColor: [120, 160, 185, 90], lineWidthMinPixels: 0.6,
+  });
+  kort.setProps({ layers: lag() });
+});
+
+const flyt = (aendring, ms = 350) => {
+  visning = { ...visning, ...aendring };
+  kort.setProps({ initialViewState: { ...visning, transitionDuration: ms, transitionInterpolator: new deck.LinearInterpolator(["longitude", "latitude", "zoom"]) } });
+};
+const zoom = (z, ms = 350) => flyt({ zoom: Math.max(ZOOM[0], Math.min(ZOOM[1], z)) }, ms);
+document.getElementById("zoomInd").addEventListener("click", () => zoom(visning.zoom + 0.7));
+document.getElementById("zoomUd").addEventListener("click", () => zoom(visning.zoom - 0.7));
+document.getElementById("nulstil").addEventListener("click", () => flyt(START, 700));
+
+// Almindelig scroll ruller siden; Ctrl/⌘ + scroll (og knib på touchpad) zoomer kortet.
+const MAC = /Mac|iPhone|iPad/.test(navigator.platform);
+document.querySelectorAll(".zoomtast").forEach(k => { k.textContent = MAC ? "⌘" : "Ctrl"; });
+const scrollhint = document.getElementById("scrollhint");
+let scrollTimer = null;
+document.getElementById("kort").addEventListener("wheel", e => {
+  e.stopPropagation();
+  if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoom(visning.zoom - e.deltaY * (e.deltaMode ? 0.06 : 0.006), 0); }
+  else { scrollhint.classList.add("vis"); clearTimeout(scrollTimer); scrollTimer = setTimeout(() => scrollhint.classList.remove("vis"), 1500); }
+}, { passive: false, capture: true });
+
+// --- Partikler ------------------------------------------------------------------------------------
+// Hver partikel følger døgnets middelstrøm. Bevægelsen er sat op, så den kan ses: farten på skærmen er
+// proportional med strømmens fart, men tiden går langt hurtigere end i virkeligheden.
+const lærred = document.getElementById("partikler"), g = lærred.getContext("2d");
+let B = 0, H = 0, dpr = 1, partikler = [];
+const PX_PR_MS = 3.2;  // pixel pr. billede ved 1 m/s
+
+function tilpas() {
+  dpr = window.devicePixelRatio || 1; B = innerWidth; H = innerHeight;
+  lærred.width = B * dpr; lærred.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Tæthed efter skærmens areal, så både mobil og stor skærm ser fyldt ud uden at blive grumset.
+  partikler = Array.from({ length: Math.round(Math.min(7000, B * H / (B < 600 ? 95 : 140))) }, () => ny({}));
+  nulstilSpor();
+}
+// Før deck.gl har tegnet første gang, findes der ingen viewport (deck.gl fejler så); partiklerne venter.
+function viewport() { try { return kort.getViewports()[0]; } catch { return null; } }
+// En ny partikel et tilfældigt sted i havet på skærmen (op til 30 forsøg), med tilfældig levetid.
+function ny(p) {
+  const vp = S && viewport();
+  p.alder = 0; p.levetid = 60 + Math.random() * 120; p.lon = null;
+  if (!vp) return p;
+  for (let k = 0; k < 30; k++) {
+    const [lon, lat] = vp.unproject([Math.random() * B, Math.random() * H]);
+    if (stroem(lon, lat, tid)) { p.lon = lon; p.lat = lat; return p; }
+  }
+  return p;
+}
+function nulstilSpor() { g.clearRect(0, 0, B, H); }
+
+let tid = 0, spiller = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SEK_PR_DAG = 6;
+const skyder = document.getElementById("skyder"), knap = document.getElementById("spil");
+const dagTekst = document.getElementById("dag");
+function visDag() {
+  const d = Math.min(Math.floor(tid), 6);
+  dagTekst.textContent = D.dage[d][1];
+  skyder.value = tid.toFixed(2);
+}
+function spil(til) { spiller = til; knap.textContent = spiller ? "❚❚" : "▶"; }
+knap.addEventListener("click", () => spil(!spiller));
+skyder.addEventListener("input", () => { tid = +skyder.value; visDag(); });
+document.getElementById("dage").innerHTML = D.dage.map(d => `<span>${d[0]}</span>`).join("");
+document.getElementById("uge").innerHTML = `Week ${D.uge}, ${D.aar}<span class="lang"> · daily mean surface current</span>`;
+
+let sidst = performance.now();
+function billede(nu) {
+  const dt = Math.min((nu - sidst) / 1000, 0.1); sidst = nu;
+  if (spiller) { tid = (tid + dt / SEK_PR_DAG) % 7; visDag(); }
+  const vp = viewport();
+  if (S && vp) {
+    // Sporene falmer: det, der er tegnet, gøres lidt mere gennemsigtigt for hvert billede.
+    g.globalCompositeOperation = "destination-in";
+    g.fillStyle = "rgba(0,0,0,0.955)"; g.fillRect(0, 0, B, H);
+    g.globalCompositeOperation = "lighter";
+    g.lineWidth = 1.1;
+    // Meter pr. pixel ved kortets midte (Web Mercator, 512-pixel fliser som i deck.gl)
+    const mpp = 78271.517 * Math.cos(visning.latitude * RAD) / Math.pow(2, visning.zoom);
+    const sek = PX_PR_MS * mpp * (spiller ? 1 : 0.35);
+    for (const p of partikler) {
+      if (p.lon === null || ++p.alder > p.levetid) { ny(p); continue; }
+      const s = stroem(p.lon, p.lat, tid);
+      if (!s) { ny(p); continue; }
+      const [x0, y0] = vp.project([p.lon, p.lat]);
+      p.lat += s[1] * sek / 111320;
+      p.lon += s[0] * sek / (111320 * Math.cos(p.lat * RAD));
+      const [x1, y1] = vp.project([p.lon, p.lat]);
+      if (x1 < 0 || y1 < 0 || x1 > B || y1 > H) { ny(p); continue; }
+      const fart = Math.min(Math.hypot(s[0], s[1]) / 0.5, 1);
+      g.strokeStyle = `rgba(${Math.round(110 + 145 * fart)},${Math.round(170 + 85 * fart)},${Math.round(190 + 65 * fart)},${0.35 + 0.55 * fart})`;
+      g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+    }
+  }
+  requestAnimationFrame(billede);
+}
+
+addEventListener("resize", tilpas);
+pakUd(D.stroem).then(a => { S = a; tilpas(); visDag(); spil(spiller); requestAnimationFrame(billede); });
+</script>
+</body>
+</html>

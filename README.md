@@ -17,7 +17,7 @@ project – analysis of open data, not prepared for or by any company.
 Developed with AI-assisted coding (Claude). Problem framing, methodology, model validation and all
 design decisions are my own.
 
-## The app – four pages
+## The app – five pages
 
 ### 1. Latest week – weekly brief in consulting format
 Structured like a report deliverable:
@@ -53,7 +53,18 @@ lowers lice compared with similar untreated sites. Then, for the technically cur
 models (two naive benchmarks and six candidates), the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
 and the Diebold–Mariano test.
 
-### 4. About – data, methods and changes
+### 4. Currents – how the water moved in the same week
+Sea lice larvae drift with the water for days before they can attach to a fish. This page animates the daily mean
+surface current along the coast for the week of the latest lice counts, with every farm coloured by its lice level.
+Thousands of particles follow the current in the browser (deck.gl and a canvas), so the Norwegian Coastal Current and
+its eddies become visible. The particles are water, not lice: the page says so, and points to the Institute of Marine
+Research's official infection-pressure model for where larvae actually end up.
+
+The currents come from MET Norway's NorKyst v3 ocean model (800 m) over OPeNDAP, read with plain `requests` and
+numpy. Seven daily means (every third hour) are regridded to about 3 km in Web Mercator and packed as one byte per
+value (≈ 0.9 MB for the whole coast).
+
+### 5. About – data, methods and changes
 One place for everything a critical reader wants to know: where the data come from and how they are processed,
 how the forecast is built and tested (with the current test figures computed from the backtest), how the
 treatment-effect study works, what the figures cannot tell you, and a changelog of every change that affects the
@@ -136,6 +147,8 @@ retrieved as they look today; late corrections were not necessarily known in the
   treatments per site and week, plus production-area boundaries and traffic lights.
 - **Licence:** NLOD (Norwegian Licence for Open Government Data). Data delivered by BarentsWatch;
   information about lice and treatments is provided by the Norwegian Food Safety Authority (Mattilsynet).
+- **Ocean currents:** [NorKyst v3](https://thredds.met.no/thredds/dodsC/fou-hi/norkystv3_800m_m00_be.html), the
+  coastal ocean model of the Norwegian Meteorological Institute (MET Norway), under CC BY 4.0 / NLOD. No key needed.
 - **Processing:** Area figures are unweighted means over sites that counted lice that week (the number of
   fish per site is not in the dataset). The latest week is only included once at least 80% of sites have
   reported.
@@ -163,7 +176,7 @@ The app runs for free on **Streamlit Community Cloud** and needs no API key ther
 pre-processed data from `data/app/` (≈ 2 MB, committed to the repo), including the finished backtest.
 
 A **GitHub Action** (`.github/workflows/ugentlig-opdatering.yml`) runs every Wednesday: it fetches new
-lice counts and treatments, re-runs the models, publishes `data/app/`, runs all tests as a quality gate and pushes.
+lice counts, treatments and the week's ocean currents, re-runs the models, publishes `data/app/`, runs all tests as a quality gate and pushes.
 Streamlit Cloud redeploys automatically on every push. The workflow needs the repository secrets
 `BW_CLIENT_ID` and `BW_CLIENT_SECRET`; without them it is skipped.
 
@@ -171,6 +184,7 @@ To refresh the published data manually:
 
 ```bash
 python -m lakselus.hent --fra 2019
+python -m lakselus.havstroem
 python -m lakselus.modelrapport
 python -m lakselus.publicer
 ```
@@ -185,6 +199,7 @@ sider/
   oversigt.py              Latest week: search, summary, exhibits, method
   tidsmaskine.py           History: 3D map played week by week
   prognose.py              Forecast: forecast and treatment effects, then model evaluation
+  havstroem.py             Currents: animated surface currents with the week's lice counts
   om.py                    About: data, methods, limitations and changelog
 src/lakselus/
   barentswatch.py          API client (OAuth2 client credentials)
@@ -197,6 +212,7 @@ src/lakselus/
   publicer.py              writes compact app data to data/app for hosting
   appdata.py               cached lookups and key figures for the app
   tidsmaskine.py/.html     data packing and deck.gl view
+  havstroem.py/.html       NorKyst v3 currents over OPeNDAP, regridding, packing and the particle map
   udseende.py              design system: colours, typography, exhibits, Altair theme
 analyse/                   notebook with data preparation and baselines
 data/app/                  compact data and backtest used by the hosted app (in git)

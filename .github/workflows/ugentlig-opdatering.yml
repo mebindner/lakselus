@@ -1,4 +1,4 @@
-# Henter nye lusetal og lusebehandlinger hver uge, genberegner modellerne og publicerer app-data.
+# Henter nye lusetal, lusebehandlinger og havstrømme hver uge, genberegner modellerne og publicerer app-data.
 # Et push til main får Streamlit Community Cloud til at opdatere den offentlige side.
 # Kræver repository-secrets BW_CLIENT_ID og BW_CLIENT_SECRET (Settings → Secrets and variables → Actions).
 name: Ugentlig opdatering
@@ -59,6 +59,13 @@ jobs:
       - name: Hent nye lusetal og behandlinger fra BarentsWatch
         if: steps.noegle.outputs.klar == 'true'
         run: python -m lakselus.hent --fra 2019
+
+      # Havstrømmene for ugen kommer fra MET Norway (åbne data, ingen nøgle). Fejler hentningen, publiceres
+      # lusetallene alligevel, og strømkortet beholder sidste uges strømme.
+      - name: Hent ugens havstrømme fra NorKyst v3 (MET Norway)
+        if: steps.noegle.outputs.klar == 'true'
+        continue-on-error: true
+        run: python -m lakselus.havstroem
 
       - name: Genberegn modeller og publicér app-data
         if: steps.noegle.outputs.klar == 'true'
