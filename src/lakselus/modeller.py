@@ -8,6 +8,7 @@ Kandidater
 - ridge:            lineær model (direkte pr. horisont) på ændringen y(t+h) − y(t).
 - gbm:              gradient boosting med MAE-tab, samme mål og features, fælles for alle områder.
 - gbm_beh:          som gbm, men også med lusebehandlinger som forklarende variabel.
+- gbm_stadier:      som gbm, men også med de yngre lusestadier (bevægelige og fastsiddende lus).
 - ensemble:         gennemsnit af saeson_justeret, ridge og gbm.
 
 Modellerne forudsiger *ændringen* fra i dag frem for niveauet. Så er den naive prognose (ændring = 0)
@@ -15,7 +16,7 @@ modellens udgangspunkt, og den skal kun lære, hvornår og hvor meget niveauet a
 
 Indhold
 1. Featurelister            – hvilke forklarende variable hver model må bruge
-2. Features                 – kausale features pr. område og uge (lusetal, temperatur, sæson, kyst, behandlinger)
+2. Features                 – kausale features pr. område og uge (lusetal, stadier, temperatur, sæson, kyst, behandlinger)
 3. Sæsonmodel               – naiv + typisk sæsonændring
 4. Læringsmodeller          – ridge og gradient boosting som direkte multi-horisont-modeller
 5. Ensemble og kandidater   – de modeller, backtesten sammenligner
@@ -39,6 +40,8 @@ NUMERISKE = ["y", "d1", "d2", "d4", "d8", "rul4", "rul12", "std4", "temp_nu", "t
 NATIONALE = ["nat_y", "nat_d1"]
 # Lusebehandlinger: andel af områdets lokaliteter, der blev behandlet i ugen og i snit de sidste 4 uger.
 BEHANDLINGER = ["beh_andel", "beh_rul4"]
+# Yngre lusestadier pr. fisk: fastsiddende og bevægelige lus bliver til voksne hunlus i de følgende uger.
+STADIER = ["mob", "fast", "mob_d2"]
 REFIT_UGER = 13  # gen-træn hvert kvartal i backtesten
 
 
@@ -67,7 +70,7 @@ def features(historik: pd.DataFrame, h: int) -> pd.DataFrame:
 
     Undtagelse: `saes_d` er sæsonprofilen fra andre år i historikken – den kender intet efter forecast-ugen.
     """
-    kolonner = ["omraade", "uge_start", "hunlus", "temp", "n_lok"] + [k for k in ("n_beh",) if k in historik]
+    kolonner = ["omraade", "uge_start", "hunlus", "temp", "n_lok"] + [k for k in ("n_beh", "mob", "fast") if k in historik]
     p = historik[kolonner].sort_values(["omraade", "uge_start"]).copy()
     g = p.groupby("omraade")
 
@@ -100,6 +103,14 @@ def features(historik: pd.DataFrame, h: int) -> pd.DataFrame:
                          .reset_index(level=0, drop=True))
     else:
         p["beh_andel"] = p["beh_rul4"] = np.nan
+
+    # Yngre lusestadier: et tidligt varsel om de voksne hunlus, der kommer. Uden data: NaN.
+    if "mob" in p and "fast" in p:
+        for k in ("mob", "fast"):
+            p[k] = p.groupby("omraade")[k].ffill()
+        p["mob_d2"] = p["mob"] - p.groupby("omraade")["mob"].shift(2)
+    else:
+        p["mob"] = p["fast"] = p["mob_d2"] = np.nan
 
     # Målet: ændringen h uger frem (bruges kun til træning).
     p["maal"] = p.groupby("omraade")["hunlus"].shift(-h) - p["y"]
@@ -180,12 +191,16 @@ def kandidater() -> dict:
     # forbedring, men ikke ridge. Dybere/fladere træer ændrede skill < 0,01 – standardindstillingerne beholdes.
     # Behandlinger (tilføjet okt. 2026) gav på validering ingen forbedring – hverken for GBM eller ridge, fordi
     # anlæggene behandler, når lusetallet er højt, og det kender modellen allerede. GBM med behandlinger køres
-    # med som selvstændig kandidat, så modelvalget hver uge afgør, om behandlingerne begynder at gøre en forskel.
+    # med som selvstændig kandidat, så backtesten viser, om behandlingerne begynder at gøre en forskel. Modelvalget
+    # sker kun på valideringsperioden og skifter derfor ikke af sig selv.
+    # Lusestadier (tilføjet nov. 2026): på validering 2023–24 øgede de GBM's skill fra 16,9 % til 18,7 % i snit over
+    # horisonterne (DM p < 0,01 en og to uger frem). Graddage, naboområder og produktionscyklus gav ingen sikker gevinst.
     ridge, gbm = DirekteModel(_ridge, NUMERISKE), DirekteModel(_gbm, NUMERISKE + NATIONALE)
     return {
         "saeson_justeret": saeson_justeret,
         "ridge": ridge,
         "gbm": gbm,
         "gbm_beh": DirekteModel(_gbm, NUMERISKE + NATIONALE + BEHANDLINGER),
+        "gbm_stadier": DirekteModel(_gbm, NUMERISKE + NATIONALE + STADIER),
         "ensemble": Ensemble(saeson_justeret, ridge, gbm),
     }

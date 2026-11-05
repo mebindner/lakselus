@@ -25,6 +25,8 @@ KOLONNER = {
     "Uke": "uge",
     "Lokalitetsnummer": "lokalitet",
     "Voksne hunnlus": "hunlus",
+    "Lus i bevegelige stadier": "mob",
+    "Fastsittende lus": "fast",
     "Sjøtemperatur": "temp",
     "Har telt lakselus": "har_talt",
     "ProduksjonsområdeId": "omraade",
@@ -54,7 +56,8 @@ def indlaes_raa() -> pd.DataFrame:
         if APP_LUSETAL.exists():
             app = pd.read_parquet(APP_LUSETAL)
             tekst = app.select_dtypes("category").columns  # kategorier gemmes kompakt, men bruges som tekst
-            return app.astype({k: str for k in tekst} | {k: "float64" for k in ("hunlus", "temp", "lat", "lon")})
+            tal = [k for k in ("hunlus", "mob", "fast", "temp", "lat", "lon") if k in app]
+            return app.astype({k: str for k in tekst} | {k: "float64" for k in tal})
         raise FileNotFoundError("Ingen data i data/raw. Kør først: python -m lakselus.hent")
     raa = pd.concat((pd.read_csv(f, low_memory=False) for f in filer), ignore_index=True)
     raa = raa.rename(columns=KOLONNER)
@@ -111,13 +114,16 @@ def ugentligt_panel(raa: pd.DataFrame, behandlinger: pd.DataFrame | None = None)
     """Ét rækkesæt pr. (omraade, uge_start) på et komplet ugegitter.
 
     hunlus = uvægtet gennemsnit af voksne hunlus pr. fisk over lokaliteter, der har talt den uge.
+    mob og fast = det samme for bevægelige og fastsiddende lus – de yngre stadier, der bliver voksne hunlus.
     Uger uden tællinger i et område står som NaN (gitteret er komplet, så shift(k) = k uger tilbage).
     Med `behandlinger` får panelet også n_beh og n_med (0 i uger uden indberettede behandlinger).
     """
     talt = raa[(raa["har_talt"] == "Ja") & raa["omraade"].notna()].copy()
     talt["omraade"] = talt["omraade"].astype(int)
+    stadier = {k: (k, "mean") for k in ("mob", "fast") if k in talt}  # mangler i ældre app-data
     agg = talt.groupby(["omraade", "uge_start"]).agg(
         hunlus=("hunlus", "mean"),
+        **stadier,
         temp=("temp", "mean"),
         n_lok=("lokalitet", "nunique"),
     )

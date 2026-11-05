@@ -24,7 +24,9 @@ def syntetisk_panel(n_uger=200, n_omr=3, seed=0, momentum=0.0, saeson=0.1, stoej
             y[t] = y[t - 1] + (basis[t] - basis[t - 1]) + momentum * d_sidst + rng.normal(0, stoej)
         rows.append(pd.DataFrame({"omraade": o, "uge_start": uger, "hunlus": y.clip(0),
                                   "temp": 8 + 4 * np.sin(2 * np.pi * uge / 52), "n_lok": 50,
-                                  "n_beh": rng.integers(0, 10, n_uger)}))
+                                  "n_beh": rng.integers(0, 10, n_uger),
+                                  "mob": 2 * y.clip(0) + rng.normal(0, stoej, n_uger).clip(0),
+                                  "fast": y.clip(0) + rng.normal(0, stoej, n_uger).clip(0)}))
     return pd.concat(rows, ignore_index=True)
 
 
@@ -36,7 +38,7 @@ def test_features_er_kausale():
     t = p["uge_start"].unique()[120]
     fuld = m.features(p, 2).set_index(["omraade", "uge_start"])
     kun_fortid = m.features(p[p["uge_start"] <= t], 2).set_index(["omraade", "uge_start"])
-    kol = [k for k in m.NUMERISKE + m.NATIONALE + m.BEHANDLINGER if k != "saes_d"]
+    kol = [k for k in m.NUMERISKE + m.NATIONALE + m.BEHANDLINGER + m.STADIER if k != "saes_d"]
     pd.testing.assert_frame_equal(fuld.loc[kun_fortid.index, kol], kun_fortid[kol])
 
 
@@ -51,7 +53,7 @@ def test_saesonfeature_kender_ikke_eget_maal():
     assert a == pytest.approx(b)
 
 
-@pytest.mark.parametrize("navn", ["saeson_justeret", "ridge", "gbm", "gbm_beh", "ensemble"])
+@pytest.mark.parametrize("navn", ["saeson_justeret", "ridge", "gbm", "gbm_beh", "gbm_stadier", "ensemble"])
 def test_backtest_laekker_ikke_fremtid(navn):
     """Ødelægges alle data efter uge T, skal prognoser lavet til og med T være uændrede."""
     p = syntetisk_panel(n_uger=170)
@@ -60,6 +62,7 @@ def test_backtest_laekker_ikke_fremtid(navn):
     oedelagt.loc[oedelagt["uge_start"] > T, "hunlus"] = 99.0
     oedelagt.loc[oedelagt["uge_start"] > T, "temp"] = -50.0
     oedelagt.loc[oedelagt["uge_start"] > T, "n_beh"] = 999
+    oedelagt.loc[oedelagt["uge_start"] > T, ["mob", "fast"]] = 77.0
 
     start = p["uge_start"].unique()[130]
     a = ev.backtest(p, m.kandidater()[navn], horisonter=(1, 3), start=start)

@@ -57,7 +57,7 @@ An **About** section at the bottom of every page sums up who built it, the data,
 
 ## Models and evaluation
 
-Seven models are backtested week by week (expanding window, retrained every quarter). Every forecast is
+Eight models are backtested week by week (expanding window, retrained every quarter). Every forecast is
 made **only with the data available at the time** – tested automatically by corrupting all future data
 and checking that the forecasts are unchanged.
 
@@ -67,8 +67,9 @@ and checking that the forecasts are unchanged.
 | Seasonal naive | Same week last year |
 | Naive + seasonal change | Last level + the area's typical change for the time of year |
 | Ridge regression | Direct model per horizon on the change y(t+h) − y(t) |
-| **Gradient boosting** | Same target, non-linear, MAE loss, pooled across areas |
+| Gradient boosting | Same target, non-linear, MAE loss, pooled across areas |
 | Gradient boosting + treatments | As above, plus the share of the area's sites treated against lice |
+| **Gradient boosting + lice stages** | As above, plus the younger lice stages (attached and mobile lice per fish) |
 | Ensemble | Mean of naive + seasonal change, ridge and gradient boosting |
 
 Features: level and changes over 1–8 weeks, rolling mean and spread, sea temperature, ISO week
@@ -77,19 +78,19 @@ profile is computed leave-one-out: a training row only sees the same week's chan
 it never contains its own target.
 
 **Discipline:** Models and settings were selected on **2023–24** (validation). The results below are
-from **2025 onwards** (test), which was not used for any choice. Figures as of week 43, 2026 – they move
+from **2025 onwards** (test), which was not used for any choice. Figures as of week 44, 2026 – they move
 slightly each week as new weeks and late corrections arrive; the app always shows the current values.
 
 | Test period 2025→ | 1 week | 2 weeks | 3 weeks | 4 weeks |
 |---|---|---|---|---|
 | MAE naive | 0.023 | 0.032 | 0.040 | 0.045 |
-| MAE gradient boosting | **0.021** | **0.027** | **0.031** | **0.033** |
-| Skill vs. naive | +8% | +17% | +23% | +27% |
+| MAE gradient boosting + lice stages | **0.020** | **0.025** | **0.029** | **0.032** |
+| Skill vs. naive | +12% | +22% | +27% | +29% |
 | Diebold–Mariano p | < 0.001 | < 0.001 | < 0.001 | < 0.001 |
-| 80% interval coverage | 80% | 79% | 78% | 78% |
+| 80% interval coverage | 80% | 80% | 80% | 79% |
 
-Gradient boosting has the lowest error at every horizon, and its improvement over the naive forecast is
-statistically significant throughout (ridge and the ensemble also beat the naive forecast, but by less). The gain grows with the horizon: the naive
+Gradient boosting with lice stages has the lowest error at every horizon, and its improvement over the naive
+forecast is statistically significant throughout (the other learning models also beat the naive forecast, but by less). The gain grows with the horizon: the naive
 forecast is hard to beat one week ahead, but the model captures seasonality and momentum, which matter
 more further out. The prediction intervals (empirical quantiles of the model's own past errors by area)
 are well calibrated.
@@ -104,6 +105,15 @@ when lice counts are high, and the model already sees the lice history. In the t
 marginally ahead (skill 27.7% vs. 26.9% at four weeks), but the model is chosen on validation only, so that
 does not change the selection. The candidate stays in the weekly backtest, so the model choice will pick it
 up if treatments start to add information on the validation period's terms.
+
+**Lice stages:** Farms also count the younger stages – attached and mobile lice per fish – which grow
+into adult females over the following weeks. Adding them (plus the two-week change in mobile lice) raised
+gradient boosting's skill on the validation period from 16.9% to 18.7% averaged over the horizons
+(Diebold–Mariano p < 0.01 one and two weeks ahead), so it became the selected model. In the test period
+the gain held: skill one week ahead rose from 8% to 12%, and the difference to gradient boosting without
+stages is significant at every horizon. Sea temperature summed over 4–8 weeks (degree-days), neighbouring
+areas' lice levels and how far farms are into their production cycle were tested the same way and gave
+no reliable gain.
 
 **What treatments do:** The Forecast page also shows an event study of single, whole-site treatments:
 the lice level week by week around a treatment, compared with untreated sites that had the same lice level
@@ -174,7 +184,7 @@ src/lakselus/
   hent.py                  fetches raw data into a local cache
   data.py                  data preparation: weekly panel by area
   evaluering.py            baselines, backtest, MAE/skill, Diebold–Mariano, intervals
-  modeller.py              features and model candidates (ridge, gradient boosting with/without treatments, ensemble)
+  modeller.py              features and model candidates (ridge, gradient boosting with treatments or lice stages, ensemble)
   modelrapport.py          full backtest, selection on validation, report on test
   behandlingseffekt.py     event study of how much each treatment type lowers lice counts
   publicer.py              writes compact app data to data/app for hosting

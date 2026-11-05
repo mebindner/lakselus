@@ -32,6 +32,7 @@ NAVNE = {
     "ridge": "Ridge regression",
     "gbm": "Gradient boosting",
     "gbm_beh": "Gradient boosting + treatments",
+    "gbm_stadier": "Gradient boosting + lice stages",
     "ensemble": "Ensemble",
 }
 

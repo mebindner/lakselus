@@ -417,9 +417,16 @@ st.markdown(
     "model's own past errors by area and horizon.<br><br><b>Lice treatments.</b> One candidate also uses the share of "
     "an area's sites treated against lice that week and over the past four weeks (mechanical, thermal, freshwater and "
     + ("medicinal). On 2023–24 it did not improve on gradient boosting without treatments: farms treat when lice "
-       "counts are high, which the lice history already shows. It stays in the weekly backtest, so the model choice "
-       "would pick it up if that changes." if valgt != "gbm_beh" else
+       "counts are high, which the lice history already shows. It stays in the weekly backtest, so the comparison "
+       "shows if that changes." if valgt != "gbm_beh" else
        "medicinal). On 2023–24 it had the lowest error of all models and is the selected model.")
+    + "<br><br><b>Lice stages.</b> Another candidate also uses the younger lice stages the farms count: attached "
+    "and mobile lice per fish, and the change in mobile lice over two weeks. These stages grow into adult females "
+    "over the following weeks, so they are an early warning. "
+    + ("On 2023–24 this candidate had the lowest error of all models and is the selected model. Sea temperature "
+       "summed over 4–8 weeks, neighbouring areas and how far farms are into their production cycle were also tested "
+       "and gave no reliable gain." if valgt == "gbm_stadier" else
+       "It is in the weekly backtest alongside the other candidates.")
     + "<br><br><b>Caveats.</b> The forecasts are statistical estimates, not advice, and come with no guarantee; "
     "do not use them as the sole basis for operational or regulatory decisions. Treatments explain some of the "
     "abrupt drops but cannot be known ahead of time. Data are retrieved as they look today; late corrections were not necessarily known in the "

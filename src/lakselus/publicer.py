@@ -22,7 +22,7 @@ from lakselus import behandlingseffekt, data
 from lakselus.config import DATA_APP, DATA_RAW
 
 # Kun de kolonner og rækker, appen bruger: lokaliteter, der har talt lus.
-KOLONNER = ["aar", "uge", "uge_start", "lokalitet", "lokalitet_navn", "hunlus", "temp", "har_talt",
+KOLONNER = ["aar", "uge", "uge_start", "lokalitet", "lokalitet_navn", "hunlus", "mob", "fast", "temp", "har_talt",
             "over_graense", "omraade", "omraade_navn", "lat", "lon", "n_lok", "Lusegrense uke"]
 
 
@@ -72,8 +72,9 @@ def main() -> None:
 
     # --- 1. Lusetal ------------------------------------------------------------------------
     ud = talt[[k for k in KOLONNER if k in talt.columns]].copy()
-    for k in ("hunlus", "temp", "lat", "lon"):
-        ud[k] = ud[k].astype("float32")
+    for k in ("hunlus", "mob", "fast", "temp", "lat", "lon"):
+        if k in ud:
+            ud[k] = pd.to_numeric(ud[k], errors="coerce").astype("float32")
     for k in ("lokalitet_navn", "omraade_navn", "har_talt", "over_graense", "Lusegrense uke"):
         if k in ud:
             ud[k] = ud[k].astype(str).astype("category")
