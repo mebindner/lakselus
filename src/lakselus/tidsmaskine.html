@@ -268,6 +268,20 @@ document.getElementById("drejH").addEventListener("click", () => { stopSving(); 
 knap3d.addEventListener("click", () => { stopSving(); flyt({ pitch: visning.pitch > 5 ? 0 : START.pitch }); });
 document.getElementById("nulstil").addEventListener("click", () => { stopSving(); flyt(START); });
 
+// Stedreferencer: et par byer langs kysten, så man kan se, hvor søjlerne står. Tegnes øverst (uden dybdetest),
+// så søjlerne ikke skjuler navnene, når kortet vippes.
+const BYER = [["Stavanger", 5.73, 58.97], ["Bergen", 5.32, 60.39], ["Ålesund", 6.15, 62.47], ["Trondheim", 10.40, 63.43],
+              ["Bodø", 14.40, 67.28], ["Tromsø", 18.96, 69.65], ["Hammerfest", 23.68, 70.66]].map(([n, lon, lat]) => ({ n, pos: [lon, lat] }));
+const OEVERST = { depthCompare: "always", depthWriteEnabled: false };
+const stedlag = [
+  new deck.ScatterplotLayer({ id: "byprik", data: BYER, getPosition: d => d.pos, radiusUnits: "pixels", getRadius: 2.2,
+    getFillColor: [255, 255, 255, 230], parameters: OEVERST }),
+  new deck.TextLayer({ id: "byer", data: BYER, getPosition: d => d.pos, getText: d => d.n, getSize: 12,
+    getColor: [205, 219, 228, 235], getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [7, 0],
+    fontFamily: "Inter, sans-serif", fontWeight: 500, characterSet: "auto", outlineWidth: 3, outlineColor: [11, 34, 48, 255],
+    fontSettings: { sdf: true }, parameters: OEVERST }),
+];
+
 function lag() {
   const base = uge * N, fart = +document.getElementById("fart").value;
   return [baggrund, new deck.ColumnLayer({
@@ -278,7 +292,7 @@ function lag() {
     material: { ambient: 0.6, diffuse: 0.55, shininess: 24, specularColor: [220, 230, 240] },
     transitions: { getElevation: { duration: Math.min(fart * 0.9, 400) }, getFillColor: { duration: Math.min(fart * 0.9, 400) } },
     updateTriggers: { getElevation: uge, getFillColor: uge },
-  })];
+  }), ...stedlag];
 }
 
 kort.setProps({

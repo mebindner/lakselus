@@ -197,8 +197,9 @@ def indlaes() -> dict | None:
 
 # --- 6. HTML ---------------------------------------------------------------------------------
 
-def html(pakke: dict, anlaeg: list[list]) -> str:
+def html(pakke: dict, anlaeg: list[list], noter: list[list] | None = None) -> str:
     """Kortets HTML. `anlaeg`: [[lon, lat, navn, hunlus], ...] for ugens lusetal.
+    `noter`: [[lon, lat, titel, tekst], ...] – nummererede noter, der står på kortet.
 
     Strømfeltet sendes som int8 (først u for alle dage, så v), pakket med zlib og base64-kodet; browseren pakker
     det ud med DecompressionStream. Det holder hele kysten i syv dage under 1 MB.
@@ -213,7 +214,7 @@ def html(pakke: dict, anlaeg: list[list]) -> str:
         "stroem": base64.b64encode(zlib.compress(felt.tobytes(), 9)).decode("ascii"),
         "dage": [[(uge_start + pd.Timedelta(days=d)).strftime("%a"),
                   (uge_start + pd.Timedelta(days=d)).strftime("%a %-d %b")] for d in range(7)],
-        "uge": int(iso.week), "aar": int(iso.year), "anlaeg": anlaeg,
+        "uge": int(iso.week), "aar": int(iso.year), "anlaeg": anlaeg, "noter": noter or [],
     }
     tekst = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     return SKABELON.read_text(encoding="utf-8").replace("__DATA__", tekst)

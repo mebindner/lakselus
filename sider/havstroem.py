@@ -35,6 +35,14 @@ km_dag = maalt["km_dag"].median()
 # Områder med færre end 10 målte anlæg bruges ikke i konklusionen (samme regel som på forsiden).
 pr_omr = maalt.groupby(maalt["omraade"].astype(int))["km_dag"].agg(["median", "size"]).query("size >= 10")
 hurtig, langsom = pr_omr["median"].idxmax(), pr_omr["median"].idxmin()
+# Noterne på kortet: det hurtigste og det langsomste område, placeret midt i områdets anlæg.
+def note(po: int, titel: str) -> list:
+    a = maalt[maalt["omraade"].astype(int) == po]
+    return [round(float(a["lon"].median()), 3), round(float(a["lat"].median()), 3), titel,
+            f"{navne[po]}: {pr_omr.loc[po, 'median']:.0f} km a day"]
+
+
+noter = [note(hurtig, "Fastest water near farms"), note(langsom, "Slowest water near farms")]
 
 # --- 2. Sidehoved og resumé -------------------------------------------------------------------
 st.markdown(sidehoved(
@@ -65,12 +73,12 @@ st.markdown(resume([
 
 # --- 3. Kortet ------------------------------------------------------------------------------
 @st.cache_data(show_spinner="Unpacking a week of ocean currents …", max_entries=2)
-def side_html(skabelon_aendret: float, stroem_aendret: float, data_version: float) -> str:
+def side_html(skabelon_aendret: float, stroem_aendret: float, data_version: float, noter_noegle: str) -> str:
     # Argumenterne gør, at cachen fornyes, når skabelonen, strømmene eller lusetallene ændres.
-    return havstroem.html(pakke, anlaeg)
+    return havstroem.html(pakke, anlaeg, noter)
 
 
-st.iframe(side_html(havstroem.SKABELON.stat().st_mtime, havstroem.APP_FIL.stat().st_mtime, appdata.data_version()),
+st.iframe(side_html(havstroem.SKABELON.stat().st_mtime, havstroem.APP_FIL.stat().st_mtime, appdata.data_version(), str(noter)),
           height=720)
 
 # --- 4. Metode og forbehold -------------------------------------------------------------------

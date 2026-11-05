@@ -19,21 +19,24 @@
   #titel { left: 24px; top: 20px; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
   #dag { font-weight: 700; font-size: 34px; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
   #uge { font-size: 12px; font-weight: 600; color: var(--laks); margin-top: 8px; text-transform: uppercase; letter-spacing: .16em; }
-  /* Sådan læses kortet – lige under datoen, hvor øjet starter */
-  #laes { margin-top: 12px; font-size: 12.5px; line-height: 1.7; color: #DCE6EC; }
-  #laes .streg { display: inline-block; width: 22px; height: 2px; vertical-align: middle; margin-right: 6px;
-                 background: linear-gradient(90deg, rgba(170,215,225,0), #FFFFFF); }
-  #laes .prik { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle;
-                margin: 0 13px 0 7px; background: #F26B4F; }
-  #forklaring { right: 22px; top: 22px; width: 210px; background: rgba(8,26,37,.8); backdrop-filter: blur(6px);
-                border: 1px solid rgba(255,255,255,.08); padding: 10px 14px; border-radius: 8px; color: var(--daempet);
-                font-size: 12px; line-height: 1.5; }
-  #forklaring b { color: #FFFFFF; }
-  .skala { height: 9px; border-radius: 5px; margin: 6px 0 3px; }
-  .skala.fart { background: linear-gradient(90deg, rgba(110,170,190,.35), rgba(170,215,225,.75) 40%, #FFFFFF); }
-  .skala.lus { background: linear-gradient(90deg, #1F7A8C, #5FA8A0 20%, #E2A23B 40%, #F26B4F 70%, #D64545); }
-  .ticks { display: flex; justify-content: space-between; opacity: .75; }
-  .afsnit { margin-top: 9px; }
+  /* Nummererede noter på kortet: konklusionen står der, hvor den sker (som i FT og NYT) */
+  /* Noten står ude i havet til venstre for punktet, så den ikke dækker anlæggene langs kysten */
+  .note { position: absolute; pointer-events: none; display: flex; align-items: center; transform: translate(calc(-100% + 7px), -50%); }
+  .note .boks { background: rgba(14,42,59,.92); border: 1px solid rgba(183,196,126,.55); border-radius: 6px;
+                padding: 6px 9px; font-size: 12px; line-height: 1.4; color: #DCE6EC; white-space: nowrap; }
+  .note .boks b { display: block; color: var(--laks); font-weight: 600; font-size: 11.5px; }
+  .note .pind { width: 34px; height: 1px; background: rgba(183,196,126,.7); }
+  .note .ring { width: 14px; height: 14px; flex: none; border: 1px solid var(--laks); border-radius: 50%; }
+  /* Målestok: når siden taler om km om dagen, skal afstanden kunne ses */
+  #maalestok { left: 24px; bottom: 140px; font-size: 11px; color: #B9C9D3; text-align: center; }
+  #maalestok .streg { height: 6px; border: 1px solid #B9C9D3; border-top: 0; margin-top: 3px; }
+  /* Forklaringen bor i panelet i bunden, så kortet har pladsen */
+  .forklaring { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 12px; color: var(--daempet);
+                margin-top: 8px; }
+  .forklaring .vand { display: inline-block; width: 22px; height: 2px; vertical-align: middle; margin-right: 6px;
+                      background: linear-gradient(90deg, rgba(220,232,238,0), #FFFFFF); }
+  .forklaring .p { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; margin-right: 3px; }
+  .forklaring .hjaelp { margin-left: auto; opacity: .8; }
   #panel { left: 18px; right: 18px; bottom: 18px; pointer-events: auto; background: rgba(8,26,37,.85);
            backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px 16px 12px; }
   .styring { display: flex; align-items: center; gap: 12px; }
@@ -42,9 +45,9 @@
   button:hover { filter: brightness(1.1); }
   input[type=range] { flex: 1; accent-color: var(--laks); }
   .dage { display: flex; justify-content: space-between; font-size: 11px; opacity: .6; margin: 4px 50px 0 50px; }
-  #kilde { right: 22px; bottom: 96px; font-size: 10px; opacity: .6; text-align: right; }
+  #kilde { right: 22px; bottom: 138px; font-size: 10px; opacity: .6; text-align: right; }
   .deck-tooltip { font-family: 'Inter', sans-serif !important; border-radius: 8px; }
-  #kontrol { right: 22px; top: 210px; pointer-events: auto; display: flex; flex-direction: column; gap: 6px; }
+  #kontrol { right: 22px; top: 22px; pointer-events: auto; display: flex; flex-direction: column; gap: 6px; }
   #kontrol button { width: 34px; height: 34px; font-size: 20px; font-weight: 500; line-height: 1; color: #FFFFFF;
                     background: rgba(8,26,37,.82); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); }
   #kontrol button:hover { background: rgba(183,196,126,.28); filter: none; }
@@ -61,9 +64,11 @@
     #titel { left: 16px; top: 14px; }
     #dag { font-size: 26px; }
     #uge .lang { display: none; }
-    #laes { font-size: 11.5px; margin-top: 8px; }  /* ellers løber teksten ind under zoomknapperne */
-    #forklaring { right: auto; left: 16px; top: auto; bottom: 92px; width: 170px; padding: 7px 10px; font-size: 11px; }
-    #forklaring .hjaelpetekst { display: none; }
+    .note .boks { font-size: 11px; padding: 5px 7px; }
+    .forklaring { font-size: 11px; gap: 4px 12px; }
+    .forklaring .hjaelp { display: none; }
+    #maalestok { bottom: 128px; left: auto; right: 12px; }
+    #noter { display: none; }  /* ingen plads ved siden af kysten; tallene står i nøgletallene over kortet */
     #kilde { display: none; }
     #kontrol { right: 12px; top: 14px; }
     #panel { left: 10px; right: 10px; bottom: 10px; padding: 8px 10px 10px; }
@@ -78,19 +83,10 @@
 <div id="titel" class="lag">
   <div id="dag">–</div>
   <div id="uge"></div>
-  <div id="laes"><span class="streg"></span> water moving – longer and brighter is faster<br>
-    <span class="prik"></span> fish farm, coloured by lice per fish</div>
 </div>
 
-<div id="forklaring" class="lag">
-  <b>Surface current</b>
-  <div class="skala fart"></div>
-  <div class="ticks"><span>slow</span><span>0.5 m/s+</span></div>
-  <div class="afsnit"><b>Farms: adult female lice per fish</b></div>
-  <div class="skala lus"></div>
-  <div class="ticks"><span>0</span><span>0.2</span><span>0.5</span><span>1+</span></div>
-  <div class="afsnit hjaelpetekst"><span class="mus">Drag to move · <kbd class="zoomtast">Ctrl</kbd> + scroll to zoom</span><span class="touch">Drag to move · pinch to zoom</span></div>
-</div>
+<div id="noter"></div>
+<div id="maalestok" class="lag"><span id="maal_tekst"></span><div class="streg" id="maal_streg"></div></div>
 
 <div id="kilde" class="lag">Currents: NorKyst v3, MET Norway (CC BY 4.0)<br>Lice: BarentsWatch / Mattilsynet · Coastline: Natural Earth</div>
 
@@ -108,6 +104,12 @@
     <input id="skyder" type="range" min="0" max="6.99" value="0" step="0.01" aria-label="Day of the week">
   </div>
   <div class="dage" id="dage"></div>
+  <div class="forklaring">
+    <span><span class="vand"></span>Water – longer, brighter streaks are faster</span>
+    <span><span class="p" style="background:#1F7A8C"></span><span class="p" style="background:#E2A23B"></span><span class="p" style="background:#D64545"></span>
+      Farm, by adult female lice per fish: below 0.2 · 0.2–0.5 · above 0.5</span>
+    <span class="hjaelp"><span class="mus">Drag to move · <kbd class="zoomtast">Ctrl</kbd> + scroll to zoom</span><span class="touch">Drag · pinch to zoom</span></span>
+  </div>
 </div>
 
 <script>
@@ -158,13 +160,29 @@ function stroem(lon, lat, t) {
 const ZOOM = [3.2, 9];
 const START = innerWidth < 600
   ? { longitude: 11.8, latitude: 65.6, zoom: 3.55, pitch: 0, bearing: 0, minZoom: ZOOM[0], maxZoom: ZOOM[1] }
-  : { longitude: 15.0, latitude: 65.2, zoom: 3.95, pitch: 0, bearing: 0, minZoom: ZOOM[0], maxZoom: ZOOM[1] };
+  : { longitude: 13.6, latitude: 65.4, zoom: 3.6, pitch: 0, bearing: 0, minZoom: ZOOM[0], maxZoom: ZOOM[1] };
 let visning = START;
 
 let land = null;
 const anlaeg = D.anlaeg.map(a => ({ pos: [a[0], a[1]], navn: a[2], lus: a[3] }));
+// Stedreferencer: uden dem ved læseren ikke, hvor på kysten noget sker (den hyppigste fejl i strømkort).
+const BYER = [["Stavanger", 5.73, 58.97], ["Bergen", 5.32, 60.39], ["Ålesund", 6.15, 62.47], ["Trondheim", 10.40, 63.43],
+              ["Bodø", 14.40, 67.28], ["Tromsø", 18.96, 69.65], ["Hammerfest", 23.68, 70.66]].map(([n, lon, lat]) => ({ n, pos: [lon, lat] }));
+const HAV = [["North Sea", 2.6, 57.9], ["Norwegian Sea", 6.0, 66.4], ["Barents Sea", 31.0, 72.6]].map(([n, lon, lat]) => ({ n, pos: [lon, lat] }));
+function stedlag() {
+  return [
+    new deck.ScatterplotLayer({ id: "byprik", data: BYER, getPosition: d => d.pos, radiusUnits: "pixels", getRadius: 2.2,
+      getFillColor: [255, 255, 255, 230] }),
+    new deck.TextLayer({ id: "byer", data: BYER, getPosition: d => d.pos, getText: d => d.n, getSize: 12,
+      getColor: [205, 219, 228, 235], getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [7, 0],
+      fontFamily: "Inter, sans-serif", fontWeight: 500, characterSet: "auto",
+      outlineWidth: 3, outlineColor: [11, 34, 48, 255], fontSettings: { sdf: true } }),
+    new deck.TextLayer({ id: "hav", data: HAV, getPosition: d => d.pos, getText: d => d.n, getSize: 13,
+      getColor: [111, 141, 160, 220], fontFamily: "Inter, sans-serif", fontWeight: 400, characterSet: "auto" }),
+  ];
+}
 function lag() {
-  return [land, new deck.ScatterplotLayer({
+  return [land, ...stedlag(), new deck.ScatterplotLayer({
     id: "anlaeg", data: anlaeg, pickable: true, getPosition: d => d.pos,
     radiusUnits: "pixels", getRadius: d => 2.6 + Math.min(d.lus, 1) * 2.4,
     getFillColor: d => [...farve(d.lus), 240], stroked: true, getLineColor: [8, 26, 37, 200], lineWidthMinPixels: 0.8,
@@ -255,11 +273,35 @@ skyder.addEventListener("input", () => { tid = +skyder.value; visDag(); });
 document.getElementById("dage").innerHTML = D.dage.map(d => `<span>${d[0]}</span>`).join("");
 document.getElementById("uge").innerHTML = `Week ${D.uge}, ${D.aar}<span class="lang"> · daily mean surface current</span>`;
 
+// --- Noter og målestok ------------------------------------------------------------------------
+// Noterne regnes ud fra data i Python (fx hvor vandet løb hurtigst ved anlæggene) og placeres på kortet.
+const noteLag = document.getElementById("noter");
+const noter = (D.noter || []).map(([lon, lat, titel, tekst], i) => {
+  const el = document.createElement("div");
+  el.className = "note"; el.innerHTML = `<div class="boks"><b>${i + 1} · ${titel}</b>${tekst}</div><div class="pind"></div><div class="ring"></div>`;
+  noteLag.appendChild(el); return { el, pos: [lon, lat] };
+});
+const maalTekst = document.getElementById("maal_tekst"), maalStreg = document.getElementById("maal_streg");
+let sidsteVisning = null;
+function noterOgMaal(vp) {
+  if (sidsteVisning === visning) return;  // kun når kortet er flyttet eller zoomet
+  sidsteVisning = visning;
+  for (const n of noter) {
+    const [x, y] = vp.project(n.pos);
+    n.el.style.left = `${x}px`; n.el.style.top = `${y}px`;
+    n.el.style.display = x > 230 && x < B && y > 90 && y < H - 150 ? "flex" : "none";
+  }
+  const mpp = 78271.517 * Math.cos(visning.latitude * RAD) / Math.pow(2, visning.zoom);
+  const km = [10, 20, 50, 100, 200, 500].find(k => k * 1000 / mpp >= 60) || 500;
+  maalStreg.style.width = `${Math.round(km * 1000 / mpp)}px`; maalTekst.textContent = `${km} km`;
+}
+
 let sidst = performance.now();
 function billede(nu) {
   const dt = Math.min((nu - sidst) / 1000, 0.1); sidst = nu;
   if (spiller) { tid = (tid + dt / SEK_PR_DAG) % 7; visDag(); }
   const vp = viewport();
+  if (vp) noterOgMaal(vp);
   if (S && vp) {
     // Sporene falmer: det, der er tegnet, gøres lidt mere gennemsigtigt for hvert billede.
     g.globalCompositeOperation = "destination-in";
@@ -279,7 +321,8 @@ function billede(nu) {
       const [x1, y1] = vp.project([p.lon, p.lat]);
       if (x1 < 0 || y1 < 0 || x1 > B || y1 > H) { ny(p); continue; }
       const fart = Math.min(Math.hypot(s[0], s[1]) / 0.5, 1);
-      g.strokeStyle = `rgba(${Math.round(110 + 145 * fart)},${Math.round(170 + 85 * fart)},${Math.round(190 + 65 * fart)},${0.35 + 0.55 * fart})`;
+      // Ensfarvet (hvid-grå): vandet må ikke konkurrere med anlæggenes lusefarver.
+      g.strokeStyle = `rgba(${Math.round(200 + 55 * fart)},${Math.round(212 + 43 * fart)},${Math.round(220 + 35 * fart)},${0.3 + 0.6 * fart})`;
       g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
     }
   }
