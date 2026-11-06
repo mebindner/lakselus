@@ -243,7 +243,7 @@ body { width: 1080px; height: 1350px; overflow: hidden; font-family: Inter, sans
 .live i { width: 11px; height: 11px; border-radius: 50%; background: #0B2230; display: block; }
 #outro .logo svg { width: 460px; height: 78px; margin-bottom: 40px; }
 .kort .ons { margin-top: 18px; font: 600 34px Inter; color: #B7C47E; }
-.kort .link { margin-top: 56px; font: 600 40px Inter; color: #0B2230; background: #B7C47E; padding: 18px 36px; border-radius: 16px; }
+.kort .link { margin-top: 56px; font: 600 38px Inter; color: #B7C47E; border: 2px solid rgba(183,196,126,.55); padding: 16px 34px; border-radius: 16px; }
 .kort .lille { margin-top: 36px; font: 500 30px/1.45 Inter; color: #9FB2C0; }
 </style></head><body>
 <div class="glod"></div>
@@ -255,11 +255,11 @@ body { width: 1080px; height: 1350px; overflow: hidden; font-family: Inter, sans
   <div id="ringe"></div>
 </div></div>
 TEKSTER
-<div class="kort" id="outro"><div class="logo">LOGO</div><h2>Try it yourself</h2>
-  <div class="u">Weekly lice status, 4-week forecasts and ocean currents for every Norwegian salmon farm.</div>
-  <div class="ons">Free · no sign-up · updated every Wednesday</div>
+<div class="kort" id="outro"><div class="logo">LOGO</div><h2>A spare-time learning project</h2>
+  <div class="u">Built to practise forecasting, model validation and clear charts – on open data about Norwegian salmon farming.</div>
+  <div class="ons">By Martin Eckberg Bindner</div>
   <div class="link">lakselus.streamlit.app</div>
-  <div class="lille">A personal project by Martin Eckberg Bindner<br>Python · scikit-learn · Streamlit · open source on GitHub</div></div>
+  <div class="lille">Python · scikit-learn · Streamlit<br>Code and methods open on GitHub</div></div>
 <div class="bund" id="bund"><div class="logo">LOGO</div><div class="prik">PRIKKER</div></div>
 <script>
 const e = x => { x = Math.min(Math.max(x, 0), 1); return x * x * (3 - 2 * x); };
