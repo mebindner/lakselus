@@ -317,19 +317,45 @@ function tilpas() {
   dpr = window.devicePixelRatio || 1; B = innerWidth; H = innerHeight;
   lærred.width = B * dpr; lærred.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
   // Tæthed efter skærmens areal, så både mobil og stor skærm ser fyldt ud uden at blive grumset.
-  partikler = Array.from({ length: Math.round(Math.min(7000, B * H / (B < 600 ? 95 : 140))) }, () => ny({}));
+  partikler = Array.from({ length: Math.round(Math.min(7000, B * H / (B < 600 ? 110 : 175))) }, () => ny({}));
   nulstilSpor();
 }
 // Før deck.gl har tegnet første gang, findes der ingen viewport (deck.gl fejler så); partiklerne venter.
 function viewport() { try { return kort.getViewports()[0]; } catch { return null; } }
 // En ny partikel et tilfældigt sted i havet på skærmen (op til 30 forsøg), med tilfældig levetid.
+// Nærhed til anlæggene: strømmen tegnes med fuld styrke langs kysten og toner ud ude på havet (ca. 100–220 km fra
+// nærmeste anlæg). Kortet handler om vandet ved anlæggene – og havmodellens lige yderkant forsvinder i udtoningen.
+let NAER = null;
+function naerhed() {
+  const afst = new Uint16Array(CELLER).fill(65535), koe = new Int32Array(CELLER);
+  let hoved = 0, hale = 0;
+  for (const a of anlaeg) {
+    const c = Math.floor((a.pos[0] - D.lon0) / D.grad), r = Math.floor((mercY(a.pos[1]) - Y0) / TRIN);
+    if (c < 0 || r < 0 || c >= C || r >= R) continue;
+    const i = r * C + c;
+    if (afst[i]) { afst[i] = 0; koe[hale++] = i; }
+  }
+  while (hoved < hale) {  // bredde-først: afstand i celler til nærmeste anlæg
+    const i = koe[hoved++], r = (i / C) | 0, c = i % C, d = afst[i] + 1;
+    if (c > 0 && afst[i - 1] > d) { afst[i - 1] = d; koe[hale++] = i - 1; }
+    if (c < C - 1 && afst[i + 1] > d) { afst[i + 1] = d; koe[hale++] = i + 1; }
+    if (r > 0 && afst[i - C] > d) { afst[i - C] = d; koe[hale++] = i - C; }
+    if (r < R - 1 && afst[i + C] > d) { afst[i + C] = d; koe[hale++] = i + C; }
+  }
+  NAER = new Float32Array(CELLER);
+  for (let i = 0; i < CELLER; i++) NAER[i] = Math.max(0, Math.min(1, (70 - afst[i]) / 40));
+}
+function naer(lon, lat) {
+  const c = Math.floor((lon - D.lon0) / D.grad), r = Math.floor((mercY(lat) - Y0) / TRIN);
+  return NAER && c >= 0 && r >= 0 && c < C && r < R ? NAER[r * C + c] : 0;
+}
 function ny(p) {
   const vp = S && viewport();
   p.alder = 0; p.levetid = 60 + Math.random() * 120; p.lon = null;
   if (!vp) return p;
   for (let k = 0; k < 30; k++) {
     const [lon, lat] = vp.unproject([Math.random() * B, Math.random() * H]);
-    if (stroem(lon, lat, tid)) { p.lon = lon; p.lat = lat; return p; }
+    if (naer(lon, lat) > 0 && stroem(lon, lat, tid)) { p.lon = lon; p.lat = lat; return p; }
   }
   return p;
 }
@@ -394,7 +420,11 @@ function billede(nu) {
 
     g.globalCompositeOperation = "lighter";
     g.lineWidth = 1.1;
-    g.lineCap = "round";  // næsten stillestående vand tegnes som en lille prik i stedet for at forsvinde
+    // Zoomet ind (fjordene) tegnes næsten stillestående vand som små prikker; på hele kysten ville de fylde havet.
+    g.lineCap = visning.zoom > 5.5 ? "round" : "butt";
+    // Mindste lysstyrke: svag på hele kysten (ellers larmer havet), kraftigere zoomet ind, så det langsomme vand i
+    // bugter og fjorde ved anlæggene kan ses.
+    const grund = visning.zoom > 5.5 ? 0.5 : 0.22;
     // Meter pr. pixel ved kortets midte (Web Mercator, 512-pixel fliser som i deck.gl)
     const mpp = 78271.517 * Math.cos(visning.latitude * RAD) / Math.pow(2, visning.zoom);
     const sek = PX_PR_MS * mpp * (spiller ? 1 : 0.35);
@@ -409,7 +439,9 @@ function billede(nu) {
       if (x1 < 0 || y1 < 0 || x1 > B || y1 > H) { ny(p); continue; }
       const fart = Math.min(Math.hypot(s[0], s[1]) / 0.5, 1);
       // Ensfarvet (hvid-grå): vandet må ikke konkurrere med anlæggenes lusefarver.
-      g.strokeStyle = `rgba(${Math.round(200 + 55 * fart)},${Math.round(212 + 43 * fart)},${Math.round(220 + 35 * fart)},${0.42 + 0.5 * fart})`;
+      const kant = naer(p.lon, p.lat);
+      if (kant === 0) { ny(p); continue; }
+      g.strokeStyle = `rgba(${Math.round(200 + 55 * fart)},${Math.round(212 + 43 * fart)},${Math.round(220 + 35 * fart)},${(grund + (1 - grund) * fart) * kant})`;
       g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
     }
   }
@@ -417,7 +449,7 @@ function billede(nu) {
 }
 
 addEventListener("resize", tilpas);
-pakUd(D.stroem).then(a => { S = a; tilpas(); visDag(); spil(spiller); requestAnimationFrame(billede); });
+pakUd(D.stroem).then(a => { S = a; naerhed(); tilpas(); visDag(); spil(spiller); requestAnimationFrame(billede); });
 </script>
 </body>
 </html>
