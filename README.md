@@ -1,5 +1,10 @@
 # Sea lice in Norwegian salmon farming – weekly brief and forecast on open data
 
+[![Weekly update](https://github.com/mebindner/lakselus/actions/workflows/ugentlig-opdatering.yml/badge.svg)](https://github.com/mebindner/lakselus/actions/workflows/ugentlig-opdatering.yml)
+[![Live app](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://lakselus.streamlit.app)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **Live app: [lakselus.streamlit.app](https://lakselus.streamlit.app)** – updated automatically every week.
 
 [![Adult female lice per fish at every Norwegian fish farm, week 42 2026](docs/social-preview.png)](https://lakselus.streamlit.app)
@@ -16,6 +21,9 @@ project – analysis of open data, not prepared for or by any company.
 
 Developed with AI-assisted coding (Claude). Problem framing, methodology, model validation and all
 design decisions are my own.
+
+The app and this README are in English; the code uses Danish names and comments. A short
+[glossary](#danish-names-in-the-code) translates the words you will meet most often.
 
 ## The app – five pages
 
@@ -194,6 +202,7 @@ python -m lakselus.publicer
 ## Structure
 
 The code uses Danish identifiers and comments (the author is Danish); the app and this README are in English.
+See the [glossary](#danish-names-in-the-code) below.
 
 ```
 app.py                     navigation and shared layout
@@ -222,6 +231,22 @@ data/raw/                  local cache of raw data (not in git)
 .github/workflows/         weekly data and model update
 tests/
 ```
+
+### Danish names in the code
+
+| Danish | English | | Danish | English |
+|---|---|---|---|---|
+| `lusetal` | lice counts | | `hent` | fetch |
+| `prognose` | forecast | | `publicer` | publish |
+| `behandling` | treatment | | `evaluering` | evaluation |
+| `havstrøm` (`havstroem`) | ocean current | | `udseende` | look, styling |
+| `produktionsområde` (`po`) | production area | | `sider` | pages |
+| `lokalitet` | farm site | | `oversigt` | overview (Latest week) |
+| `uge` | week | | `tidsmaskine` | time machine (History) |
+| `grænse` (`graense`) | limit | | `om` | about |
+| `ugentlig opdatering` | weekly update | | `hold vågen` (`hold_vaagen`) | keep awake |
+
+`æ`, `ø` and `å` are written `ae`, `oe` and `aa` in file and function names.
 
 ## Author and licence
 
