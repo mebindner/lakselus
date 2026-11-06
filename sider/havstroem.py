@@ -7,9 +7,9 @@ kørsel (python -m lakselus.havstroem); anlæggene farves efter ugens lusetal.
 Indhold
 1. Data         – strømfeltet, ugens lusetal pr. lokalitet og vandets fart ved anlæggene (km pr. døgn)
 2. Sidehoved og resumé – konklusionen i ét tal, forskellen mellem områderne og hvor mange anlæg tallet bygger på
-2b. Livscyklus  – fra larve i vandet til den voksne hunlus, med ugens tal (livscyklus.py)
 3. Kortet       – partikelanimation i browseren (havstroem.html)
 4. Metode og forbehold
+5. Livscyklus   – fra larve i vandet til den voksne hunlus, med ugens tal (livscyklus.py)
 """
 
 import pandas as pd
@@ -72,12 +72,6 @@ st.markdown(resume([
 ]), unsafe_allow_html=True)
 
 
-# --- 2b. Livscyklus ---------------------------------------------------------------------------
-# Hvorfor strømmen betyder noget: larverne driver i dagevis, før de sætter sig på en fisk. Ugens tal pr. stadie er
-# gennemsnittet pr. fisk over de anlæg, der talte; temperaturen er medianen.
-st.markdown(livscyklus.html(iso.week, km_dag, ugens["fast"].mean(), ugens["mob"].mean(), ugens["hunlus"].mean(),
-                            ugens["temp"].median()), unsafe_allow_html=True)
-
 # --- 3. Kortet ------------------------------------------------------------------------------
 @st.cache_data(show_spinner="Unpacking a week of ocean currents …", max_entries=2)
 def side_html(skabelon_aendret: float, stroem_aendret: float, data_version: float, noter_noegle: str) -> str:
@@ -104,3 +98,9 @@ st.markdown(
     "CC BY 4.0. Lice counts: BarentsWatch / Mattilsynet, NLOD. Coastline: Natural Earth.</div>",
     unsafe_allow_html=True,
 )
+
+# --- 5. Livscyklus ----------------------------------------------------------------------------
+# Efter kortet og dets noter: hvorfor strømmen betyder noget. Larverne driver i dagevis, før de sætter sig på en
+# fisk. Ugens tal pr. stadie er gennemsnittet pr. fisk over de anlæg, der talte; temperaturen er medianen.
+st.markdown(livscyklus.html(iso.week, km_dag, ugens["fast"].mean(), ugens["mob"].mean(), ugens["hunlus"].mean(),
+                            ugens["temp"].median()), unsafe_allow_html=True)

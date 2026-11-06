@@ -35,6 +35,10 @@ DEFS = (
     '<path d="M0 12 a8 7 0 0 1 16 0M-8 6 a8 7 0 0 1 16 0M8 6 a8 7 0 0 1 16 0" fill="none" stroke="#BFCCD6" stroke-width=".8"/></pattern>'
     '<filter id="lc-skygge" x="-30%" y="-30%" width="160%" height="160%">'
     '<feDropShadow dx="0" dy="1.6" stdDeviation="1.6" flood-color="#0B2230" flood-opacity=".28"/></filter>'
+    '<linearGradient id="lc-hav" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2F8FC"/>'
+    '<stop offset=".6" stop-color="#D7E7F2"/><stop offset="1" stop-color="#B9D1E2"/></linearGradient>'
+    '<linearGradient id="lc-laks" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3F6079"/>'
+    '<stop offset=".38" stop-color="#8FA9BB"/><stop offset=".55" stop-color="#D6E1E9"/><stop offset="1" stop-color="#F7F9FB"/></linearGradient>'
     "</defs>"
 )
 HUD = '<rect width="160" height="110" fill="url(#lc-hud)"/><rect width="160" height="110" fill="url(#lc-skael)" opacity=".9"/>'
@@ -130,15 +134,19 @@ def _fisk_lus(x: float, y: float, s: float, krop: str) -> str:
     return f'<g transform="translate({x} {y}) rotate(-90) scale({s})" filter="url(#lc-skygge)">{krop}</g>'
 
 
-def _maerke(nr: int, x: float, y: float, tx: float, ty: float, titel: str, under: str, anker: str = "start") -> str:
-    """Nummereret mærke med en tynd linje ind til stedet på scenen og en kort etiket."""
-    dx = 14 if anker == "start" else -14
-    return (f'<line x1="{x}" y1="{y}" x2="{tx}" y2="{ty}" stroke="{BLAEK}" stroke-opacity=".45" stroke-width="1"/>'
-            f'<circle cx="{tx}" cy="{ty}" r="2.5" fill="{BLAEK}"/>'
-            f'<g class="lc-maerke"><circle cx="{x}" cy="{y}" r="11" fill="#FFFFFF" stroke="{BLAEK}" stroke-width="1.4"/>'
-            f'<text x="{x}" y="{y + 4.3}" text-anchor="middle" class="lc-nr">{nr}</text></g>'
-            f'<g class="lc-etiket"><text x="{x + dx}" y="{y - 1}" text-anchor="{anker}" class="lc-et1">{titel}</text>'
-            f'<text x="{x + dx}" y="{y + 14}" text-anchor="{anker}" class="lc-et2">{under}</text></g>')
+def _maerke(nr: int, x: float, y: float, tx: float, ty: float, titel: str = "", under: str = "", anker: str = "start",
+            stor: bool = False) -> str:
+    """Nummereret mærke med en tynd linje ind til stedet på scenen og en kort etiket (ingen etiket i den store udgave)."""
+    r, skrift, dx = (19, 20, 0) if stor else (11, 13, 14 if anker == "start" else -14)
+    etiket = ("" if stor else
+              f'<text x="{x + dx}" y="{y - 1}" text-anchor="{anker}" class="lc-et1">{titel}</text>'
+              f'<text x="{x + dx}" y="{y + 14}" text-anchor="{anker}" class="lc-et2">{under}</text>')
+    return (f'<g class="lc-m lc-m{nr}">'
+            f'<line x1="{x}" y1="{y}" x2="{tx}" y2="{ty}" stroke="{BLAEK}" stroke-opacity=".45" stroke-width="{1.6 if stor else 1}"/>'
+            f'<circle cx="{tx}" cy="{ty}" r="{4 if stor else 2.5}" fill="{BLAEK}"/>'
+            f'<circle cx="{x}" cy="{y}" r="{r}" fill="#FFFFFF" stroke="{BLAEK}" stroke-width="1.6"/>'
+            f'<text x="{x}" y="{y + skrift * .34:.1f}" text-anchor="middle" class="lc-nr" style="font-size:{skrift}px">{nr}</text>'
+            f'{etiket}</g>')
 
 
 def scene(km_dag: float) -> str:
@@ -176,22 +184,23 @@ def scene(km_dag: float) -> str:
     maerker = (_maerke(1, 60, 216, 140, 290, "Larvae drift with the current", f"2–14 days · water moved ≈ {km_dag:.0f} km a day")
                + _maerke(2, 560, 66, 600, 180, "Attached", "chalimus, held by a thread")
                + _maerke(3, 712, 44, 712, 172, "Mobile", "pre-adults and adult males")
-               + _maerke(4, 730, 306, 836, 210, "Adult female", "egg strings hatch new larvae"))
-    return ('<div class="lc-scene"><svg viewBox="0 0 1000 340" role="img" aria-label="Animation of the salmon louse life cycle: '
-            'larvae hatch from the egg strings, drift with the current, attach to a salmon and grow into adult lice.">'
-            + DEFS + '<defs><linearGradient id="lc-hav" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2F8FC"/>'
-            '<stop offset=".6" stop-color="#D7E7F2"/><stop offset="1" stop-color="#B9D1E2"/></linearGradient>'
-            '<linearGradient id="lc-laks" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3F6079"/>'
-            '<stop offset=".38" stop-color="#8FA9BB"/><stop offset=".55" stop-color="#D6E1E9"/><stop offset="1" stop-color="#F7F9FB"/></linearGradient></defs>'
-            f'<rect width="1000" height="340" fill="url(#lc-hav)"/>{straale}{stroem}'
-            f'<g class="lc-svoem">{laks}{lus}</g>{larver_}{maerker}</svg></div>')
+               + _maerke(4, 690, 278, 828, 214, "Adult female", "egg strings hatch new larvae", "end"))
+    # Mobil: beskåret omkring laksen, større mærker og ingen etiketter – trinkortene nedenunder har teksten.
+    maerker_m = (_maerke(1, 404, 290, 444, 322, stor=True) + _maerke(2, 560, 62, 600, 180, stor=True)
+                 + _maerke(3, 712, 50, 712, 172, stor=True) + _maerke(4, 900, 300, 836, 212, stor=True))
+    tekst = ('Animation of the salmon louse life cycle: larvae hatch from the egg strings, drift with the current, '
+             'attach to a salmon and grow into adult lice.')
+    indhold = (f'<rect width="1000" height="340" fill="url(#lc-hav)"/>{straale}{stroem}'
+               f'<g class="lc-svoem">{laks}{lus}</g>{larver_}')
+    return (f'<div class="lc-scene lc-scene-d"><svg viewBox="0 0 1000 340" role="img" aria-label="{tekst}">{indhold}{maerker}</svg></div>'
+            f'<div class="lc-scene lc-scene-m"><svg viewBox="360 20 640 320" role="img" aria-label="{tekst}">{indhold}{maerker_m}</svg></div>')
 
 
 # --- 2. HTML --------------------------------------------------------------------------------------
 
 def _trin(nr: int, sted: str, navn: str, stadier: str, tegning: str, tekst: str, tal: str = "") -> str:
     return (f'<div class="lc-trin"><div class="lc-sted">{nr:02d} · {sted}</div>'
-            f'<svg viewBox="0 0 160 110" role="img" aria-label="{navn}">{DEFS}{tegning}</svg>'
+            f'<svg viewBox="0 0 160 110" role="img" aria-label="{navn}">{tegning}</svg>'
             f'<div class="lc-navn">{navn}</div><div class="lc-stadier">{stadier}</div>'
             f'<div class="lc-tekst">{tekst}</div>{tal}</div>')
 
@@ -201,7 +210,7 @@ def _tal(v: float, hvad: str, farve: str = BLAEK) -> str:
 
 
 CSS = f"""<style>
-.lc {{ margin: .4rem 0 2.2rem; }}
+.lc {{ margin: 2.6rem 0 2.2rem; }}
 .lc .lc-over {{ font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: {SKIFER}; }}
 .lc h3 {{ font-size: 1.45rem !important; margin: .35rem 0 .3rem !important; padding: 0 !important; }}
 .lc .lc-intro {{ color: #4A5A66; max-width: 52em; margin: 0 0 1rem; line-height: 1.55; }}
@@ -238,8 +247,18 @@ CSS = f"""<style>
 .lc-c {{ animation: lc-ind 18s linear infinite; animation-delay: inherit; opacity: 0; }}
 @keyframes lc-ud {{ 0%, 38% {{ opacity: 1; }} 48%, 100% {{ opacity: 0; }} }}
 @keyframes lc-ind {{ 0%, 38% {{ opacity: 0; }} 48%, 100% {{ opacity: 1; }} }}
-@media (max-width: 640px) {{ .lc-etiket {{ display: none; }} .lc-maerke circle {{ r: 16px; }} .lc-nr {{ font-size: 18px; }} }}
-@media (prefers-reduced-motion: reduce) {{ .lc-stroem, .lc-straale, .lc-svoem, .lc-n, .lc-c {{ animation: none; }}
+.lc-scene-m {{ display: none; }}
+@media (max-width: 640px) {{ .lc-scene-d {{ display: none; }} .lc-scene-m {{ display: block; }} }}
+/* Mærkerne kommer frem ét ad gangen, mens scenen rulles ind (scroll-drevet animation, kun CSS). Browsere uden
+   understøttelse viser dem bare med det samme. */
+@supports (animation-timeline: view()) {{
+  .lc-scene {{ view-timeline: --lc-scene block; }}
+  .lc-m {{ animation: lc-frem linear both; animation-timeline: --lc-scene; }}
+  .lc-m1 {{ animation-range: cover 12% cover 26%; }} .lc-m2 {{ animation-range: cover 18% cover 32%; }}
+  .lc-m3 {{ animation-range: cover 24% cover 38%; }} .lc-m4 {{ animation-range: cover 30% cover 44%; }}
+}}
+@keyframes lc-frem {{ from {{ opacity: 0; transform: translateY(8px); }} to {{ opacity: 1; transform: none; }} }}
+@media (prefers-reduced-motion: reduce) {{ .lc-stroem, .lc-straale, .lc-svoem, .lc-n, .lc-c, .lc-m {{ animation: none; }}
   .lc-larve {{ animation: none; opacity: 1; offset-distance: 55%; }} .lc-c {{ opacity: 1; }} .lc-n {{ opacity: 0; }} }}
 .lc-drift {{ animation: lc-driv 9s linear infinite; }}
 @keyframes lc-driv {{ 0% {{ transform: translate(-18px, 0); opacity: 0; }} 12% {{ opacity: 1; }} 50% {{ transform: translate(4px, -3px); }}
@@ -275,7 +294,10 @@ def html(uge: int, km_dag: float, fast: float, mob: float, hun: float, temp: flo
               "Her egg strings "
               "hatch new larvae, and the cycle starts again.", _tal(hun, f"per fish in week {uge}", LUS_FARVER[lus_niveau(hun)])),
     ]
-    return (CSS + '<div class="lc"><div class="lc-over">Why the currents matter</div>'
+    # Alle forløb og mønstre står én gang i en usynlig SVG, som alle tegningerne henviser til. De må ikke ligge inde
+    # i en scene, der er skjult med display: none (desktop- eller mobiludgaven), for så tegnes de ikke.
+    faelles = f'<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">{DEFS}</svg>'
+    return (CSS + '<div class="lc">' + faelles + '<div class="lc-over">Why the currents matter</div>'
             "<h3>From drifting larva to the lice that are counted</h3>"
             '<p class="lc-intro">A salmon louse spends its first days as a larva in the water and the rest of its life on a fish. '
             "Farms count three of the stages on the salmon every week – the numbers below are the average per fish "
