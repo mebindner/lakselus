@@ -15,7 +15,7 @@ import time
 
 import pandas as pd
 
-from lakselus import data, evaluering as ev, modeller as m
+from lakselus import data, evaluering as ev, modeller as m, regnskab
 from lakselus.config import DATA_APP
 
 # --- 1. Filer og modelnavne -----------------------------------------------------------------
@@ -112,7 +112,10 @@ def main() -> None:
     res.to_parquet(BACKTEST_FIL, index=False)
 
     o = opsummer(res)
-    live_prognose(panel, o["valgt"], res).to_parquet(PROGNOSE_FIL, index=False)
+    prognose = live_prognose(panel, o["valgt"], res)
+    prognose.to_parquet(PROGNOSE_FIL, index=False)
+    # Regnskabet: ugens prognose gemmes, så den senere kan holdes op mod det, der faktisk skete.
+    arkiv = regnskab.gem(prognose)
     pd.set_option("display.width", 140)
     print(f"\nValgt model (bedst på validering {ev.VALIDERING[0][:4]}–{ev.VALIDERING[1][:4]}): {NAVNE[o['valgt']]}")
     print("\nMAE – validering\n", o["mae_validering"].round(4))
@@ -120,7 +123,7 @@ def main() -> None:
     print("\nSkill mod naiv – test\n", o["skill_test"].round(3))
     print("\nDM-test p-værdi mod naiv – test\n", o["dm_test"].round(4))
     print("\n80 %-intervallets dækning – test\n", o["daekning_test"].round(3))
-    print(f"\nGemt: {BACKTEST_FIL} og {PROGNOSE_FIL}")
+    print(f"\nGemt: {BACKTEST_FIL}, {PROGNOSE_FIL} og {regnskab.ARKIV_FIL} ({arkiv['lavet'].nunique()} uger)")
 
 
 if __name__ == "__main__":

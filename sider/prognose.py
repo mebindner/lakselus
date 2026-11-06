@@ -14,6 +14,7 @@ Indhold
 7. Figur: modelsammenligning
 8. Figur: hvor hjælper modellen
 9. Figur: backtest-forløb
+9b. Figur: regnskabet – de offentliggjorte prognoser mod det, der skete
 10. Metode
 
 Figurerne nummereres i rækkefølge (nr).
@@ -23,7 +24,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from lakselus import appdata, evaluering as ev
+from lakselus import appdata, evaluering as ev, regnskab
 from lakselus.modelrapport import BASELINES, NAVNE
 from lakselus.udseende import FARVER, afsnit, figur, ikon, info, kilde, resume, sidehoved
 
@@ -409,6 +410,59 @@ st.altair_chart((
                                       alt.Tooltip("faktisk:Q", title="Actual", format=".3f"), alt.Tooltip("pred:Q", title="Forecast", format=".3f")])
 ).properties(height=300), width="stretch")
 st.markdown(kilde(), unsafe_allow_html=True)
+
+# --- 9b. Figur: regnskabet ---------------------------------------------------------------------
+# Backtesten er, hvad modellen ville have gjort. Regnskabet er, hvad siden faktisk viste: hver uges prognose gemmes
+# (regnskab.py), og når ugen kommer, holdes den op mod det faktiske lusetal – uden mulighed for at rette bagefter.
+arkiv = regnskab.laes()
+if len(arkiv):
+    vurderet = regnskab.vurder(arkiv, panel)
+    rs = regnskab.opsummer(vurderet)
+    foerste_uge = pd.Timestamp(arkiv["lavet"].min()).isocalendar().week
+    if rs["n"]:
+        titel = (f"Live track record: {rs['inde']} of {rs['n']} published forecasts landed inside the 80% range")
+        bedre = rs["mae_naiv"] is not None and rs["mae"] < rs["mae_naiv"]
+        vurdering = (f"Mean error so far is {rs['mae']:.3f} against {rs['mae_naiv']:.3f} for the naive forecast "
+                     f"({'better' if bedre else 'worse'} than naive)" if rs["mae_naiv"] is not None else "")
+        faa = rs["uger"] < 8
+    else:
+        titel, vurdering, faa = "Live track record: the first published forecasts are still waiting for their week", "", True
+    st.markdown(figur(
+        next(nr), titel,
+        f"Every forecast this page has published since week {foerste_uge}, kept unchanged and compared with what "
+        f"happened once the week's counts arrived. {navne[valg]}: actual level (black) and each published forecast "
+        "with its 80% range (blue, older forecasts paler).",
+    ), unsafe_allow_html=True)
+
+    omr_a = arkiv[arkiv["omraade"] == valg].copy()
+    omr_a["udgang"] = omr_a["lavet"].map(lambda d: f"Made week {pd.Timestamp(d).isocalendar().week}")
+    alder = {l: i for i, l in enumerate(sorted(omr_a["lavet"].unique(), reverse=True))}
+    omr_a["styrke"] = omr_a["lavet"].map(lambda l: max(1 - 0.28 * alder[l], 0.25))
+    fra = pd.Timestamp(arkiv["lavet"].min()) - pd.Timedelta(weeks=6)
+    faktisk = panel[(panel["omraade"] == valg) & (panel["uge_start"] >= fra)][["uge_start", "hunlus"]]
+    # Etiketterne står på ugernes mandage (uge_start); D3's egne uge-ticks ligger på søndage og ville vise ugen før.
+    mandage = pd.date_range(fra, max(omr_a["uge_start"].max(), faktisk["uge_start"].max()), freq="W-MON")
+    xr = alt.X("uge_start:T", title=None, axis=alt.Axis(values=[d.strftime("%Y-%m-%dT00:00:00") for d in mandage],
+                                                          labelExpr="'w' + timeFormat(datum.value, '%V')", grid=False))
+    tip = [alt.Tooltip("udgang:N", title="Forecast"), alt.Tooltip("uge_start:T", title="For week", format="%d.%m.%Y"),
+           alt.Tooltip("pred:Q", title="Forecast", format=".3f"), alt.Tooltip("lo:Q", title="80% range from", format=".3f"),
+           alt.Tooltip("hi:Q", title="to", format=".3f")]
+    st.altair_chart((
+        alt.Chart(omr_a).mark_rule(color=FARVER["model"], strokeWidth=2).encode(
+            x=xr, y=alt.Y("lo:Q", title="Adult female lice per fish"), y2="hi:Q", opacity=alt.Opacity("styrke:Q", legend=None, scale=None))
+        + alt.Chart(omr_a).mark_line(color=FARVER["model"], strokeWidth=1.4, strokeDash=[4, 3]).encode(
+            x=xr, y="pred:Q", detail="udgang:N", opacity=alt.Opacity("styrke:Q", legend=None, scale=None))
+        + alt.Chart(omr_a).mark_point(color=FARVER["model"], filled=True, size=40).encode(
+            x=xr, y="pred:Q", opacity=alt.Opacity("styrke:Q", legend=None, scale=None), tooltip=tip)
+        + alt.Chart(faktisk).mark_line(color=FARVER["blaek"], strokeWidth=1.8, point=alt.OverlayMarkDef(size=22, color=FARVER["blaek"])).encode(
+            x=xr, y="hunlus:Q", tooltip=[alt.Tooltip("uge_start:T", title="Week", format="%d.%m.%Y"),
+                                         alt.Tooltip("hunlus:Q", title="Actual", format=".3f")])
+    ).properties(height=280), width="stretch")
+    forbehold = (" With so few weeks, this says little yet – the backtest above is the fair test until the record "
+                 "has grown. It fills up by itself every Wednesday." if faa else "")
+    st.markdown(kilde(f"All areas: {vurdering}.{forbehold} Forecasts are archived in "
+                      "<code>data/app/prognose_arkiv.parquet</code> in the public repository."
+                      if vurdering else forbehold.strip()), unsafe_allow_html=True)
 
 # --- 10. Metode -------------------------------------------------------------------------------
 st.markdown(

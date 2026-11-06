@@ -238,6 +238,9 @@ st.markdown(afsnit("5 · Changelog", "Changes to data, methods and models",
                    "Changes to the data, methods and pages. Design-only and technical changes are left out; the full history "
                    "is on GitHub."), unsafe_allow_html=True)
 LOG = [
+    ("2026-11-06", "<b>Live track record started.</b> Every forecast the page publishes is now archived unchanged and "
+                   "compared with what happened once the week's counts arrive (Forecast page). The archive starts with the "
+                   "forecasts published in weeks 43 and 44, recovered from the repository's history."),
     ("2026-11-06", "<b>Currents map follows your choice.</b> A farm or area chosen on Latest week (or in the link, "
                    "<code>?site=</code> / <code>?po=</code>) makes the currents map fly there and mark it, with the farm's lice "
                    "count and how far the water moved. No figure changes."),

@@ -53,6 +53,10 @@ lowers lice compared with similar untreated sites. Then, for the technically cur
 models (two naive benchmarks and six candidates), the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
 and the Diebold–Mariano test.
 
+A **live track record** sits below the backtest: every week's published forecast is archived unchanged
+(`data/app/prognose_arkiv.parquet`) and scored once the week's counts arrive – share inside the 80% range and mean error
+against the naive forecast. Unlike the backtest, nothing can be tuned after the fact.
+
 ### 3. History – is this year worse than usual?
 One line per year for the coast-wide lice level (or one production area), with this year highlighted and the weeks
 where the peak usually falls shaded. The headline is computed from the data, e.g. "Every year since 2019, lice along
