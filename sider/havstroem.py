@@ -45,6 +45,21 @@ def note(po: int, titel: str) -> list:
 
 noter = [note(hurtig, "Fastest water near farms"), note(langsom, "Slowest water near farms")]
 
+# Det valgte anlæg eller område: et delt link (?site= / ?po=) vinder, ellers valget fra forsiden (gemt i sessionen).
+# Kortet flyver derhen og markerer det; uden valg viser det hele kysten.
+def _tal(v) -> int | None:
+    return int(v) if str(v).strip().isdigit() else None
+
+
+params = st.query_params.to_dict()
+lok_valg = _tal(params.get("site")) if "site" in params else (None if "po" in params else st.session_state.get("lok_valgt"))
+po_valg = _tal(params.get("po")) if "po" in params else (None if "site" in params else st.session_state.get("po_valgt"))
+fokus = havstroem.fokus(raa, fart, uge_start, navne, po=po_valg, lokalitet=lok_valg)
+# Valget står også i URL'en, så et link til siden viser det samme udsnit.
+url = {"site": str(lok_valg)} if fokus and fokus["type"] == "site" else {"po": str(po_valg)} if fokus else {}
+if params != url:
+    st.query_params.from_dict(url)
+
 # --- 2. Sidehoved og resumé -------------------------------------------------------------------
 st.markdown(sidehoved(
     f"Currents · week {iso.week}, {iso.year}",
@@ -54,7 +69,7 @@ st.markdown(sidehoved(
     "from one farm to its neighbours and to wild salmon. The map shows how the surface water moved, day by day, with "
     "every farm coloured by its lice count in the same week.",
     [("live", appdata.opdatering_tekst(panel)), ("waves", "Daily mean surface current, 7 days"),
-     ("location_on", f"{len(anlaeg):,} farms that counted lice")],
+     ("location_on", f"Zoomed to {fokus['navn']}" if fokus else f"{len(anlaeg):,} farms that counted lice")],
 ), unsafe_allow_html=True)
 INFO_KM = ("The daily mean surface current at the model cell nearest each farm, times one day; the median over farms "
            "and the seven days. The cell is often just outside the farm, in the open water in front of it, because the "
@@ -73,14 +88,15 @@ st.markdown(resume([
 
 
 # --- 3. Kortet ------------------------------------------------------------------------------
-@st.cache_data(show_spinner="Unpacking a week of ocean currents …", max_entries=2)
-def side_html(skabelon_aendret: float, stroem_aendret: float, data_version: float, noter_noegle: str) -> str:
-    # Argumenterne gør, at cachen fornyes, når skabelonen, strømmene eller lusetallene ændres.
-    return havstroem.html(pakke, anlaeg, noter)
+@st.cache_data(show_spinner="Unpacking a week of ocean currents …", max_entries=4)
+def side_html(skabelon_aendret: float, stroem_aendret: float, data_version: float, noter_noegle: str,
+              fokus_noegle: str) -> str:
+    # Argumenterne gør, at cachen fornyes, når skabelonen, strømmene, lusetallene eller valget ændres.
+    return havstroem.html(pakke, anlaeg, noter, fokus)
 
 
-st.iframe(side_html(havstroem.SKABELON.stat().st_mtime, havstroem.APP_FIL.stat().st_mtime, appdata.data_version(), str(noter)),
-          height=720)
+st.iframe(side_html(havstroem.SKABELON.stat().st_mtime, havstroem.APP_FIL.stat().st_mtime, appdata.data_version(),
+                    str(noter), str(fokus)), height=720)
 
 # --- 4. Metode og forbehold -------------------------------------------------------------------
 st.markdown(

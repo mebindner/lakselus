@@ -238,6 +238,9 @@ st.markdown(afsnit("5 · Changelog", "Changes to data, methods and models",
                    "Changes to the data, methods and pages. Design-only and technical changes are left out; the full history "
                    "is on GitHub."), unsafe_allow_html=True)
 LOG = [
+    ("2026-11-06", "<b>Currents map follows your choice.</b> A farm or area chosen on Latest week (or in the link, "
+                   "<code>?site=</code> / <code>?po=</code>) makes the currents map fly there and mark it, with the farm's lice "
+                   "count and how far the water moved. No figure changes."),
     ("2026-11-06", "<b>Life cycle of the salmon louse on the Currents page.</b> An illustration from drifting larva to "
                    "adult female, with this week's average of each counted stage, the sea temperature and how far the "
                    "water moved. Explanatory only; no figure or model changes."),

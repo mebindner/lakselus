@@ -86,3 +86,35 @@ def test_fart_ved_anlaeg_regner_km_pr_doegn_og_udelader_fjordanlaeg():
     ud = h.fart_ved_anlaeg(p, anlaeg)
     assert ud["km_dag"].iloc[0] == pytest.approx(0.2 * 86.4)  # 0,2 m/s ≈ 17 km pr. døgn
     assert pd.isna(ud["km_dag"].iloc[1])
+
+
+def _fokus_data():
+    uge, forrige = pd.Timestamp("2026-10-26"), pd.Timestamp("2026-10-19")
+    raa = pd.DataFrame({
+        "lokalitet": [1, 2, 3, 3], "lokalitet_navn": ["Skorpo", "Fjordbunn", "Stille", "Stille"],
+        "uge_start": [uge, uge, forrige, uge], "har_talt": ["Ja", "Ja", "Ja", "Nei"],
+        "hunlus": [0.31, 0.12, 0.2, None], "omraade": [3.0, 3.0, 4.0, 4.0],
+        "lat": [59.8, 60.1, 61.0, 61.0], "lon": [5.2, 5.6, 5.0, 5.0],
+    })
+    fart = pd.DataFrame({"lokalitet": [1, 2], "km_dag": [6.4, np.nan]})
+    return raa, fart, uge, {3: "Karmøy til Sotra", 4: "Nordhordland til Stadt"}
+
+
+def test_fokus_paa_anlaeg_viser_lusetal_og_fart():
+    raa, fart, uge, navne = _fokus_data()
+    f = h.fokus(raa, fart, uge, navne, po=3, lokalitet=1)  # anlægget vinder over området
+    assert f == {"type": "site", "lon": 5.2, "lat": 59.8, "navn": "Skorpo",
+                 "linje": "0.31 adult female lice per fish in week 44 · water moved about 6 km a day"}
+    assert "narrower than the map's grid" in h.fokus(raa, fart, uge, navne, lokalitet=2)["linje"]
+    # Talte ikke i ugen: seneste kendte position og en ærlig linje
+    stille = h.fokus(raa, fart, uge, navne, lokalitet=3)
+    assert (stille["lat"], stille["linje"]) == (61.0, "No lice count in week 44")
+
+
+def test_fokus_paa_omraade_giver_ramme_og_ukendte_valg_giver_hele_kysten():
+    raa, fart, uge, navne = _fokus_data()
+    assert h.fokus(raa, fart, uge, navne, po=3) == {"type": "po", "navn": "PO 3 · Karmøy til Sotra",
+                                                    "ramme": [5.2, 59.8, 5.6, 60.1]}
+    assert h.fokus(raa, fart, uge, navne, po=4) is None  # ingen talte i ugen
+    assert h.fokus(raa, fart, uge, navne, lokalitet=999) is None
+    assert h.fokus(raa, fart, uge, navne) is None

@@ -197,9 +197,10 @@ def indlaes() -> dict | None:
 
 # --- 6. HTML ---------------------------------------------------------------------------------
 
-def html(pakke: dict, anlaeg: list[list], noter: list[list] | None = None) -> str:
+def html(pakke: dict, anlaeg: list[list], noter: list[list] | None = None, fokus: dict | None = None) -> str:
     """Kortets HTML. `anlaeg`: [[lon, lat, navn, hunlus], ...] for ugens lusetal.
     `noter`: [[lon, lat, titel, tekst], ...] – nummererede noter, der står på kortet.
+    `fokus`: det valgte område eller anlæg (se fokus()); kortet flyver derhen og markerer det.
 
     Strømfeltet sendes som int8 (først u for alle dage, så v), pakket med zlib og base64-kodet; browseren pakker
     det ud med DecompressionStream. Det holder hele kysten i syv dage under 1 MB.
@@ -214,7 +215,7 @@ def html(pakke: dict, anlaeg: list[list], noter: list[list] | None = None) -> st
         "stroem": base64.b64encode(zlib.compress(felt.tobytes(), 9)).decode("ascii"),
         "dage": [[(uge_start + pd.Timedelta(days=d)).strftime("%a"),
                   (uge_start + pd.Timedelta(days=d)).strftime("%a %-d %b")] for d in range(7)],
-        "uge": int(iso.week), "aar": int(iso.year), "anlaeg": anlaeg, "noter": noter or [],
+        "uge": int(iso.week), "aar": int(iso.year), "anlaeg": anlaeg, "noter": noter or [], "fokus": fokus,
     }
     tekst = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     return SKABELON.read_text(encoding="utf-8").replace("__DATA__", tekst)
@@ -225,6 +226,39 @@ def anlaeg_i_ugen(raa: pd.DataFrame, uge_start: pd.Timestamp) -> list[list]:
     u = raa[(raa["har_talt"] == "Ja") & (raa["uge_start"] == uge_start)].dropna(subset=["hunlus", "lat", "lon"])
     return [[round(float(r.lon), 4), round(float(r.lat), 4), str(r.lokalitet_navn), round(float(r.hunlus), 3)]
             for r in u.itertuples()]
+
+
+def fokus(raa: pd.DataFrame, fart: pd.DataFrame, uge_start: pd.Timestamp, navne: dict[int, str],
+          po: int | None = None, lokalitet: int | None = None) -> dict | None:
+    """Det valgte anlæg eller område som kortets fokus – samme valg som på forsiden (?site= / ?po=).
+
+    Anlæg: position, navn og en linje med ugens lusetal og vandets fart. Har anlægget ikke talt i ugen, bruges dets
+    seneste kendte position. Område: en ramme om områdets anlæg i ugen. Ukendte valg giver None (hele kysten).
+    """
+    if lokalitet is not None:
+        alle = raa[raa["lokalitet"] == lokalitet].dropna(subset=["lat", "lon"])
+        if alle.empty:
+            return None
+        ugen = alle[(alle["uge_start"] == uge_start) & (alle["har_talt"] == "Ja")]
+        r = (ugen if len(ugen) else alle.sort_values("uge_start")).iloc[-1]
+        iso = uge_start.isocalendar()
+        if len(ugen) and pd.notna(r["hunlus"]):
+            linje = f"{r['hunlus']:.2f} adult female lice per fish in week {iso.week}"
+            km = fart.loc[fart["lokalitet"] == lokalitet, "km_dag"]
+            linje += (f" · water moved about {km.iloc[0]:.0f} km a day" if len(km) and pd.notna(km.iloc[0])
+                      else " · in a fjord narrower than the map's grid")
+        else:
+            linje = f"No lice count in week {iso.week}"
+        return {"type": "site", "lon": round(float(r["lon"]), 4), "lat": round(float(r["lat"]), 4),
+                "navn": str(r["lokalitet_navn"]), "linje": linje}
+    if po is not None and po in navne:
+        u = raa[(raa["omraade"] == po) & (raa["uge_start"] == uge_start) & (raa["har_talt"] == "Ja")].dropna(subset=["lat", "lon"])
+        if u.empty:
+            return None
+        return {"type": "po", "navn": f"PO {po} · {navne[po]}",
+                "ramme": [round(float(u["lon"].min()), 3), round(float(u["lat"].min()), 3),
+                          round(float(u["lon"].max()), 3), round(float(u["lat"].max()), 3)]}
+    return None
 
 
 MAKS_ANLAEG_KM = 3.0  # anlæg længere fra nærmeste havcelle end dette ligger i en fjord, gitteret ikke viser
