@@ -23,7 +23,7 @@ import streamlit as st
 # så kontrollen også holder, hvor Python ikke skriver .pyc-filer. Rækkefølgen følger afhængighederne,
 # så et modul altid genindlæses efter dem, det importerer.
 MODULER = ["config", "data", "udseende", "barentswatch", "evaluering", "modeller", "modelrapport",
-           "behandlingseffekt", "tidsmaskine", "havstroem", "appdata"]
+           "behandlingseffekt", "tidsmaskine", "havstroem", "appdata", "livscyklus"]
 
 
 def _kilde_mtime(modul) -> int:

@@ -7,6 +7,7 @@ kørsel (python -m lakselus.havstroem); anlæggene farves efter ugens lusetal.
 Indhold
 1. Data         – strømfeltet, ugens lusetal pr. lokalitet og vandets fart ved anlæggene (km pr. døgn)
 2. Sidehoved og resumé – konklusionen i ét tal, forskellen mellem områderne og hvor mange anlæg tallet bygger på
+2b. Livscyklus  – fra larve i vandet til den voksne hunlus, med ugens tal (livscyklus.py)
 3. Kortet       – partikelanimation i browseren (havstroem.html)
 4. Metode og forbehold
 """
@@ -14,7 +15,7 @@ Indhold
 import pandas as pd
 import streamlit as st
 
-from lakselus import appdata, havstroem
+from lakselus import appdata, havstroem, livscyklus
 from lakselus.udseende import resume, sidehoved
 
 # --- 1. Data --------------------------------------------------------------------------------
@@ -70,6 +71,12 @@ st.markdown(resume([
      f"A farm counts if a model cell with water lies within {havstroem.MAKS_ANLAEG_KM:.0f} km."),
 ]), unsafe_allow_html=True)
 
+
+# --- 2b. Livscyklus ---------------------------------------------------------------------------
+# Hvorfor strømmen betyder noget: larverne driver i dagevis, før de sætter sig på en fisk. Ugens tal pr. stadie er
+# gennemsnittet pr. fisk over de anlæg, der talte; temperaturen er medianen.
+st.markdown(livscyklus.html(iso.week, km_dag, ugens["fast"].mean(), ugens["mob"].mean(), ugens["hunlus"].mean(),
+                            ugens["temp"].median()), unsafe_allow_html=True)
 
 # --- 3. Kortet ------------------------------------------------------------------------------
 @st.cache_data(show_spinner="Unpacking a week of ocean currents …", max_entries=2)
