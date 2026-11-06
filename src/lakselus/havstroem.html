@@ -16,7 +16,9 @@
   /* Fast CSS-størrelse: et lærred strækkes ikke af inset alene, og på en Retina-skærm er det dobbelt så stort */
   #partikler { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; border-radius: 10px; }
   .lag { position: absolute; pointer-events: none; }
-  #titel { left: 24px; top: 20px; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+  #titel { left: 24px; top: 20px; text-shadow: 0 2px 18px rgba(0,0,0,.6); isolation: isolate; }
+  #titel::before { content: ""; position: absolute; z-index: -1; inset: -40px -90px -40px -60px;
+                   background: radial-gradient(closest-side, rgba(8,26,37,.82), rgba(8,26,37,0)); }
   #dag { font-weight: 700; font-size: 34px; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
   #uge { font-size: 12px; font-weight: 600; color: var(--laks); margin-top: 8px; text-transform: uppercase; letter-spacing: .16em; }
   /* Nummererede noter på kortet: konklusionen står der, hvor den sker (som i FT og NYT) */
@@ -32,13 +34,18 @@
            background: #F7F9FB; color: #0B2230; border-radius: 7px; padding: 7px 11px; font-size: 12px; line-height: 1.4;
            white-space: nowrap; box-shadow: 0 6px 22px rgba(0,0,0,.35); }
   #fokus b { display: block; font-size: 13px; }
-  #fokus::after { content: ""; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent;
+  #fokus::after { content: ""; position: absolute; left: calc(50% + var(--pil, 0px)); bottom: -6px; margin-left: -6px; border: 6px solid transparent;
                   border-bottom: 0; border-top-color: #F7F9FB; }
   #fokusnavn { margin-top: 10px; display: inline-block; font-size: 12px; font-weight: 600; color: #0B2230;
                background: var(--laks); border-radius: 999px; padding: 3px 10px; text-shadow: none; }
   #fokusnavn:empty { display: none; }
   /* Målestok: når siden taler om km om dagen, skal afstanden kunne ses */
-  #maalestok { left: 24px; bottom: 140px; font-size: 11px; color: #B9C9D3; text-align: center; }
+  #maalestok { left: 24px; bottom: 140px; font-size: 11px; color: #D3DEE5; text-align: center;
+                background: rgba(8,26,37,.78); border-radius: 5px; padding: 3px 7px 5px; }
+  #zoomnote { left: 24px; bottom: 182px; max-width: 290px; font-size: 11.5px; line-height: 1.4; color: #D3DEE5;
+              background: rgba(8,26,37,.85); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 6px 9px;
+              opacity: 0; transition: opacity .3s; }
+  #zoomnote.vis { opacity: 1; }
   #maalestok .streg { height: 6px; border: 1px solid #B9C9D3; border-top: 0; margin-top: 3px; }
   /* Forklaringen bor i panelet i bunden, så kortet har pladsen */
   .forklaring { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 12px; color: var(--daempet);
@@ -78,8 +85,9 @@
     .forklaring { font-size: 11px; gap: 4px 12px; }
     .forklaring .hjaelp { display: none; }
     #maalestok { bottom: 128px; left: auto; right: 12px; }
+    #zoomnote { left: 10px; right: 10px; bottom: 168px; max-width: none; font-size: 11px; }
     #noter { display: none; }  /* ingen plads ved siden af kysten; tallene står i nøgletallene over kortet */
-    #fokus { font-size: 11px; padding: 5px 8px; }
+    #fokus { font-size: 11px; padding: 5px 8px; white-space: normal; width: max-content; max-width: 230px; }
     #kilde { display: none; }
     #kontrol { right: 12px; top: 14px; }
     #panel { left: 10px; right: 10px; bottom: 10px; padding: 8px 10px 10px; }
@@ -99,6 +107,7 @@
 
 <div id="noter"></div>
 <div id="fokus" class="lag"></div>
+<div id="zoomnote" class="lag">Sounds and inner fjords are narrower than the current grid (about 3 km), so the water there is not shown.</div>
 <div id="maalestok" class="lag"><span id="maal_tekst"></span><div class="streg" id="maal_streg"></div></div>
 
 <div id="kilde" class="lag">Currents: NorKyst v3, MET Norway (CC BY 4.0)<br>Lice: BarentsWatch / Mattilsynet · Coastline: Natural Earth</div>
@@ -222,25 +231,36 @@ const kort = new deck.Deck({
   parent: document.getElementById("kort"),
   initialViewState: START,
   controller: { scrollZoom: false, dragRotate: false, touchRotate: false, keyboard: true },
-  onViewStateChange: ({ viewState }) => { visning = viewState; nulstilSpor(); },
+  onViewStateChange: ({ viewState }) => { visning = viewState; nulstilSpor(); finKyst(); },
   layers: lag(),
   getTooltip: ({ object }) => object && {
     html: `<b>${object.navn}</b><br>${object.lus.toFixed(2)} adult female lice per fish`,
     style: { background: "#0B2230", color: "#FFFFFF", fontSize: "12px", padding: "8px 10px", border: "1px solid rgba(255,255,255,.12)" },
   },
 });
-fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json").then(r => r.json()).then(topo => {
-  land = new deck.GeoJsonLayer({
-    id: "land",
-    data: topojson.feature(topo, topo.objects.countries).features
-      .filter(f => ["Norway", "Sweden", "Finland", "Denmark", "Estonia", "Latvia", "Iceland", "United Kingdom", "Germany"].includes(f.properties.name)),
-    filled: true, stroked: true, getFillColor: [22, 52, 70], getLineColor: [120, 160, 185, 90], lineWidthMinPixels: 0.6,
+// Kystlinjen: den grove (Natural Earth 1:50 mio.) er nok til hele kysten. Zoomer man ind, hentes den fine
+// (1:10 mio., ca. 1 MB) én gang – ellers ser kysten klumpet ud, og anlæg i fjordene kommer til at ligge "på land".
+const LANDE = ["Norway", "Sweden", "Finland", "Denmark", "Estonia", "Latvia", "Iceland", "United Kingdom", "Germany"];
+let landFin = null;
+function hentLand(navn) {
+  return fetch(`https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/${navn}.json`).then(r => r.json()).then(topo => {
+    land = new deck.GeoJsonLayer({
+      id: "land-" + navn,
+      data: topojson.feature(topo, topo.objects.countries).features.filter(f => LANDE.includes(f.properties.name)),
+      filled: true, stroked: true, getFillColor: [33, 66, 86], getLineColor: [150, 186, 208, 120], lineWidthMinPixels: 0.7,
+    });
+    kort.setProps({ layers: lag() });
   });
-  kort.setProps({ layers: lag() });
-});
+}
+const grovLand = hentLand("countries-50m");
+function finKyst() {
+  if (landFin || visning.zoom < 5) return;
+  landFin = grovLand.then(() => hentLand("countries-10m")).catch(() => { landFin = null; });
+}
 
 const flyt = (aendring, ms = 350) => {
   visning = { ...visning, ...aendring };
+  finKyst();
   kort.setProps({ initialViewState: { ...visning, transitionDuration: ms, transitionInterpolator: new deck.LinearInterpolator(["longitude", "latitude", "zoom"]) } });
 };
 const zoom = (z, ms = 350) => flyt({ zoom: Math.max(ZOOM[0], Math.min(ZOOM[1], z)) }, ms);
@@ -254,6 +274,7 @@ if (F) {
   // Et øjeblik på hele kysten, så man ser, hvor på kysten valget ligger – derefter flyver kortet derhen.
   setTimeout(() => {
     visning = fokusVisning();
+    finKyst();
     kort.setProps({ initialViewState: { ...visning, transitionDuration: 1800, transitionInterpolator: new deck.FlyToInterpolator() } });
   }, 700);
 }
@@ -286,13 +307,30 @@ function tilpas() {
 // Før deck.gl har tegnet første gang, findes der ingen viewport (deck.gl fejler så); partiklerne venter.
 function viewport() { try { return kort.getViewports()[0]; } catch { return null; } }
 // En ny partikel et tilfældigt sted i havet på skærmen (op til 30 forsøg), med tilfældig levetid.
+// Åbent vand: en havcelle, hvor mindst 7 af de 8 naboer også er hav. Smalle sunde og fjorde (få, løsrevne
+// celler) får ingen partikler – de ville tegne firkanter, fordi gitteret er så groft.
+let AABENT = null;
+function aabentVand() {
+  AABENT = new Uint8Array(CELLER);
+  for (let r = 1; r < R - 1; r++) for (let c = 1; c < C - 1; c++) {
+    const i = r * C + c;
+    if (S[i] === LAND) continue;
+    let n = 0;
+    for (const d of [-C - 1, -C, -C + 1, -1, 1, C - 1, C, C + 1]) if (S[i + d] !== LAND) n++;
+    AABENT[i] = n >= 7 ? 1 : 0;
+  }
+}
+function iAabentVand(lon, lat) {
+  const c = Math.floor((lon - D.lon0) / D.grad), r = Math.floor((mercY(lat) - Y0) / TRIN);
+  return c >= 0 && r >= 0 && c < C && r < R && AABENT[r * C + c] === 1;
+}
 function ny(p) {
   const vp = S && viewport();
   p.alder = 0; p.levetid = 60 + Math.random() * 120; p.lon = null;
   if (!vp) return p;
   for (let k = 0; k < 30; k++) {
     const [lon, lat] = vp.unproject([Math.random() * B, Math.random() * H]);
-    if (stroem(lon, lat, tid)) { p.lon = lon; p.lat = lat; return p; }
+    if (iAabentVand(lon, lat) && stroem(lon, lat, tid)) { p.lon = lon; p.lat = lat; return p; }
   }
   return p;
 }
@@ -333,9 +371,12 @@ function noterOgMaal(vp) {
   }
   if (F && F.type === "site") {
     const el = document.getElementById("fokus"), [x, y] = vp.project([F.lon, F.lat]);
-    el.style.left = `${x}px`; el.style.top = `${y}px`;
+    // Boksen holdes inden for kortet; pilen peger stadig på anlægget.
+    const halv = el.offsetWidth / 2, venstre = Math.max(halv + 8, Math.min(B - halv - 8, x));
+    el.style.left = `${venstre}px`; el.style.top = `${y}px`; el.style.setProperty("--pil", `${x - venstre}px`);
     el.style.display = visning.zoom > 5.2 && x > 0 && x < B && y > 60 && y < H - 120 ? "block" : "none";
   }
+  document.getElementById("zoomnote").classList.toggle("vis", visning.zoom > 5.8);
   const mpp = 78271.517 * Math.cos(visning.latitude * RAD) / Math.pow(2, visning.zoom);
   const km = [10, 20, 50, 100, 200, 500].find(k => k * 1000 / mpp >= 60) || 500;
   maalStreg.style.width = `${Math.round(km * 1000 / mpp)}px`; maalTekst.textContent = `${km} km`;
@@ -351,6 +392,7 @@ function billede(nu) {
     // Sporene falmer: det, der er tegnet, gøres lidt mere gennemsigtigt for hvert billede.
     g.globalCompositeOperation = "destination-in";
     g.fillStyle = "rgba(0,0,0,0.955)"; g.fillRect(0, 0, B, H);
+
     g.globalCompositeOperation = "lighter";
     g.lineWidth = 1.1;
     // Meter pr. pixel ved kortets midte (Web Mercator, 512-pixel fliser som i deck.gl)
@@ -358,7 +400,7 @@ function billede(nu) {
     const sek = PX_PR_MS * mpp * (spiller ? 1 : 0.35);
     for (const p of partikler) {
       if (p.lon === null || ++p.alder > p.levetid) { ny(p); continue; }
-      const s = stroem(p.lon, p.lat, tid);
+      const s = iAabentVand(p.lon, p.lat) ? stroem(p.lon, p.lat, tid) : null;
       if (!s) { ny(p); continue; }
       const [x0, y0] = vp.project([p.lon, p.lat]);
       p.lat += s[1] * sek / 111320;
@@ -367,7 +409,7 @@ function billede(nu) {
       if (x1 < 0 || y1 < 0 || x1 > B || y1 > H) { ny(p); continue; }
       const fart = Math.min(Math.hypot(s[0], s[1]) / 0.5, 1);
       // Ensfarvet (hvid-grå): vandet må ikke konkurrere med anlæggenes lusefarver.
-      g.strokeStyle = `rgba(${Math.round(200 + 55 * fart)},${Math.round(212 + 43 * fart)},${Math.round(220 + 35 * fart)},${0.3 + 0.6 * fart})`;
+      g.strokeStyle = `rgba(${Math.round(200 + 55 * fart)},${Math.round(212 + 43 * fart)},${Math.round(220 + 35 * fart)},${0.42 + 0.5 * fart})`;
       g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
     }
   }
@@ -375,7 +417,7 @@ function billede(nu) {
 }
 
 addEventListener("resize", tilpas);
-pakUd(D.stroem).then(a => { S = a; tilpas(); visDag(); spil(spiller); requestAnimationFrame(billede); });
+pakUd(D.stroem).then(a => { S = a; aabentVand(); tilpas(); visDag(); spil(spiller); requestAnimationFrame(billede); });
 </script>
 </body>
 </html>
