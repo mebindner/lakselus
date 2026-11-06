@@ -6,7 +6,7 @@ def test_html_viser_ugens_tal_og_fire_trin():
     assert h.count('class="lc-trin"') == 4
     assert h.count('class="lc-larve"') == 20  # den animerede scene i to beskæringer
     assert "week 44" in h and "this week" not in h
-    for tekst in ("7 km a day", "about 35 km", "0.11", "0.34", "0.21", "about 10 °C", "0.5 adult females"):
+    for tekst in ("7 km a day", "about 35 km", "0.11", "0.34", "0.21", "about 10 °C", "below the limit of 0.5"):
         assert tekst in h
     # Hunlusens tal farves efter niveauet (0,21 er mellem 0,2 og 0,5)
     assert livscyklus.LUS_FARVER["mellem"] in h

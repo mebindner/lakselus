@@ -118,5 +118,8 @@ st.markdown(
 # --- 5. Livscyklus ----------------------------------------------------------------------------
 # Efter kortet og dets noter: hvorfor strømmen betyder noget. Larverne driver i dagevis, før de sætter sig på en
 # fisk. Ugens tal pr. stadie er gennemsnittet pr. fisk over de anlæg, der talte; temperaturen er medianen.
+# Ugens lusegrænse står i data (0,5 – eller 0,2 i forårsugerne); den, flest anlæg stod med, bruges.
+graenser = appdata.graense_tal(ugens["Lusegrense uke"]).mode()
 st.markdown(livscyklus.html(iso.week, km_dag, ugens["fast"].mean(), ugens["mob"].mean(), ugens["hunlus"].mean(),
-                            ugens["temp"].median()), unsafe_allow_html=True)
+                            ugens["temp"].median(), float(graenser.iloc[0]) if len(graenser) else 0.5),
+            unsafe_allow_html=True)

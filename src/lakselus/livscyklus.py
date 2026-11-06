@@ -225,6 +225,7 @@ CSS = f"""<style>
 .lc-stadier {{ font-size: .78rem; color: {SKIFER}; margin: .15rem 0 .45rem; }}
 .lc-tekst {{ font-size: .88rem; color: #2A3A46; line-height: 1.5; }}
 .lc-tal {{ margin-top: .6rem; font-size: .82rem; color: {SKIFER}; }}
+.lc-graense {{ margin-top: .35rem; font-size: .76rem; color: #5B6B78; line-height: 1.45; }}
 .lc-tal b {{ font-family: 'Source Serif 4', serif; font-size: 1.35rem; font-weight: 600; margin-right: .15rem; }}
 .lc-bund {{ display: flex; gap: .6rem; align-items: flex-start; margin-top: .9rem; font-size: .9rem; color: #2A3A46; line-height: 1.5; max-width: 60em; }}
 .lc-bund .ikon {{ color: {VAND}; font-size: 1.25rem; }}
@@ -290,9 +291,11 @@ def html(uge: int, km_dag: float, fast: float, mob: float, hun: float, temp: flo
               "Free of the thread, the louse moves over the fish and grazes on skin and mucus. "
               "Counted as <i>mobile lice</i>.", _tal(mob, f"per fish in week {uge}")),
         _trin(4, "On the salmon", "Adult female", "With egg strings", hunlus(),
-              f"The only stage the lice limit applies to: {graense:.1f} adult females per fish (0.2 in the spring weeks). "
-              "Her egg strings "
-              "hatch new larvae, and the cycle starts again.", _tal(hun, f"per fish in week {uge}", LUS_FARVER[lus_niveau(hun)])),
+              "The stage the lice limit is set for. Her egg strings hatch new larvae, and the cycle starts again.",
+              _tal(hun, f"per fish in week {uge} – {'above' if hun > graense else 'below'} the limit of "
+                        f"{graense:.1f}", LUS_FARVER[lus_niveau(hun)])
+              + '<div class="lc-graense">The limit is 0.5 most of the year and 0.2 for a few weeks in spring, when young '
+                "wild salmon swim out to sea.</div>"),
     ]
     # Alle forløb og mønstre står én gang i en usynlig SVG, som alle tegningerne henviser til. De må ikke ligge inde
     # i en scene, der er skjult med display: none (desktop- eller mobiludgaven), for så tegnes de ikke.
