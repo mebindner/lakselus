@@ -233,7 +233,7 @@ def fokus(raa: pd.DataFrame, fart: pd.DataFrame, uge_start: pd.Timestamp, navne:
     """Det valgte anlæg eller område som kortets fokus – samme valg som på forsiden (?site= / ?po=).
 
     Anlæg: position, navn og en linje med ugens lusetal og vandets fart. Har anlægget ikke talt i ugen, bruges dets
-    seneste kendte position. Område: en ramme om områdets anlæg i ugen. Ukendte valg giver None (hele kysten).
+    seneste kendte position. Område: en ramme om områdets anlæg i ugen. Har ingen i området talt i ugen, bruges anlæggenes kendte positioner. Ukendte valg giver None (hele kysten).
     """
     if lokalitet is not None:
         alle = raa[raa["lokalitet"] == lokalitet].dropna(subset=["lat", "lon"])
@@ -252,10 +252,14 @@ def fokus(raa: pd.DataFrame, fart: pd.DataFrame, uge_start: pd.Timestamp, navne:
         return {"type": "site", "lon": round(float(r["lon"]), 4), "lat": round(float(r["lat"]), 4),
                 "navn": str(r["lokalitet_navn"]), "linje": linje}
     if po is not None and po in navne:
-        u = raa[(raa["omraade"] == po) & (raa["uge_start"] == uge_start) & (raa["har_talt"] == "Ja")].dropna(subset=["lat", "lon"])
+        omr = raa[raa["omraade"] == po].dropna(subset=["lat", "lon"])
+        u = omr[(omr["uge_start"] == uge_start) & (omr["har_talt"] == "Ja")]
+        navn = f"PO {po} · {navne[po]}"
+        if u.empty:  # ingen talte i ugen: rammen om områdets anlæg, som de kendes fra tidligere uger
+            u, navn = omr, f"{navn} · no counts in week {uge_start.isocalendar().week}"
         if u.empty:
             return None
-        return {"type": "po", "navn": f"PO {po} · {navne[po]}",
+        return {"type": "po", "navn": navn,
                 "ramme": [round(float(u["lon"].min()), 3), round(float(u["lat"].min()), 3),
                           round(float(u["lon"].max()), 3), round(float(u["lat"].max()), 3)]}
     return None

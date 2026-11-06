@@ -11,11 +11,12 @@
   /* Samme mørke kortstil som tidsmaskinen; accenten er den lyse tanggrønne (kontrast ≥ 7:1 mod navy) */
   :root { --creme: #FFFFFF; --laks: #B7C47E; --nat: #0B2230; --daempet: #9FB2C0; }
   html, body { margin: 0; height: 100%; background: var(--nat); font-family: 'Inter', sans-serif; color: var(--creme); overflow: hidden; }
-  #kort { position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
-          background: radial-gradient(ellipse at 55% 25%, #16384C 0%, #0D2635 55%, #081A25 100%); }
+  #hav { position: absolute; inset: 0; border-radius: 10px;
+         background: radial-gradient(ellipse at 55% 25%, #16384C 0%, #0D2635 55%, #081A25 100%); }
+  #kort { position: absolute; inset: 0; border-radius: 10px; overflow: hidden; z-index: 1; }
   /* Fast CSS-størrelse: et lærred strækkes ikke af inset alene, og på en Retina-skærm er det dobbelt så stort */
-  #partikler { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; border-radius: 10px; }
-  .lag { position: absolute; pointer-events: none; }
+  #partikler { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; border-radius: 10px; z-index: 0; }
+  .lag { position: absolute; pointer-events: none; z-index: 2; }
   #titel { left: 24px; top: 20px; text-shadow: 0 2px 18px rgba(0,0,0,.6); isolation: isolate; }
   #titel::before { content: ""; position: absolute; z-index: -1; inset: -40px -90px -40px -60px;
                    background: radial-gradient(closest-side, rgba(8,26,37,.82), rgba(8,26,37,0)); }
@@ -23,7 +24,7 @@
   #uge { font-size: 12px; font-weight: 600; color: var(--laks); margin-top: 8px; text-transform: uppercase; letter-spacing: .16em; }
   /* Nummererede noter på kortet: konklusionen står der, hvor den sker (som i FT og NYT) */
   /* Noten står ude i havet til venstre for punktet, så den ikke dækker anlæggene langs kysten */
-  .note { position: absolute; pointer-events: none; display: flex; align-items: center; transform: translate(calc(-100% + 7px), -50%); }
+  .note { position: absolute; z-index: 2; pointer-events: none; display: flex; align-items: center; transform: translate(calc(-100% + 7px), -50%); }
   .note .boks { background: rgba(14,42,59,.92); border: 1px solid rgba(183,196,126,.55); border-radius: 6px;
                 padding: 6px 9px; font-size: 12px; line-height: 1.4; color: #DCE6EC; white-space: nowrap; }
   .note .boks b { display: block; color: var(--laks); font-weight: 600; font-size: 11.5px; }
@@ -84,6 +85,7 @@
     .note .boks { font-size: 11px; padding: 5px 7px; }
     .forklaring { font-size: 11px; gap: 4px 12px; }
     .forklaring .hjaelp { display: none; }
+    .forklaring .bred { display: none; }
     #maalestok { bottom: 128px; left: auto; right: 12px; }
     #zoomnote { left: 10px; right: 10px; bottom: 168px; max-width: none; font-size: 11px; }
     #noter { display: none; }  /* ingen plads ved siden af kysten; tallene står i nøgletallene over kortet */
@@ -96,8 +98,9 @@
 </style>
 </head>
 <body>
-<div id="kort"></div>
+<div id="hav"></div>
 <canvas id="partikler"></canvas>
+<div id="kort"></div>
 
 <div id="titel" class="lag">
   <div id="dag">–</div>
@@ -127,7 +130,7 @@
   </div>
   <div class="dage" id="dage"></div>
   <div class="forklaring">
-    <span><span class="vand"></span>Water – longer, brighter streaks are faster</span>
+    <span><span class="vand"></span>Water – longer, brighter streaks are faster<span class="bred">; dots are almost still</span></span>
     <span><span class="p" style="background:#1F7A8C"></span><span class="p" style="background:#E2A23B"></span><span class="p" style="background:#D64545"></span>
       Farm, by adult female lice per fish: below 0.2 · 0.2–0.5 · above 0.5</span>
     <span class="hjaelp"><span class="mus">Drag to move · <kbd class="zoomtast">Ctrl</kbd> + scroll to zoom</span><span class="touch">Drag · pinch to zoom</span></span>
@@ -168,13 +171,15 @@ function stroem(lon, lat, t) {
   const fc = c - c0, fr = r - r0;
   const d0 = Math.min(Math.floor(t), 6), d1 = Math.min(d0 + 1, 6), ft = Math.min(t - d0, 1);
   const i = r0 * C + c0, hjoerner = [i, i + 1, i + C, i + C + 1], w = [(1-fc)*(1-fr), fc*(1-fr), (1-fc)*fr, fc*fr];
-  let u = 0, v = 0;
+  let u = 0, v = 0, vand = 0;
   for (let k = 0; k < 4; k++) {
     const a = d0 * CELLER + hjoerner[k], b = d1 * CELLER + hjoerner[k];
-    if (S[a] === LAND) return null;
+    if (S[a] === LAND) continue;
+    vand += w[k];
     u += w[k] * ((1 - ft) * S[a] + ft * S[b]);
     v += w[k] * ((1 - ft) * S[a + 7 * CELLER] + ft * S[b + 7 * CELLER]);
   }
+  if (vand < 0.2) return null;  // næsten kun land omkring: partiklen er nået ind til kysten
   return [u * D.skala, v * D.skala];
 }
 
@@ -192,7 +197,8 @@ function fokusVisning() {
   if (F.type === "site") return { ...START, longitude: F.lon, latitude: F.lat, zoom: innerWidth < 600 ? 6.5 : 6.9 };
   const vp = new deck.WebMercatorViewport({ width: innerWidth, height: innerHeight });
   const smal = innerWidth < 600;
-  const v = vp.fitBounds([[F.ramme[0], F.ramme[1]], [F.ramme[2], F.ramme[3]]],
+  const m = 0.15;  // lidt luft – og et område med ét anlæg giver ellers en ramme uden udstrækning
+  const v = vp.fitBounds([[F.ramme[0] - m, F.ramme[1] - m / 2], [F.ramme[2] + m, F.ramme[3] + m / 2]],
     { padding: { top: smal ? 90 : 110, bottom: smal ? 150 : 170, left: smal ? 30 : 60, right: smal ? 60 : 90 } });
   return { ...START, longitude: v.longitude, latitude: v.latitude, zoom: Math.max(ZOOM[0], Math.min(7.2, v.zoom)) };
 }
@@ -242,11 +248,21 @@ const kort = new deck.Deck({
 // (1:10 mio., ca. 1 MB) én gang – ellers ser kysten klumpet ud, og anlæg i fjordene kommer til at ligge "på land".
 const LANDE = ["Norway", "Sweden", "Finland", "Denmark", "Estonia", "Latvia", "Iceland", "United Kingdom", "Germany"];
 let landFin = null;
+// Rusland grænser op til Øst-Finnmark (Varangerfjorden). Kun polygonerne nær Norge tages med: resten krydser
+// datolinjen og ville tegne vandrette streger hen over kortet.
+function naerRusland(topo) {
+  const ru = topojson.feature(topo, topo.objects.countries).features.find(f => f.properties.name === "Russia");
+  if (!ru) return [];
+  const polygoner = (ru.geometry.type === "Polygon" ? [ru.geometry.coordinates] : ru.geometry.coordinates)
+    .filter(poly => poly[0].every(([lon]) => lon > 0 && lon < 70));
+  return [{ type: "Feature", properties: { name: "Russia" }, geometry: { type: "MultiPolygon", coordinates: polygoner } }];
+}
 function hentLand(navn) {
   return fetch(`https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/${navn}.json`).then(r => r.json()).then(topo => {
     land = new deck.GeoJsonLayer({
       id: "land-" + navn,
-      data: topojson.feature(topo, topo.objects.countries).features.filter(f => LANDE.includes(f.properties.name)),
+      data: topojson.feature(topo, topo.objects.countries).features.filter(f => LANDE.includes(f.properties.name))
+        .concat(naerRusland(topo)),
       filled: true, stroked: true, getFillColor: [33, 66, 86], getLineColor: [150, 186, 208, 120], lineWidthMinPixels: 0.7,
     });
     kort.setProps({ layers: lag() });
@@ -307,30 +323,13 @@ function tilpas() {
 // Før deck.gl har tegnet første gang, findes der ingen viewport (deck.gl fejler så); partiklerne venter.
 function viewport() { try { return kort.getViewports()[0]; } catch { return null; } }
 // En ny partikel et tilfældigt sted i havet på skærmen (op til 30 forsøg), med tilfældig levetid.
-// Åbent vand: en havcelle, hvor mindst 7 af de 8 naboer også er hav. Smalle sunde og fjorde (få, løsrevne
-// celler) får ingen partikler – de ville tegne firkanter, fordi gitteret er så groft.
-let AABENT = null;
-function aabentVand() {
-  AABENT = new Uint8Array(CELLER);
-  for (let r = 1; r < R - 1; r++) for (let c = 1; c < C - 1; c++) {
-    const i = r * C + c;
-    if (S[i] === LAND) continue;
-    let n = 0;
-    for (const d of [-C - 1, -C, -C + 1, -1, 1, C - 1, C, C + 1]) if (S[i + d] !== LAND) n++;
-    AABENT[i] = n >= 7 ? 1 : 0;
-  }
-}
-function iAabentVand(lon, lat) {
-  const c = Math.floor((lon - D.lon0) / D.grad), r = Math.floor((mercY(lat) - Y0) / TRIN);
-  return c >= 0 && r >= 0 && c < C && r < R && AABENT[r * C + c] === 1;
-}
 function ny(p) {
   const vp = S && viewport();
   p.alder = 0; p.levetid = 60 + Math.random() * 120; p.lon = null;
   if (!vp) return p;
   for (let k = 0; k < 30; k++) {
     const [lon, lat] = vp.unproject([Math.random() * B, Math.random() * H]);
-    if (iAabentVand(lon, lat) && stroem(lon, lat, tid)) { p.lon = lon; p.lat = lat; return p; }
+    if (stroem(lon, lat, tid)) { p.lon = lon; p.lat = lat; return p; }
   }
   return p;
 }
@@ -395,12 +394,13 @@ function billede(nu) {
 
     g.globalCompositeOperation = "lighter";
     g.lineWidth = 1.1;
+    g.lineCap = "round";  // næsten stillestående vand tegnes som en lille prik i stedet for at forsvinde
     // Meter pr. pixel ved kortets midte (Web Mercator, 512-pixel fliser som i deck.gl)
     const mpp = 78271.517 * Math.cos(visning.latitude * RAD) / Math.pow(2, visning.zoom);
     const sek = PX_PR_MS * mpp * (spiller ? 1 : 0.35);
     for (const p of partikler) {
       if (p.lon === null || ++p.alder > p.levetid) { ny(p); continue; }
-      const s = iAabentVand(p.lon, p.lat) ? stroem(p.lon, p.lat, tid) : null;
+      const s = stroem(p.lon, p.lat, tid);
       if (!s) { ny(p); continue; }
       const [x0, y0] = vp.project([p.lon, p.lat]);
       p.lat += s[1] * sek / 111320;
@@ -417,7 +417,7 @@ function billede(nu) {
 }
 
 addEventListener("resize", tilpas);
-pakUd(D.stroem).then(a => { S = a; aabentVand(); tilpas(); visDag(); spil(spiller); requestAnimationFrame(billede); });
+pakUd(D.stroem).then(a => { S = a; tilpas(); visDag(); spil(spiller); requestAnimationFrame(billede); });
 </script>
 </body>
 </html>

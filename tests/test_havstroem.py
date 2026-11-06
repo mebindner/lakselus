@@ -115,6 +115,8 @@ def test_fokus_paa_omraade_giver_ramme_og_ukendte_valg_giver_hele_kysten():
     raa, fart, uge, navne = _fokus_data()
     assert h.fokus(raa, fart, uge, navne, po=3) == {"type": "po", "navn": "PO 3 · Karmøy til Sotra",
                                                     "ramme": [5.2, 59.8, 5.6, 60.1]}
-    assert h.fokus(raa, fart, uge, navne, po=4) is None  # ingen talte i ugen
+    # Ingen talte i ugen: rammen om områdets kendte anlæg, og navnet siger det
+    assert h.fokus(raa, fart, uge, navne, po=4) == {"type": "po", "navn": "PO 4 · Nordhordland til Stadt · no counts in week 44",
+                                                    "ramme": [5.0, 61.0, 5.0, 61.0]}
     assert h.fokus(raa, fart, uge, navne, lokalitet=999) is None
     assert h.fokus(raa, fart, uge, navne) is None

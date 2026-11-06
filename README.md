@@ -70,6 +70,12 @@ Thousands of particles follow the current in the browser (deck.gl and a canvas),
 its eddies become visible. The particles are water, not lice: the page says so, and points to the Institute of Marine
 Research's official infection-pressure model for where larvae actually end up.
 
+The map follows the choice made on Latest week (or `?site=` / `?po=` in the link): it flies to the farm, marks it with
+its lice count and how far the water moved, or frames the whole production area. Zoomed in, a finer coastline
+(Natural Earth 1:10m) is loaded and drawn above the particles, so the current stops exactly at the shore. Below the map,
+an animated illustration follows the salmon louse from drifting larva to adult female, with that week's average for
+each counted stage.
+
 The currents come from MET Norway's NorKyst v3 ocean model (800 m) over OPeNDAP, read with plain `requests` and
 numpy. Seven daily means (every third hour) are regridded to about 3 km in Web Mercator and packed as one byte per
 value (≈ 0.9 MB for the whole coast).
