@@ -74,6 +74,12 @@ Thousands of particles follow the current in the browser (deck.gl and a canvas),
 its eddies become visible. The particles are water, not lice: the page says so, and points to the Institute of Marine
 Research's official infection-pressure model for where larvae actually end up.
 
+![Daily mean surface current off Vestlandet in week 44, 2026, with salmon farms coloured by lice level](docs/currents-vestland.jpg)
+
+*The Norwegian Coastal Current off Vestlandet, week 44 of 2026. Each streak follows the daily mean surface current
+from MET Norway's NorKyst v3 ocean model; the dots are salmon farms, coloured by adult female lice per fish. Sea lice
+larvae drift with this water for days before they can attach to a fish – which is why the current matters.*
+
 The map follows the choice made on Latest week (or `?site=` / `?po=` in the link): it flies to the farm, marks it with
 its lice count and how far the water moved, or frames the whole production area. Zoomed in, a finer coastline
 (Natural Earth 1:10m) is loaded and drawn above the particles, so the current stops exactly at the shore. Below the map,
