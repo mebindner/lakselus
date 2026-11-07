@@ -6,3 +6,5 @@ ud4/
 log4.json
 *.mp4
 *-cover.png
+# LinkedIn-opslag, video og billeder – kun lokalt
+linkedin-e2e/

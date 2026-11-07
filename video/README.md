@@ -1,65 +1,70 @@
-# Rundtur-videoen til LinkedIn (ca. 48 sek.)
+# Site tour video (about 48 seconds)
 
-Scripts, der optager appen og klipper `video/lakselus-rundtur.mp4` (1080×1350, 30 fps) med et forsidebillede
-`video/lakselus-rundtur-cover.png`. Billeder, log og den færdige video skrives i denne mappe og er udeladt i `.gitignore`.
+Scripts that record the app and cut `video/lakselus-rundtur.mp4` (1080×1350, 30 fps) with a cover image
+`video/lakselus-rundtur-cover.png`. Frames, log and the finished video are written to this folder and left out of git
+(`.gitignore`).
 
-Fortællingen: krog (strømkortet) → Latest week (kysten og ét anlæg) → Forecast → behandlinger → History →
-Currents (finale) → About → slutkort.
+The story: hook (the currents map) → Latest week (the coast and one farm) → Forecast → treatments → History →
+Currents (finale) → About → end card.
 
-## Forudsætninger
+## Requirements
 
-- Google Chrome (Playwright bruger `channel="chrome"`) og `ffmpeg` på PATH.
-- Et Python-miljø med Playwright og Pillow:
+- Google Chrome (Playwright uses `channel="chrome"`) and `ffmpeg` on the PATH.
+- A Python environment with Playwright and Pillow:
 
   ```bash
   python3 -m venv video-venv && video-venv/bin/pip install playwright pillow
   ```
 
-- Appen kører lokalt på port 8502 (`streamlit run app.py --server.port 8502`) med de data, der skal med i videoen.
+- The app running locally on port 8502 (`streamlit run app.py --server.port 8502`) with the data the video should show.
 
-## Kør i denne rækkefølge
+## Run in this order
 
-1. **Optag** – styrer appen i en headless Chrome og gemmer skærmbilleder (`frames4/`) og `log4.json`
-   (musens bane, klik, markører og elementernes placering). Tager knap to minutter.
+1. **Record** – drives the app in headless Chrome and saves screenshots (`frames4/`) and `log4.json`
+   (the mouse path, clicks, markers and where elements sit on the page). Takes just under two minutes.
 
    ```bash
    video-venv/bin/python video/optag.py
    ```
 
-2. **Prøv** (valgfrit) – tegner enkelte billeder til `ud4/b/` på de angivne tidspunkter i sekunder:
+2. **Preview** (optional) – renders single frames to `ud4/b/` at the given times in seconds:
 
    ```bash
    video-venv/bin/python video/klip.py proeve 4 9.5 18 23.5 28.5 34 43 46.5
    ```
 
-3. **Klip** – tegner hele videoen og samler den med ffmpeg til `video/lakselus-rundtur.mp4`. Tager et par minutter.
+3. **Cut** – renders the whole video and joins it with ffmpeg into `video/lakselus-rundtur.mp4`. Takes a few minutes.
 
    ```bash
    video-venv/bin/python video/klip.py
    ```
 
-4. **Forsidebillede** – et billede fra krogen:
+4. **Cover image** – a frame from the hook:
 
    ```bash
    ffmpeg -y -ss 5.5 -i video/lakselus-rundtur.mp4 -frames:v 1 video/lakselus-rundtur-cover.png
    ```
 
-## Tekster med tal fra data
+## Captions with figures from the data
 
-Teksterne står i `KAPITLER` i `klip.py` og skal tjekkes mod appen, når data er opdateret:
+The captions live in `KAPITLER` in `klip.py` and must be checked against the app when the data is updated:
 
-| Kapitel | Tekst | Hvor tallet kommer fra |
+| Chapter | Caption | Where the figure comes from |
 |---|---|---|
-| Latest week | "**569** farms reported in week **44** – search any of **876**" | Sidehovedet og søgefeltet på Latest week |
-| The forecast | "**29%** lower error than naive" | Nøgletal 03 på Forecast (4 uger frem, testperioden) |
-| Treatments | "Thermal: **87%** fewer lice than similar untreated farms within a week" | Figur 2 på Forecast |
-| History | "2026 is still rising in week **44** – later than the usual peak" | Titlen på figur 1 på History |
-| Currents | "about **7** km a day" | Overskriften på Currents |
+| Latest week | "**569** farms reported in week **44** – search any of **876**" | The header and search box on Latest week |
+| The forecast | "**29%** lower error than naive" | Key figure 03 on Forecast (4 weeks ahead, test period) |
+| Treatments | "Thermal: **87%** fewer lice than similar untreated farms within a week" | Exhibit 2 on Forecast |
+| History | "2026 is still rising in week **44** – later than the usual peak" | The title of exhibit 1 on History |
+| Currents | "about **7** km a day" | The headline on Currents |
 
-## Ting, der kan gå i stykker ved nye data
+## What can break with new data or layout changes
 
-- `optag.py` søger "Skorp" og vælger `"Skorpo · PO 3 · 25896"`, og den venter på `?site=25896`. Forsvinder
-  anlægget fra søgefeltet, skal et andet vælges (`ANLAEG` øverst i filen).
-- History-teksten passer kun, så længe 2026 stiger efter den sædvanlige top; skifter titlen på siden, skal teksten følge med.
-- Kameraets zoom i `klip.py` bruger elementernes placering fra `log4.json`. Ændres sidernes layout,
-  skal billederne tjekkes med `proeve`, før hele videoen tegnes.
+- `optag.py` searches for "Skorp", picks `"Skorpo · PO 3 · 25896"` and waits for `?site=25896`. If the farm
+  disappears from the search box, choose another one (`ANLAEG` at the top of the file).
+- The History caption only holds while 2026 keeps rising after the usual peak; if the page title changes, the caption
+  must follow.
+- The camera zoom in `klip.py` uses element positions from `log4.json`. If page layouts change – the Currents page has
+  since gained a life cycle section below the map – check the frames with `proeve` before rendering the whole video.
+
+Code identifiers and comments in the scripts are in Danish, like the rest of the project (see the glossary in the main
+README).

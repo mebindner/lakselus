@@ -23,6 +23,10 @@ venv/
 .idea/
 .DS_Store
 
+# R (projektet er Python, men R bruges til hurtige tjek)
+.Rhistory
+.RData
+
 # Lokal Claude Code-opsætning
 .claude/
 .agents/

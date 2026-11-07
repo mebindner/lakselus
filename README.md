@@ -12,9 +12,9 @@
 How many adult female sea lice (*lakselus*) are on the salmon in Norway's fish farms, how does that
 change through the year, and can the level be forecast 1–4 weeks ahead better than a simple rule of thumb?
 
-The project pulls weekly lice counts from about 1,050 sites (2019 → today), aggregates them by
-production area (*produksjonsområde*) and presents them in a Streamlit app built like a weekly
-consulting report. The forecasts are evaluated honestly against naive baselines.
+The project pulls weekly lice counts from about 1,050 sites that have reported since 2019 (about 570 report in a
+typical week), aggregates them by production area (*produksjonsområde*) and presents them in a Streamlit app built
+like a weekly consulting report. The forecasts are evaluated honestly against naive baselines.
 
 Built in **Python** (pandas, scikit-learn, Altair, pydeck/deck.gl, Streamlit). Independent portfolio
 project – analysis of open data, not prepared for or by any company.
