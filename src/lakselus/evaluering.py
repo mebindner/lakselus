@@ -8,7 +8,7 @@ Indhold
 2. Backtest             – expanding window, uge for uge, med kun de data, der fandtes dengang
 3. Fejlmål              – MAE og skill mod den naive prognose
 4. Perioder og test     – validering/test-opdeling og Diebold–Mariano-test
-5. Prognoseintervaller  – empiriske 80 %-intervaller fra modellens egne tidligere fejl
+5. Prognoseintervaller  – konformaliseret kvantilregression (CQR); reserve: modellens egne fejl, skaleret med niveauet
 """
 
 from collections.abc import Callable
@@ -121,18 +121,37 @@ def dm_test(res_model: pd.DataFrame, res_ref: pd.DataFrame, h: int) -> tuple[flo
 
 # --- 5. Prognoseintervaller -----------------------------------------------------------------
 
+# Reserve, når kvantilmodellerne mangler (se CQR nedenfor), og skalaen for CQR's korrektion.
+# Fejlene vokser med lusetallet: et fast interval er for bredt ved lave niveauer og for smalt ved høje – netop
+# når et område nærmer sig lusegrænsen. Fejlen måles derfor relativt til prognosen plus SKALA_C. Valgt på
+# validering 2023–24 med interval score (Gneiting & Raftery 2007): 0,187 mod 0,215 for faste intervaller, og
+# dækningen ved prognoser over 0,25 steg fra 35 % til 65 %. 0,01 er den mindste værdi, en tælling kan have
+# (to decimaler), og holder intervallet åbent, når prognosen er 0.
+SKALA_C = 0.01
+
+
+def relativ_fejl(faktisk, pred, c: float = SKALA_C):
+    return (faktisk - pred) / (pred + c)
+
+
+def interval(pred, lo_rel, hi_rel, c: float = SKALA_C):
+    """(lo, hi) fra prognosen og kvantilerne af den relative fejl. Lusetal kan ikke være negative."""
+    return np.maximum(pred + lo_rel * (pred + c), 0), pred + hi_rel * (pred + c)
+
+
 def intervaller(res: pd.DataFrame, niveau: float = 0.8, min_obs: int = 26) -> pd.DataFrame:
     """Kausale prognoseintervaller fra modellens egne tidligere fejl (empirisk/konform metode).
 
     For hver forecast-uge, horisont og område bruges kun residualer, hvis måluge allerede er passeret –
     altså fejl, der var kendt på forecast-tidspunktet. Pr. område, fordi fejlenes størrelse varierer meget
-    mellem områderne. Rækker uden nok historik får intet interval.
+    mellem områderne. Fejlene er relative (se SKALA_C), så intervallet vokser med prognosen.
+    Rækker uden nok historik får intet interval.
     """
     a = (1 - niveau) / 2
     ud = []
     for (h, omr), r in res.groupby(["h", "omraade"]):
         r = r.sort_values("origin")
-        resid = (r["faktisk"] - r["pred"]).to_numpy()
+        resid = relativ_fejl(r["faktisk"], r["pred"]).to_numpy()
         maal, origin = r["maal"].to_numpy(), r["origin"].to_numpy()
         for o in np.unique(origin):
             kendt = resid[maal <= o]
@@ -140,9 +159,56 @@ def intervaller(res: pd.DataFrame, niveau: float = 0.8, min_obs: int = 26) -> pd
                 continue
             lo, hi = np.quantile(kendt, [a, 1 - a])
             ud.append((h, omr, o, lo, hi))
-    q = pd.DataFrame(ud, columns=["h", "omraade", "origin", "lo_resid", "hi_resid"])
+    q = pd.DataFrame(ud, columns=["h", "omraade", "origin", "lo_rel", "hi_rel"])
     m = res.merge(q, on=["h", "omraade", "origin"], how="inner")
-    return m.assign(lo=(m["pred"] + m["lo_resid"]).clip(lower=0), hi=m["pred"] + m["hi_resid"])
+    lo, hi = interval(m["pred"], m["lo_rel"], m["hi_rel"])
+    return m.assign(lo=lo, hi=hi)
+
+
+# Konformaliseret kvantilregression (CQR, Romano, Patterson & Candès 2019). To gradient boosting-modeller forudsiger
+# 10 %- og 90 %-kvantilen direkte med alle variablene, så intervallet kan blive bredere af andre grunde end niveauet.
+# Rå kvantilmodeller dækker for lidt (71 % på validering), så intervallet udvides med 80 %-kvantilen af de tidligere
+# overskridelser E = max(lo − y, y − hi), relativt til prognosen som ovenfor. Valgt på validering 2023–24 mod de
+# skalerede intervaller: interval score 0,170 mod 0,188 (DM p = 0,01–0,07 ved de fire horisonter), dækning 79 %
+# og jævn over niveauerne (76–81 %). Testperioden bekræftede det: 82 % dækning, 80 % over 0,25 lus pr. fisk.
+
+def raa_kvantiler(lo_pred, hi_pred, pred):
+    """Kvantilmodellernes interval, sorteret og udvidet, så prognosen altid ligger inde (kvantiler kan krydse)."""
+    lo = np.minimum(np.minimum(lo_pred, hi_pred), pred)
+    hi = np.maximum(np.maximum(lo_pred, hi_pred), pred)
+    return np.maximum(lo, 0), hi
+
+
+def cqr_score(faktisk, pred, lo, hi, c: float = SKALA_C):
+    """Hvor langt udfaldet lå uden for kvantilintervallet (negativ: inde), relativt til prognosen."""
+    return np.maximum(lo - faktisk, faktisk - hi) / (pred + c)
+
+
+def cqr_udvid(pred, lo, hi, korrektion, c: float = SKALA_C):
+    return np.maximum(lo - korrektion * (pred + c), 0), hi + korrektion * (pred + c)
+
+
+def cqr_intervaller(res: pd.DataFrame, kvantiler: pd.DataFrame, niveau: float = 0.8, min_obs: int = 26) -> pd.DataFrame:
+    """Kausale CQR-intervaller til backtesten. `kvantiler` har kolonnerne pred_lo og pred_hi pr. prognose.
+
+    Korrektionen for en forecast-uge bruger kun overskridelser, hvis måluge allerede er passeret, pr. område og horisont.
+    """
+    noegle = ["omraade", "origin", "h", "maal"]
+    m = res.merge(kvantiler[noegle + ["pred_lo", "pred_hi"]], on=noegle, how="inner")
+    m["lo_q"], m["hi_q"] = raa_kvantiler(m["pred_lo"], m["pred_hi"], m["pred"])
+    ud = []
+    for (h, omr), r in m.groupby(["h", "omraade"]):
+        r = r.sort_values("origin")
+        e = cqr_score(r["faktisk"], r["pred"], r["lo_q"], r["hi_q"]).to_numpy()
+        maal = r["maal"].to_numpy()
+        for o in np.unique(r["origin"]):
+            kendt = e[maal <= o]
+            if len(kendt) >= min_obs:
+                ud.append((h, omr, o, np.quantile(kendt, niveau)))
+    q = pd.DataFrame(ud, columns=["h", "omraade", "origin", "korrektion"])
+    m = m.merge(q, on=["h", "omraade", "origin"], how="inner")
+    lo, hi = cqr_udvid(m["pred"], m["lo_q"], m["hi_q"], m["korrektion"])
+    return m.assign(lo=lo, hi=hi)
 
 
 def daekning(med_interval: pd.DataFrame) -> pd.Series:

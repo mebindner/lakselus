@@ -25,7 +25,7 @@ import pandas as pd
 import streamlit as st
 
 from lakselus import appdata, evaluering as ev, regnskab
-from lakselus.modelrapport import BASELINES, NAVNE
+from lakselus.modelrapport import BASELINES, NAVNE, backtest_intervaller
 from lakselus.udseende import FARVER, afsnit, figur, ikon, info, kilde, resume, sidehoved
 
 
@@ -173,7 +173,8 @@ graense_tekst = alt.Chart(pd.DataFrame({"uge_start": [omr["uge_start"].min()], "
     align="left", dx=2, dy=-6, fontSize=10, color="#D64545").encode(x=x, y="y:Q", text="t:N")
 st.altair_chart((baand + historik + naiv_linje + linje + graense + graense_tekst + annotation).properties(height=340),
                 width="stretch")
-st.markdown(kilde("The interval is the empirical 10th–90th percentile of the model's own backtest errors for the area and horizon. "
+st.markdown(kilde("The interval comes from models trained on the 10th and 90th percentile, widened by how far past outcomes fell "
+                  "outside it in the area (conformalised quantile regression), so it reflects when the forecast is uncertain. "
                   "Red dashed line: the lice limit of 0.5. Each week ahead has its own model, so the path can bend – "
                   "for example when lice rebound after a treatment."), unsafe_allow_html=True)
 
@@ -394,7 +395,7 @@ st.markdown(kilde(f"Area{'s' if len(smaa) > 1 else ''} {' and '.join(map(str, sm
 titel_plads = st.empty()
 h_valg = st.segmented_control("Horizon", options=[1, 2, 3, 4], default=2, format_func=lambda h: f"{h} week{'s' if h > 1 else ''}",
                               key="horisont") or 2
-bt = ev.intervaller(res[res["model"] == valgt].drop(columns="model"))
+bt = backtest_intervaller(res, valgt)
 bt = ev.periode(bt[(bt["omraade"] == valg) & (bt["h"] == h_valg)], ev.TEST).sort_values("maal")
 daek_omr = ((bt["faktisk"] >= bt["lo"]) & (bt["faktisk"] <= bt["hi"])).mean()
 titel_plads.markdown(figur(
@@ -421,9 +422,11 @@ if len(arkiv):
     foerste_uge = pd.Timestamp(arkiv["lavet"].min()).isocalendar().week
     if rs["n"]:
         titel = (f"Live track record: {rs['inde']} of {rs['n']} published forecasts landed inside the 80% range")
-        bedre = rs["mae_naiv"] is not None and rs["mae"] < rs["mae_naiv"]
-        vurdering = (f"Mean error so far is {rs['mae']:.3f} against {rs['mae_naiv']:.3f} for the naive forecast "
-                     f"({'better' if bedre else 'worse'} than naive)" if rs["mae_naiv"] is not None else "")
+        bedre = rs["mae_naiv"] is not None and rs["mae_par"] < rs["mae_naiv"]
+        # Den naive prognose er udgangsugens tal, som det blev publiceret – ikke det tal, ugen senere blev rettet til.
+        vurdering = (f"Mean error so far is {rs['mae_par']:.3f} against {rs['mae_naiv']:.3f} for the naive forecast "
+                     f"({'better' if bedre else 'worse'} than naive; the naive forecast is the latest week as "
+                     "published that week, before late reports came in)" if rs["mae_naiv"] is not None else "")
         faa = rs["uger"] < 8
     else:
         titel, vurdering, faa = "Live track record: the first published forecasts are still waiting for their week", "", True

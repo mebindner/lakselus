@@ -53,7 +53,12 @@ def test_saesonfeature_kender_ikke_eget_maal():
     assert a == pytest.approx(b)
 
 
-@pytest.mark.parametrize("navn", ["saeson_justeret", "ridge", "gbm", "gbm_beh", "gbm_stadier", "gbm_biomasse", "ensemble"])
+def _alle_modeller():
+    return m.kandidater() | m.kvantil_modeller(m.kandidater()["gbm_stadier"])
+
+
+@pytest.mark.parametrize("navn", ["saeson_justeret", "ridge", "gbm", "gbm_beh", "gbm_stadier", "gbm_biomasse", "ensemble",
+                                  "kvantil_lo", "kvantil_hi"])
 def test_backtest_laekker_ikke_fremtid(navn):
     """Ødelægges alle data efter uge T, skal prognoser lavet til og med T være uændrede."""
     p = syntetisk_panel(n_uger=170)
@@ -65,8 +70,8 @@ def test_backtest_laekker_ikke_fremtid(navn):
     oedelagt.loc[oedelagt["uge_start"] > T, ["mob", "fast"]] = 77.0
 
     start = p["uge_start"].unique()[130]
-    a = ev.backtest(p, m.kandidater()[navn], horisonter=(1, 3), start=start)
-    b = ev.backtest(oedelagt, m.kandidater()[navn], horisonter=(1, 3), start=start)
+    a = ev.backtest(p, _alle_modeller()[navn], horisonter=(1, 3), start=start)
+    b = ev.backtest(oedelagt, _alle_modeller()[navn], horisonter=(1, 3), start=start)
     sammen = a.merge(b, on=["omraade", "origin", "h"], suffixes=("", "_b"))
     sammen = sammen[sammen["origin"] <= T]
     assert len(sammen) > 0
@@ -155,8 +160,24 @@ def test_intervaller_bruger_kun_kendte_fejl():
     i1 = ev.intervaller(r, min_obs=52).set_index("origin")
     i2 = ev.intervaller(r2, min_obs=52).set_index("origin")
     foer = i1.index[i1.index <= graense]
-    np.testing.assert_allclose(i1.loc[foer, "lo_resid"], i2.loc[foer, "lo_resid"])
-    np.testing.assert_allclose(i1.loc[foer, "hi_resid"], i2.loc[foer, "hi_resid"])
+    np.testing.assert_allclose(i1.loc[foer, "lo_rel"], i2.loc[foer, "lo_rel"])
+    np.testing.assert_allclose(i1.loc[foer, "hi_rel"], i2.loc[foer, "hi_rel"])
+
+
+def test_intervallet_vokser_med_niveauet():
+    """Fejl, der er proportionale med niveauet, skal give et interval, der også er det – og dækker ved alle niveauer."""
+    rng = np.random.default_rng(6)
+    n = 800
+    origin = pd.date_range("2010-01-04", periods=n, freq="W-MON")
+    pred = rng.choice([0.05, 0.4], n)
+    faktisk = pred * (1 + rng.normal(0, 0.3, n))
+    r = pd.DataFrame({"omraade": 1, "origin": origin, "h": 1, "maal": origin + pd.Timedelta(weeks=1),
+                      "pred": pred, "faktisk": faktisk})
+    iv = ev.intervaller(r, min_obs=52)
+    bredde = (iv["hi"] - iv["lo"]).groupby(iv["pred"]).median()
+    assert 6 < bredde[0.4] / bredde[0.05] < 9   # (0,4 + 0,01) / (0,05 + 0,01) ≈ 6,8
+    inde = (iv["faktisk"] >= iv["lo"]) & (iv["faktisk"] <= iv["hi"])
+    assert (inde.groupby(iv["pred"]).mean().between(0.72, 0.88)).all()
 
 
 def test_modelvalg_ser_kun_paa_validering():
@@ -175,3 +196,53 @@ def test_modelvalg_ser_kun_paa_validering():
         for k, f in fejl.items() for h in (1, 2, 3, 4)
     ])
     assert modelrapport.vaelg_model(res) == "god_paa_val"
+
+
+# --- Intervaller med kvantilregression (CQR) ---------------------------------------------
+
+def test_kvantilmodeller_er_ikke_kandidater_og_kan_ikke_vaelges():
+    """Kvantilmodellerne giver intervallet; de må hverken stå i tabellerne eller blive valgt som prognose."""
+    from lakselus import modelrapport
+
+    # Kvantilmodellerne har her de mindste fejl; de må alligevel ikke blive valgt.
+    fejl = {"naiv": 0.04, "saeson_naiv": 0.05, "gbm": 0.02, "kvantil_lo": 0.001, "kvantil_hi": 0.001}
+    res = pd.concat([_res(np.full(60, f), seed=1).assign(model=k) for k, f in fejl.items()])
+    assert list(modelrapport.som_dict(res)) == ["naiv", "saeson_naiv", "gbm"]
+    assert modelrapport.vaelg_model(res) == "gbm"
+    assert modelrapport.kvantiler(res) is not None
+    assert modelrapport.kvantiler(res[res["model"] != "kvantil_hi"]) is None
+
+
+def test_cqr_udvider_for_smalle_kvantiler_til_nominel_daekning():
+    """Er kvantilmodellernes interval for smalt, skal den konforme korrektion bringe dækningen op på ca. 80 %."""
+    rng = np.random.default_rng(7)
+    n = 600
+    origin = pd.date_range("2010-01-04", periods=n, freq="W-MON")
+    pred = np.full(n, 0.2)
+    res = pd.DataFrame({"omraade": 1, "origin": origin, "h": 1, "maal": origin + pd.Timedelta(weeks=1),
+                        "pred": pred, "faktisk": pred + rng.normal(0, 0.05, n)})
+    kv = res[["omraade", "origin", "h", "maal"]].assign(pred_lo=pred - 0.02, pred_hi=pred + 0.02)  # alt for smalt
+    iv = ev.cqr_intervaller(res, kv, min_obs=52)
+    assert 0.74 < ev.daekning(iv).loc[1] < 0.86
+    assert ((iv["lo"] <= iv["pred"]) & (iv["pred"] <= iv["hi"])).all()
+
+
+def test_cqr_bruger_kun_kendte_fejl():
+    rng = np.random.default_rng(8)
+    n = 200
+    origin = pd.date_range("2010-01-04", periods=n, freq="W-MON")
+    res = pd.DataFrame({"omraade": 1, "origin": origin, "h": 1, "maal": origin + pd.Timedelta(weeks=1),
+                        "pred": 0.2, "faktisk": 0.2 + rng.normal(0, 0.05, n)})
+    kv = res[["omraade", "origin", "h", "maal"]].assign(pred_lo=0.15, pred_hi=0.25)
+    graense = origin[120]
+    res2 = res.copy()
+    res2.loc[res2["maal"] > graense, "faktisk"] += 5.0
+    a = ev.cqr_intervaller(res, kv, min_obs=52).set_index("origin")["hi"]
+    b = ev.cqr_intervaller(res2, kv, min_obs=52).set_index("origin")["hi"]
+    np.testing.assert_allclose(a[a.index <= graense], b[b.index <= graense])
+
+
+def test_kvantiler_der_krydser_sorteres_og_omslutter_prognosen():
+    lo, hi = ev.raa_kvantiler(np.array([0.3, 0.1]), np.array([0.2, 0.15]), np.array([0.25, 0.2]))
+    np.testing.assert_allclose(lo, [0.2, 0.1])
+    np.testing.assert_allclose(hi, [0.3, 0.2])

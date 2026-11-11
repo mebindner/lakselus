@@ -12,6 +12,9 @@ Kandidater
 - gbm_biomasse:     som gbm_stadier, men også med fiskebestanden pr. område (Fiskeridirektoratet).
 - ensemble:         gennemsnit af saeson_justeret, ridge og gbm.
 
+Intervalmodeller (ikke kandidater): kvantil_lo og kvantil_hi er gradient boosting trænet på 10 %- og 90 %-kvantilen
+med den valgte models variable. De giver prognoseintervallet (se evaluering.cqr_intervaller).
+
 Modellerne forudsiger *ændringen* fra i dag frem for niveauet. Så er den naive prognose (ændring = 0)
 modellens udgangspunkt, og den skal kun lære, hvornår og hvor meget niveauet afviger fra uge til uge.
 
@@ -158,6 +161,12 @@ def _gbm(kolonner: list[str], **params):
     )
 
 
+def _gbm_kvantil(kolonner: list[str], q: float):
+    return HistGradientBoostingRegressor(
+        loss="quantile", quantile=q, categorical_features=[len(kolonner)], random_state=0, **GBM_PARAMS,
+    )
+
+
 class DirekteModel:
     """Direkte multi-horisont-model: én model pr. h, gen-trænes hvert REFIT_UGER uger.
 
@@ -197,6 +206,16 @@ class Ensemble:
         return pd.concat([d(historik, h) for d in self.dele], axis=1).mean(axis=1)
 
 
+KVANTILER = {"kvantil_lo": 0.1, "kvantil_hi": 0.9}
+
+
+def kvantil_modeller(model) -> dict:
+    """10 %- og 90 %-kvantilmodeller med samme variable som `model`. Tom, hvis modellen ikke er en DirekteModel."""
+    if not isinstance(model, DirekteModel):
+        return {}
+    return {navn: DirekteModel(lambda kol, q=q: _gbm_kvantil(kol, q), model.kolonner) for navn, q in KVANTILER.items()}
+
+
 def kandidater() -> dict:
     """Friske modelinstanser (de har tilstand pga. refit-cache)."""
     # Valgt på valideringsperioden 2023–24 (se README): nationale features gav GBM en lille, konsistent
@@ -210,6 +229,8 @@ def kandidater() -> dict:
     # Fiskebestanden (tilføjet nov. 2026, Fiskeridirektoratet) gav på validering ingen gevinst oven i lusestadierne:
     # skill 18,0 % mod 18,7 % (DM p > 0,1 ved alle horisonter); en mindre variant med fire variable gav 17,9 %.
     # Tallene er månedlige og 3–7 uger bagud, når en prognose kan bruge dem. Kandidaten køres med som gbm_beh.
+    # Log-skala (testet nov. 2026): gbm_stadier trænet på log(y + 0,01) gav skill 18,0 % mod 18,7 % på validering
+    # (DM p > 0,2) og blev ikke tilføjet.
     ridge, gbm = DirekteModel(_ridge, NUMERISKE), DirekteModel(_gbm, NUMERISKE + NATIONALE)
     return {
         "saeson_justeret": saeson_justeret,

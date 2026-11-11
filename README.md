@@ -55,7 +55,8 @@ and the Diebold–Mariano test.
 
 A **live track record** sits below the backtest: every week's published forecast is archived unchanged
 (`data/app/prognose_arkiv.parquet`) and scored once the week's counts arrive – share inside the 80% range and mean error
-against the naive forecast. Unlike the backtest, nothing can be tuned after the fact.
+against the naive forecast as it was published that week (before late reports corrected the latest week). Unlike the
+backtest, nothing can be tuned after the fact.
 
 ### 3. History – is this year worse than usual?
 One line per year for the coast-wide lice level (or one production area), with this year highlighted and the weeks
@@ -131,13 +132,36 @@ slightly each week as new weeks and late corrections arrive; the app always show
 | MAE gradient boosting + lice stages | **0.020** | **0.025** | **0.029** | **0.032** |
 | Skill vs. naive | +12% | +22% | +27% | +29% |
 | Diebold–Mariano p | < 0.001 | < 0.001 | < 0.001 | < 0.001 |
-| 80% interval coverage | 80% | 80% | 80% | 79% |
+| 80% interval coverage | 83% | 81% | 81% | 82% |
 
 Gradient boosting with lice stages has the lowest error at every horizon, and its improvement over the naive
 forecast is statistically significant throughout (the other learning models also beat the naive forecast, but by less). The gain grows with the horizon: the naive
 forecast is hard to beat one week ahead, but the model captures seasonality and momentum, which matter
-more further out. The prediction intervals (empirical quantiles of the model's own past errors by area)
-are well calibrated.
+more further out.
+
+**Prediction intervals:** Two extra gradient boosting models predict the 10th and 90th percentile of the
+change directly, with the same inputs as the forecast (quantile loss). Raw quantile models cover too little
+(71% on validation), so the interval is widened by the 80th percentile of how far past outcomes fell outside
+it – conformalised quantile regression (Romano, Patterson & Candès 2019) – per area and horizon, using only
+errors known at the time and measured relative to the forecast plus 0.01. Until November 2026 the interval
+was the 10th–90th percentile of past errors in absolute terms: right on average, but too wide at low levels
+and far too narrow at high ones (in the test period only 45% of outcomes above 0.25 lice per fish landed
+inside). Three methods were compared on the validation period, chosen in advance, by interval score
+(Gneiting & Raftery 2007), which rewards narrow intervals and penalises misses:
+
+| Interval method | Interval score, validation | Coverage, test | Coverage above 0.25, test |
+|---|---|---|---|
+| Fixed (old) | 0.215 | 80% | 45% |
+| Scaled with the forecast | 0.188 | 80% | 67% |
+| **Conformalised quantile regression** | **0.170** | **82%** | **80%** |
+
+The gain over the scaled version is significant one and two weeks ahead (Diebold–Mariano on interval
+score, p = 0.015 and 0.036) and borderline at three and four (p ≈ 0.05–0.07). The scaled version remains
+as a fallback if the quantile models are missing.
+
+**Log scale:** The selected model was also trained on log(lice + 0.01), which makes errors more even across
+levels. On validation it did not improve on the original (skill 18.0% vs. 18.7%, Diebold–Mariano p > 0.2),
+so it was not added.
 
 Reproduce the figures with `python -m lakselus.modelrapport` (a few minutes).
 

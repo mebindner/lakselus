@@ -7,7 +7,7 @@ Indhold
 1. Filer og modelnavne
 2. Backtest                    – alle baselines og kandidater på samme panel
 3. Modelvalg og opsummering    – valg på validering (2023–24), rapport på test (2025→)
-4. Live-prognose               – 1–4 uger frem med 80 %-interval fra backtest-fejlene
+4. Live-prognose               – 1–4 uger frem med 80 %-interval (CQR) fra backtesten
 5. Kommandolinje
 """
 
@@ -41,19 +41,45 @@ NAVNE = {
 # --- 2. Backtest ----------------------------------------------------------------------------
 
 def koer(panel: pd.DataFrame, log=print) -> pd.DataFrame:
-    """Backtest af baselines og modelkandidater; ét langt datasæt med kolonnen `model`."""
+    """Backtest af baselines og modelkandidater; ét langt datasæt med kolonnen `model`.
+
+    Til sidst backtestes kvantilmodellerne til den valgte models interval (m.KVANTILER). De er ikke kandidater og
+    holdes ude af modelvalget og tabellerne (se som_dict).
+    """
     dele = []
     for navn, f in (BASELINES | m.kandidater()).items():
         t = time.time()
         dele.append(ev.backtest(panel, f).assign(model=navn))
         log(f"  {navn:16s} {time.time() - t:5.1f} s")
-    return pd.concat(dele, ignore_index=True)
+    res = pd.concat(dele, ignore_index=True)
+    for navn, f in m.kvantil_modeller(m.kandidater().get(vaelg_model(res))).items():
+        t = time.time()
+        res = pd.concat([res, ev.backtest(panel, f).assign(model=navn)], ignore_index=True)
+        log(f"  {navn:16s} {time.time() - t:5.1f} s")
+    return res
 
 
 # --- 3. Modelvalg og opsummering ------------------------------------------------------------
 
 def som_dict(res: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    return {navn: r.drop(columns="model") for navn, r in res.groupby("model", sort=False)}
+    """Prognosemodellerne (baselines og kandidater) – uden intervalmodellerne."""
+    return {navn: r.drop(columns="model") for navn, r in res.groupby("model", sort=False) if navn not in m.KVANTILER}
+
+
+def kvantiler(res: pd.DataFrame) -> pd.DataFrame | None:
+    """Kvantilmodellernes backtest som én række pr. prognose (pred_lo, pred_hi). None, hvis de ikke er kørt."""
+    if not set(m.KVANTILER) <= set(res["model"]):
+        return None
+    noegle = ["omraade", "origin", "h", "maal"]
+    lo, hi = (res[res["model"] == k].set_index(noegle)["pred"] for k in m.KVANTILER)
+    return pd.DataFrame({"pred_lo": lo, "pred_hi": hi}).dropna().reset_index()
+
+
+def backtest_intervaller(res: pd.DataFrame, model: str) -> pd.DataFrame:
+    """80 %-intervaller for modellens backtest: CQR, når kvantilmodellerne findes, ellers skalerede fejl."""
+    r = res[res["model"] == model].drop(columns="model")
+    kv = kvantiler(res)
+    return ev.cqr_intervaller(r, kv) if kv is not None else ev.intervaller(r)
 
 
 def vaelg_model(res: pd.DataFrame) -> str:
@@ -76,7 +102,7 @@ def opsummer(res: pd.DataFrame) -> dict[str, pd.DataFrame]:
         k: {h: ev.dm_test(test[k], test["naiv"], h)[1] for h in (1, 2, 3, 4)}
         for k in alle if k != "naiv"
     })
-    ud["daekning_test"] = ev.daekning(ev.periode(ev.intervaller(alle[valgt]), ev.TEST))
+    ud["daekning_test"] = ev.daekning(ev.periode(backtest_intervaller(res, valgt), ev.TEST))
     ud["mae_omraade_test"] = ev.mae(test, efter=["omraade", "h"])
     return ud
 
@@ -86,20 +112,42 @@ def opsummer(res: pd.DataFrame) -> dict[str, pd.DataFrame]:
 def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame, niveau: float = 0.8) -> pd.DataFrame:
     """Prognose 1–4 uger frem fra seneste uge med den valgte model og et 80 %-interval pr. område.
 
-    Modellen trænes på alle data. Intervallet er de empiriske kvantiler af modellens egne backtest-fejl
-    for området og horisonten.
+    Modellen trænes på alle data. Intervallet er CQR: kvantilmodellerne trænes også på alle data, og intervallet
+    udvides med 80 %-kvantilen af deres overskridelser i hele backtesten for området og horisonten. Uden kvantilmodeller
+    bruges de empiriske kvantiler af modellens egne relative backtest-fejl (se evaluering.SKALA_C).
+    `naiv` er områdets lusetal i udgangsugen, som det så ud nu – regnskabet sammenligner med det, ikke med det tal,
+    ugen senere bliver rettet til.
     """
     f = (m.kandidater() | BASELINES)[model]
-    resid = res[res["model"] == model].assign(r=lambda d: d["faktisk"] - d["pred"])
-    q = resid.groupby(["omraade", "h"])["r"].quantile([(1 - niveau) / 2, (1 + niveau) / 2]).unstack()
-    q.columns = ["lo_r", "hi_r"]
+    kv_modeller = m.kvantil_modeller(m.kandidater().get(model))
+    kv = kvantiler(res)
+    if kv_modeller and kv is not None:
+        b = res[res["model"] == model].merge(kv, on=["omraade", "origin", "h", "maal"])
+        lo_q, hi_q = ev.raa_kvantiler(b["pred_lo"], b["pred_hi"], b["pred"])
+        e = ev.cqr_score(b["faktisk"], b["pred"], lo_q, hi_q)
+        korrektion = e.groupby([b["omraade"], b["h"]]).quantile(niveau)
+    else:
+        resid = res[res["model"] == model].assign(r=lambda d: ev.relativ_fejl(d["faktisk"], d["pred"]))
+        q = resid.groupby(["omraade", "h"])["r"].quantile([(1 - niveau) / 2, (1 + niveau) / 2]).unstack()
+        q.columns = ["lo_rel", "hi_rel"]
+    nan = float("nan")
     seneste = panel["uge_start"].max()
+    naiv = ev.naiv(panel, 1)
     rows = []
     for h in (1, 2, 3, 4):
-        for omr, v in f(panel, h).items():
-            lo, hi = q.loc[(omr, h)] if (omr, h) in q.index else (float("nan"), float("nan"))
-            rows.append({"omraade": omr, "h": h, "uge_start": seneste + pd.Timedelta(weeks=h),
-                         "pred": v, "lo": max(v + lo, 0), "hi": v + hi})
+        pred = f(panel, h)
+        if kv_modeller and kv is not None:
+            lo_p, hi_p = (kv_modeller[k](panel, h).reindex(pred.index) for k in m.KVANTILER)
+            lo_q, hi_q = ev.raa_kvantiler(lo_p, hi_p, pred)
+            k = pd.Series([korrektion.get((o, h), nan) for o in pred.index], index=pred.index)
+            lo, hi = ev.cqr_udvid(pred, lo_q, hi_q, k)
+        else:
+            rel = pd.DataFrame([q.loc[(o, h)] if (o, h) in q.index else (nan, nan) for o in pred.index],
+                               index=pred.index, columns=["lo_rel", "hi_rel"])
+            lo, hi = ev.interval(pred, rel["lo_rel"], rel["hi_rel"])
+        for omr, v in pred.items():
+            rows.append({"omraade": omr, "h": h, "uge_start": seneste + pd.Timedelta(weeks=h), "pred": v,
+                         "lo": float(lo[omr]), "hi": float(hi[omr]), "naiv": naiv.get(omr, nan)})
     return pd.DataFrame(rows).assign(model=model)
 
 

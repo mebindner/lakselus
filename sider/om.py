@@ -157,9 +157,11 @@ tekst(
     "<li><b>Against a benchmark, with a significance test.</b> Errors are measured as mean absolute error (MAE) and "
     "compared with the naive forecast as skill = 1 − MAE<sub>model</sub> ÷ MAE<sub>naive</sub>. The Diebold–Mariano "
     "test (Newey–West variance, Harvey correction) checks whether the difference is larger than chance.</li>"
-    "<li><b>Honest uncertainty.</b> The 80% range is the 10th–90th percentile of the model's own past errors for the "
-    "area and horizon, using only errors that were known at the time of the forecast. If it is well calibrated, the "
-    "outcome lands inside it 8 times out of 10.</li></ul>"
+    "<li><b>Honest uncertainty.</b> The 80% range comes from two extra gradient boosting models trained to predict "
+    "the 10th and 90th percentile directly, with the same inputs as the forecast. Raw percentile models are too "
+    "narrow, so the range is widened by how far past outcomes fell outside it (conformalised quantile regression), "
+    "for each area and horizon and using only errors known at the time. If it is well calibrated, the outcome lands "
+    "inside it 8 times out of 10 – at low and high lice levels alike.</li></ul>"
     f"<h3>Results in the test period ({test_fra} onwards, {n_test_uger} forecast weeks)</h3>"
 )
 h = (1, 2, 3, 4)
@@ -243,6 +245,15 @@ st.markdown(afsnit("5 · Changelog", "Changes to data, methods and models",
                    "Changes to the data, methods and pages. Design-only and technical changes are left out; the full history "
                    "is on GitHub."), unsafe_allow_html=True)
 LOG = [
+    ("2026-11-11", "<b>New forecast ranges; fairer live track record.</b> A review of the model found the 80% ranges "
+                   "were the same width at every lice level: too wide when lice were low and too narrow when they were "
+                   "high – above 0.25 lice per fish, only 45% of outcomes landed inside in the test period. Three methods "
+                   "were compared on 2023–24, chosen in advance: the old fixed ranges, ranges scaled with the forecast, and "
+                   "conformalised quantile regression. The last won (interval score 0.170 vs 0.215 for the old ranges) and "
+                   "is now used: in the test period 82% of outcomes land inside, and 80% above 0.25. The forecasts "
+                   "themselves are unchanged; a log-scale version of the model was tested and gave no gain. The live "
+                   "track record now compares with the naive forecast as it was published, not with the latest week "
+                   "after late reports corrected it."),
     ("2026-11-11", "<b>Fish stock tested as a forecast input; no change to the selected model.</b> A new candidate adds "
                    "the Directorate of Fisheries' monthly fish stock per area to gradient boosting with lice stages: number "
                    "of fish, total adult female lice, mean weight, and the share stocked and harvested. On 2023–24 it did "

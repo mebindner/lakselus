@@ -23,7 +23,7 @@ concurrency:
 jobs:
   opdater:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
       BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
