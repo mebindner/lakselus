@@ -50,7 +50,7 @@ Structured like a report deliverable:
 The page is split in two. First, for everyone: the 1–4 week forecast for the chosen area in plain language
 (it opens on the area picked on the Latest week page), with an 80% range, and how much each treatment type
 lowers lice compared with similar untreated sites. Then, for the technically curious: a comparison of eight
-models (two naive benchmarks and six candidates), the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
+models (two naive benchmarks and seven candidates), the gain by area and the backtest track in the test period, with info bubbles explaining MAE, skill
 and the Diebold–Mariano test.
 
 A **live track record** sits below the backtest: every week's published forecast is archived unchanged
@@ -100,7 +100,7 @@ An **About** section at the bottom of every page sums up who built it, the data,
 
 ## Models and evaluation
 
-Eight models are backtested week by week (expanding window, retrained every quarter). Every forecast is
+Nine models are backtested week by week (expanding window, retrained every quarter). Every forecast is
 made **only with the data available at the time** – tested automatically by corrupting all future data
 and checking that the forecasts are unchanged.
 
@@ -113,6 +113,7 @@ and checking that the forecasts are unchanged.
 | Gradient boosting | Same target, non-linear, MAE loss, pooled across areas |
 | Gradient boosting + treatments | As above, plus the share of the area's sites treated against lice |
 | **Gradient boosting + lice stages** | As above, plus the younger lice stages (attached and mobile lice per fish) |
+| Gradient boosting + fish stock | As lice stages, plus the area's monthly fish stock (Directorate of Fisheries) |
 | Ensemble | Mean of naive + seasonal change, ridge and gradient boosting |
 
 Features: level and changes over 1–8 weeks, rolling mean and spread, sea temperature, ISO week
@@ -158,6 +159,17 @@ stages is significant at every horizon. Sea temperature summed over 4–8 weeks 
 areas' lice levels and how far farms are into their production cycle were tested the same way and gave
 no reliable gain.
 
+**Fish stock:** The lice counts are per fish, so they say nothing about how many fish – or lice – are in an
+area. The Directorate of Fisheries publishes the number of fish, biomass, smolts stocked and fish harvested per
+production area each month. One candidate adds the number of fish, the total adult female lice (lice per fish ×
+fish), mean fish weight, the monthly and year-on-year change in fish, and the share of fish stocked and harvested
+over three months. The backtest only uses months that were published in the forecast week (on the 20th of the
+following month). On the validation period it did not improve on gradient boosting with lice stages: average
+skill 18.0% vs. 18.7% (Diebold–Mariano p > 0.1 at every horizon), and a smaller variant with four of the
+features gave 17.9%. The figures are monthly and 3–7 weeks behind by the time a forecast can use them, and the weekly lice history
+already reflects much of what they say. The candidate stays in the weekly backtest. Caveat: the history is the
+directorate's file as it is today, including later corrections.
+
 **What treatments do:** The Forecast page also shows an event study of single, whole-site treatments:
 the lice level week by week around a treatment, compared with untreated sites that had the same lice level
 in the same month. Thermal and mechanical treatments remove most lice within a week, bath treatments work
@@ -173,6 +185,8 @@ retrieved as they look today; late corrections were not necessarily known in the
   treatments per site and week, plus production-area boundaries and traffic lights.
 - **Licence:** NLOD (Norwegian Licence for Open Government Data). Data delivered by BarentsWatch;
   information about lice and treatments is provided by the Norwegian Food Safety Authority (Mattilsynet).
+- **Fish stock:** [Directorate of Fisheries biomass statistics by production area](https://www.fiskeridir.no/statistikk-tall-og-analyse/data-og-statistikk-om-akvakultur/biomassestatistikk-etter-produksjonsomrade)
+  – monthly number of fish, biomass, stocking and harvest per area, published on the 20th of the following month. NLOD.
 - **Ocean currents:** [NorKyst v3](https://thredds.met.no/thredds/dodsC/fou-hi/norkystv3_800m_m00_be.html), the
   coastal ocean model of the Norwegian Meteorological Institute (MET Norway), under CC BY 4.0 / NLOD. No key needed.
 - **Processing:** Area figures are unweighted means over sites that counted lice that week (the number of
@@ -233,7 +247,8 @@ src/lakselus/
   hent.py                  fetches raw data into a local cache
   data.py                  data preparation: weekly panel by area
   evaluering.py            baselines, backtest, MAE/skill, Diebold–Mariano, intervals
-  modeller.py              features and model candidates (ridge, gradient boosting with treatments or lice stages, ensemble)
+  modeller.py              features and model candidates (ridge, gradient boosting with treatments, lice stages or fish stock, ensemble)
+  biomasse.py              monthly fish stock per area from the Directorate of Fisheries
   modelrapport.py          full backtest, selection on validation, report on test
   behandlingseffekt.py     event study of how much each treatment type lowers lice counts
   publicer.py              writes compact app data to data/app for hosting

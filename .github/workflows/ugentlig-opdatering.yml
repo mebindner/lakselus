@@ -67,6 +67,13 @@ jobs:
         continue-on-error: true
         run: python -m lakselus.havstroem
 
+      # Fiskebestanden pr. område fra Fiskeridirektoratet (åbne data, opdateres den 20. hver måned). Fejler
+      # hentningen, bruger modellen de sidst publicerede tal i data/app.
+      - name: Hent fiskebestanden fra Fiskeridirektoratet
+        if: steps.noegle.outputs.klar == 'true'
+        continue-on-error: true
+        run: python -m lakselus.biomasse
+
       - name: Genberegn modeller og publicér app-data
         if: steps.noegle.outputs.klar == 'true'
         run: |

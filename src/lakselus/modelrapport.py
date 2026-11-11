@@ -15,7 +15,7 @@ import time
 
 import pandas as pd
 
-from lakselus import data, evaluering as ev, modeller as m, regnskab
+from lakselus import biomasse, data, evaluering as ev, modeller as m, regnskab
 from lakselus.config import DATA_APP
 
 # --- 1. Filer og modelnavne -----------------------------------------------------------------
@@ -33,6 +33,7 @@ NAVNE = {
     "gbm": "Gradient boosting",
     "gbm_beh": "Gradient boosting + treatments",
     "gbm_stadier": "Gradient boosting + lice stages",
+    "gbm_biomasse": "Gradient boosting + lice stages + fish stock",
     "ensemble": "Ensemble",
 }
 
@@ -106,6 +107,9 @@ def live_prognose(panel: pd.DataFrame, model: str, res: pd.DataFrame, niveau: fl
 
 def main() -> None:
     panel = data.ugentligt_panel(data.indlaes_raa(), data.indlaes_behandlinger())
+    bestand = biomasse.indlaes()
+    if bestand is not None:  # uden fiskebestanden får gbm_biomasse NaN og bliver i praksis til gbm_stadier
+        panel = biomasse.til_panel(panel, bestand)
     print("Backtest (dette tager et par minutter) …")
     res = koer(panel)
     DATA_APP.mkdir(parents=True, exist_ok=True)

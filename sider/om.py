@@ -96,11 +96,14 @@ tekst(
     "for each of the 13 production areas every second year, from estimated lice-related mortality in wild salmon. "
     "An area can therefore be red although its farms are below the lice limit. The app shows the colour in force in "
     "the week displayed.</p>"
+    "<p><b>Fish stock.</b> The Directorate of Fisheries (<i>Fiskeridirektoratet</i>) publishes the number of fish, "
+    "biomass, smolts stocked and fish harvested per production area each month, on the 20th of the month after (NLOD). "
+    "One model candidate uses it, always with the latest month that was published in the forecast week.</p>"
     "<p><b>Ocean currents.</b> The Currents page shows the daily mean surface current for the same week as the lice "
     "counts, from MET Norway's NorKyst v3 ocean model (800 m grid, CC BY 4.0). It is shown on a grid of about 3 km, "
     "so narrow fjords are smoothed. The particles show how the water moved; they are not a model of lice larvae.</p>"
     "<p><b>Update.</b> A scheduled job runs early every Wednesday morning (with two backup attempts). It fetches new "
-    "counts, treatments and ocean currents, re-runs the whole backtest, runs the test suite as a quality gate and only then "
+    "counts, treatments, the fish stock and ocean currents, re-runs the whole backtest, runs the test suite as a quality gate and only then "
     "publishes the data.</p>"
 )
 
@@ -113,7 +116,7 @@ tekst(
     "weeks after the latest complete week. Each horizon has its own model, which predicts the <i>change</i> from "
     "today's level. The simplest possible forecast, that next week looks like this week, is the starting point. "
     "The models only have to learn when and by how much the level moves.</p>"
-    "<p><b>The candidates.</b> Two naive benchmarks and six models are run side by side:</p>"
+    "<p><b>The candidates.</b> Two naive benchmarks and seven models are run side by side:</p>"
 )
 VALGT = ' class="valgt"'
 IDEER = {
@@ -125,6 +128,8 @@ IDEER = {
     "gbm_beh": "As gradient boosting, plus the share of the area's farms treated against lice in recent weeks.",
     "gbm_stadier": "As gradient boosting, plus the younger lice stages (attached and mobile lice), which become adult "
                    "females over the following weeks.",
+    "gbm_biomasse": "As gradient boosting with lice stages, plus the area's fish stock from the Directorate of Fisheries: "
+                    "number of fish, total adult female lice, mean fish weight, and the share stocked and harvested lately.",
     "ensemble": "Mean of the seasonal model, ridge and gradient boosting.",
 }
 st.markdown(
@@ -238,6 +243,11 @@ st.markdown(afsnit("5 · Changelog", "Changes to data, methods and models",
                    "Changes to the data, methods and pages. Design-only and technical changes are left out; the full history "
                    "is on GitHub."), unsafe_allow_html=True)
 LOG = [
+    ("2026-11-11", "<b>Fish stock tested as a forecast input; no change to the selected model.</b> A new candidate adds "
+                   "the Directorate of Fisheries' monthly fish stock per area to gradient boosting with lice stages: number "
+                   "of fish, total adult female lice, mean weight, and the share stocked and harvested. On 2023–24 it did "
+                   "not improve on the model without it (average skill 18.0% vs 18.7%, no significant difference). The "
+                   "candidate stays in the weekly backtest."),
     ("2026-11-06", "<b>Live track record started.</b> Every forecast the page publishes is now archived unchanged and "
                    "compared with what happened once the week's counts arrive (Forecast page). The archive starts with the "
                    "forecasts published in weeks 43 and 44, recovered from the repository's history."),

@@ -53,7 +53,7 @@ def test_saesonfeature_kender_ikke_eget_maal():
     assert a == pytest.approx(b)
 
 
-@pytest.mark.parametrize("navn", ["saeson_justeret", "ridge", "gbm", "gbm_beh", "gbm_stadier", "ensemble"])
+@pytest.mark.parametrize("navn", ["saeson_justeret", "ridge", "gbm", "gbm_beh", "gbm_stadier", "gbm_biomasse", "ensemble"])
 def test_backtest_laekker_ikke_fremtid(navn):
     """Ødelægges alle data efter uge T, skal prognoser lavet til og med T være uændrede."""
     p = syntetisk_panel(n_uger=170)

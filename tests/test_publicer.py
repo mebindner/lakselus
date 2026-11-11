@@ -13,9 +13,11 @@ def test_app_data_giver_samme_panel_som_raadata(monkeypatch, tmp_path):
     fra_raa = data.ugentligt_panel(data.indlaes_raa(), data.indlaes_behandlinger())
     monkeypatch.setattr(data, "DATA_RAW", tmp_path)  # som på Streamlit Cloud: ingen rådata
     fra_app = data.ugentligt_panel(data.indlaes_raa(), data.indlaes_behandlinger())
-    # Rådata kan være nyere end sidst publicerede app-data; sammenlign de uger, begge har.
-    faelles = fra_raa["uge_start"] <= fra_app["uge_start"].max()
-    pd.testing.assert_frame_equal(fra_raa[faelles].reset_index(drop=True), fra_app, check_exact=False, rtol=1e-5)
+    # Rådata kan være hentet før eller efter de publicerede app-data. Sammenlign de uger, begge har – undtagen de to
+    # nyeste, hvor sene indberetninger stadig kommer ind og tallene derfor afhænger af, hvornår der blev hentet.
+    sidste = min(fra_raa["uge_start"].max(), fra_app["uge_start"].max()) - pd.Timedelta(weeks=2)
+    faelles = lambda p: p[p["uge_start"] <= sidste].reset_index(drop=True)  # noqa: E731
+    pd.testing.assert_frame_equal(faelles(fra_raa), faelles(fra_app), check_exact=False, rtol=1e-5)
 
 
 def test_behandlinger_taeller_hver_lokalitet_en_gang_pr_uge():

@@ -9,6 +9,7 @@ Kandidater
 - gbm:              gradient boosting med MAE-tab, samme mål og features, fælles for alle områder.
 - gbm_beh:          som gbm, men også med lusebehandlinger som forklarende variabel.
 - gbm_stadier:      som gbm, men også med de yngre lusestadier (bevægelige og fastsiddende lus).
+- gbm_biomasse:     som gbm_stadier, men også med fiskebestanden pr. område (Fiskeridirektoratet).
 - ensemble:         gennemsnit af saeson_justeret, ridge og gbm.
 
 Modellerne forudsiger *ændringen* fra i dag frem for niveauet. Så er den naive prognose (ændring = 0)
@@ -42,6 +43,9 @@ NATIONALE = ["nat_y", "nat_d1"]
 BEHANDLINGER = ["beh_andel", "beh_rul4"]
 # Yngre lusestadier pr. fisk: fastsiddende og bevægelige lus bliver til voksne hunlus i de følgende uger.
 STADIER = ["mob", "fast", "mob_d2"]
+# Fiskebestanden (Fiskeridirektoratet, seneste publicerede måned): hvor mange fisk og lus der er i alt, hvor store
+# fiskene er, og hvor mange der er sat ud eller slagtet de seneste måneder.
+BIOMASSE = ["lusebyrde", "log_fisk", "vaegt", "fisk_d1", "fisk_aar", "utsat3", "slagtet3"]
 REFIT_UGER = 13  # gen-træn hvert kvartal i backtesten
 
 
@@ -70,7 +74,8 @@ def features(historik: pd.DataFrame, h: int) -> pd.DataFrame:
 
     Undtagelse: `saes_d` er sæsonprofilen fra andre år i historikken – den kender intet efter forecast-ugen.
     """
-    kolonner = ["omraade", "uge_start", "hunlus", "temp", "n_lok"] + [k for k in ("n_beh", "mob", "fast") if k in historik]
+    valgfri = ("n_beh", "mob", "fast", "fisk", "vaegt", "fisk_d1", "fisk_aar", "utsat3", "slagtet3")
+    kolonner = ["omraade", "uge_start", "hunlus", "temp", "n_lok"] + [k for k in valgfri if k in historik]
     p = historik[kolonner].sort_values(["omraade", "uge_start"]).copy()
     g = p.groupby("omraade")
 
@@ -111,6 +116,14 @@ def features(historik: pd.DataFrame, h: int) -> pd.DataFrame:
         p["mob_d2"] = p["mob"] - p.groupby("omraade")["mob"].shift(2)
     else:
         p["mob"] = p["fast"] = p["mob_d2"] = np.nan
+
+    # Fiskebestanden: lusebyrden er lus pr. fisk gange antal fisk (mio. hunlus i området). Uden data: NaN.
+    if "fisk" in p:
+        p["log_fisk"] = np.log1p(p["fisk"] / 1e6)
+        p["lusebyrde"] = np.log1p(p["y"] * p["fisk"] / 1e6)
+    for k in BIOMASSE:
+        if k not in p:
+            p[k] = np.nan
 
     # Målet: ændringen h uger frem (bruges kun til træning).
     p["maal"] = p.groupby("omraade")["hunlus"].shift(-h) - p["y"]
@@ -155,10 +168,7 @@ class DirekteModel:
     def __init__(self, fabrik, kolonner: list[str] | None = None, refit_uger: int = REFIT_UGER):
         self.fabrik, self.refit_uger = fabrik, refit_uger
         self.kolonner = kolonner or NUMERISKE
-        self._modeller: dict[int, tuple[pd.Timestamp, object]] = {}
-
-    def _X(self, f: pd.DataFrame) -> pd.DataFrame:
-        return f[self.kolonner + ["omraade"]]
+        self._modeller: dict[int, tuple[pd.Timestamp, object, list[str]]] = {}
 
     def __call__(self, historik: pd.DataFrame, h: int) -> pd.Series:
         f = features(historik, h)
@@ -166,10 +176,12 @@ class DirekteModel:
         cache = self._modeller.get(h)
         if cache is None or (origin - cache[0]).days >= 7 * self.refit_uger or origin < cache[0]:
             traen = f.dropna(subset=["maal", "y", "d1"])
-            model = self.fabrik(self.kolonner).fit(self._X(traen), traen["maal"])
-            self._modeller[h] = cache = (origin, model)
+            # Helt tomme kolonner (fx fiskebestanden, når den ikke er hentet) springes over i stedet for at fejle.
+            kolonner = [k for k in self.kolonner if traen[k].notna().any()]
+            model = self.fabrik(kolonner).fit(traen[kolonner + ["omraade"]], traen["maal"])
+            self._modeller[h] = cache = (origin, model, kolonner)
         nu = f[f["uge_start"] == origin]
-        aendring = cache[1].predict(self._X(nu))
+        aendring = cache[1].predict(nu[cache[2] + ["omraade"]])
         return pd.Series((nu["y"].to_numpy() + aendring).clip(min=0), index=nu["omraade"].to_numpy())
 
 
@@ -195,6 +207,9 @@ def kandidater() -> dict:
     # sker kun på valideringsperioden og skifter derfor ikke af sig selv.
     # Lusestadier (tilføjet nov. 2026): på validering 2023–24 øgede de GBM's skill fra 16,9 % til 18,7 % i snit over
     # horisonterne (DM p < 0,01 en og to uger frem). Graddage, naboområder og produktionscyklus gav ingen sikker gevinst.
+    # Fiskebestanden (tilføjet nov. 2026, Fiskeridirektoratet) gav på validering ingen gevinst oven i lusestadierne:
+    # skill 18,0 % mod 18,7 % (DM p > 0,1 ved alle horisonter); en mindre variant med fire variable gav 17,9 %.
+    # Tallene er månedlige og 3–7 uger bagud, når en prognose kan bruge dem. Kandidaten køres med som gbm_beh.
     ridge, gbm = DirekteModel(_ridge, NUMERISKE), DirekteModel(_gbm, NUMERISKE + NATIONALE)
     return {
         "saeson_justeret": saeson_justeret,
@@ -202,5 +217,6 @@ def kandidater() -> dict:
         "gbm": gbm,
         "gbm_beh": DirekteModel(_gbm, NUMERISKE + NATIONALE + BEHANDLINGER),
         "gbm_stadier": DirekteModel(_gbm, NUMERISKE + NATIONALE + STADIER),
+        "gbm_biomasse": DirekteModel(_gbm, NUMERISKE + NATIONALE + STADIER + BIOMASSE),
         "ensemble": Ensemble(saeson_justeret, ridge, gbm),
     }

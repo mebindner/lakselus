@@ -12,13 +12,14 @@ Indhold
 2. Behandlinger       – allerede samlet pr. område og uge, så filen er lille
 3. Behandlingseffekt  – hændelsesstudiet af behandlingernes effekt (kræver behandlinger pr. lokalitet)
 4. Produktionsområder – kopieres uændret
+5. Fiskebestand       – Fiskeridirektoratets månedstal pr. område (kun hvis de er hentet i denne kørsel)
 """
 
 import shutil
 
 import pandas as pd
 
-from lakselus import behandlingseffekt, data
+from lakselus import behandlingseffekt, biomasse, data
 from lakselus.config import DATA_APP, DATA_RAW
 
 # Kun de kolonner og rækker, appen bruger: lokaliteter, der har talt lus.
@@ -96,6 +97,12 @@ def main() -> None:
     # --- 4. Produktionsområder -------------------------------------------------------------
     shutil.copyfile(DATA_RAW / "produktionsomraader.csv", data.APP_PRODUKTIONSOMRAADER)
     print(f"Skrev {data.APP_PRODUKTIONSOMRAADER.name}")
+
+    # --- 5. Fiskebestand -------------------------------------------------------------------
+    if biomasse.RAA_FIL.exists():
+        bestand = biomasse.pr_omraade(pd.read_csv(biomasse.RAA_FIL))
+        bestand.to_parquet(biomasse.APP_FIL, index=False)
+        print(f"Skrev {biomasse.APP_FIL.name} ({len(bestand):,} område-måneder, til {bestand['maaned'].max():%Y-%m})")
 
 
 if __name__ == "__main__":

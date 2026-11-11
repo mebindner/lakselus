@@ -488,6 +488,14 @@ st.markdown(
        "summed over 4–8 weeks, neighbouring areas and how far farms are into their production cycle were also tested "
        "and gave no reliable gain." if valgt == "gbm_stadier" else
        "It is in the weekly backtest alongside the other candidates.")
+    + "<br><br><b>Fish stock.</b> A third candidate adds the area's fish stock from the Directorate of Fisheries' "
+    "monthly statistics: number of fish, adult female lice per fish times the number of fish, mean fish weight, and "
+    "the share of fish stocked and harvested over the past three months. Only months already published in the "
+    "forecast week are used (the figures come out on the 20th of the following month). "
+    + ("On 2023–24 it did not improve on gradient boosting with lice stages (average skill 18.0% vs 18.7%, no "
+       "significant difference): the figures are monthly and several weeks old, and the lice history already "
+       "reflects much of what they say. It stays in the weekly backtest." if valgt != "gbm_biomasse" else
+       "On 2023–24 it had the lowest error of all models and is the selected model.")
     + "<br><br><b>Caveats.</b> The forecasts are statistical estimates, not advice, and come with no guarantee; "
     "do not use them as the sole basis for operational or regulatory decisions. Treatments explain some of the "
     "abrupt drops but cannot be known ahead of time. Data are retrieved as they look today; late corrections were not necessarily known in the "
